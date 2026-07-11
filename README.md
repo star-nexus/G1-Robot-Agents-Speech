@@ -88,6 +88,8 @@ speech_subscriber.start()
 Agent 退出时执行 `speech_subscriber.close()`。TTS 播放门控和更完整的 Observation 接入方式
 见 [PIPELINE.md](./PIPELINE.md)。
 
+G1 TTS 的独立测试步骤和成功判据见 [TTS_TESTING.md](./TTS_TESTING.md)。
+
 ## 历史双机脚本
 
 `setup-orin.sh`、`setup-spark.sh` 和 `verify-dual.sh` 保留作旧版参数与故障排查参考，
