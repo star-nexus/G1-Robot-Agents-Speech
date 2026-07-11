@@ -1,12 +1,11 @@
 # G1 Speech Service
 
-DGX 上的离线语音输入服务：采集 USB 麦克风，使用 Silero VAD 自动断句，使用
-SenseVoice-Small 离线识别，然后通过 CycloneDDS 发布给同一台 DGX 上的 Agent。
+G1 上的离线快速 ASR 语音服务
 
 ## 当前拓扑
 
 ```text
-DGX 无线/USB 麦克风
+无线/USB
   → sounddevice / 16 kHz mono
   → Silero VAD
   → SenseVoice-Small
@@ -18,20 +17,11 @@ DGX Agent/TTS
   → speech_service 本机订阅并暂停识别
 ```
 
-G1 Orin NX 不再运行语音识别，也不参与自定义语音 DDS Topic。G1 固定地址
-`192.168.123.164` 不影响该单机拓扑。DDS 绑定 DGX 的机器人网卡 `enP7s7`
+G1 固定地址 `192.168.123.164` 不影响单机拓扑。DDS 绑定 DGX 的机器人网卡 `enP7s7`
 （当前为 `192.168.123.100/24`），以便 Agent 在同一个 DDS 初始化中同时使用语音 Topic
 和 Unitree SDK。
 
 ## 部署
-
-详细说明见 [DGX_DEPLOYMENT.md](./DGX_DEPLOYMENT.md)。首次安装：
-
-```bash
-cd /home/dgx/moonbot/speech_service
-cp deploy-dgx.env.example deploy-dgx.env
-bash scripts/setup-dgx.sh --config deploy-dgx.env
-```
 
 脚本不需要 sudo，会安装以下项目私有组件：
 
