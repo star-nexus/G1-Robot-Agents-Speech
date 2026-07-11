@@ -1,0 +1,17 @@
+[Unit]
+Description=Unitree G1 offline SenseVoice DDS service
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=unitree
+WorkingDirectory=/opt/g1-speech
+ExecStart=/opt/g1-speech/.venv/bin/g1-speech serve --config /opt/g1-speech/config.json
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=8
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

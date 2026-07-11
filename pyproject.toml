@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "g1-speech"
+version = "0.1.0"
+description = "Offline SenseVoice microphone and DDS service for Unitree G1 agents"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+orin = [
+  "sounddevice>=0.4.6",
+  "sherpa-onnx>=1.13",
+]
+dgx = [
+  "sounddevice>=0.4.6",
+  "sherpa-onnx>=1.13",
+]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+g1-speech = "g1_speech.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,13 @@
+.venv/
+models/
+config.json
+deploy.env
+deploy-dgx.env
+.deps/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc

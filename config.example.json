@@ -1,0 +1,41 @@
+{
+  "source_name": "g1_orin_mic",
+  "utterance_queue_capacity": 4,
+  "metrics_interval_seconds": 60.0,
+  "audio": {
+    "sample_rate": 16000,
+    "block_ms": 100,
+    "device": null,
+    "queue_seconds": 5.0
+  },
+  "vad": {
+    "model": "models/silero_vad.onnx",
+    "threshold": 0.5,
+    "speech_pre_roll_seconds": 0.3,
+    "min_silence_seconds": 0.35,
+    "min_speech_seconds": 0.25,
+    "max_speech_seconds": 15.0,
+    "buffer_seconds": 30.0
+  },
+  "sensevoice": {
+    "model_dir": "models",
+    "device": "cpu",
+    "language": "zh",
+    "use_itn": true,
+    "num_threads": 4
+  },
+  "dds": {
+    "domain_id": 0,
+    "network_interface": "eth0",
+    "speech_topic": "rt/g1/hri/speech/final",
+    "playback_topic": "rt/g1/hri/playback/state",
+    "write_timeout_seconds": 0.5,
+    "retry_interval_seconds": 0.2,
+    "delivery_ttl_seconds": 30.0,
+    "outbox_capacity": 128
+  },
+  "playback": {
+    "resume_delay_ms": 250,
+    "max_active_seconds": 30.0
+  }
+}
