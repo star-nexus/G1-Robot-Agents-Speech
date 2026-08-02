@@ -3,6 +3,7 @@
 English | [简体中文](README_ZH.md)
 
 Offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
+Give robots fast, private speech input for responsive, real-time interaction with people—without relying on the cloud.
 
 **Tested on [Unitree G1](https://www.unitree.com/mobile/g1/) and
 [Galbot G1](https://www.galbot.com/g1). Benchmarked on NVIDIA Jetson Orin NX.**

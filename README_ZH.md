@@ -3,6 +3,7 @@
 [English](README.md) | 简体中文
 
 面向机器人 Agent 的离线语音识别服务，针对 NVIDIA Jetson 优化。
+为机器人提供快速、私密的语音输入，支持与人实时互动，无需依赖云端。
 
 **已在[宇树 G1](https://www.unitree.com/operate/g1/) 和
 [银河通用 G1](https://www.galbot.com/g1) 上验证，并在 NVIDIA Jetson Orin NX 上完成性能测试。**
