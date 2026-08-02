@@ -12,7 +12,7 @@
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
-- **机器人无关的 DDS 接口**：统一语音事件发布到 `rt/g1/hri/speech/final`
+- **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
 - **高性能**：识别速度 0.01–0.2 秒，准确度高
 
 ## 已验证平台
@@ -53,8 +53,8 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-识别结果统一发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用相同的 DDS 消息，
-Agent 无需修改。
+DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
+相同的消息，Agent 无需修改。
 
 ### Agent 订阅
 
@@ -77,6 +77,29 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### ROS 2
+
+ROS 2 是可选能力，不影响默认 DDS 部署。在已 source ROS 2 环境并用 colcon 构建
+`ros2/` 下的包后，可以运行独立 ROS 2 传输：
+
+```bash
+g1-speech serve --config config.json --transport ros2
+ros2 topic echo /hri/speech/final
+```
+
+也可以运行原生生命周期节点：
+
+```bash
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json"
+ros2 lifecycle set /g1_speech configure
+ros2 lifecycle set /g1_speech activate
+```
+
+ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent` 和
+`g1_speech_msgs/msg/PlaybackState`，完整保留 DDS 事件契约。安装与生命周期说明见
+[ROS 2 文档](ros2/README.md)。
+
 ## 工作方式
 
 ```text
@@ -84,8 +107,8 @@ Microphone
   → 16 kHz mono audio
   → Silero VAD
   → SenseVoice-Small
-  → rt/g1/hri/speech/final
-  → Robot / Agent / ROS bridge / application
+  → DDS or ROS 2 transport
+  → Robot / Agent / application
 
 TTS or playback
   → rt/g1/hri/playback/state
@@ -96,6 +119,8 @@ TTS or playback
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | 最终语音识别事件 |
 | `rt/g1/hri/playback/state` | Agent → Service | 播放期间暂停识别，避免机器人听到自己 |
+| `/hri/speech/final` | Service → ROS 2 Agent | 最终结构化 `SpeechEvent` |
+| `/hri/playback/state` | ROS 2 Agent → Service | 结构化播放门控状态 |
 
 `SpeechEvent` 包含稳定的 `event_id`、文本、语言、音频时长、推理耗时、来源和时间戳。
 发布端会在短暂 DDS 故障时重试，订阅端会按 `event_id` 去重。
@@ -152,6 +177,7 @@ GPU 部署会：
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
 | `SENSEVOICE_THREADS` | CPU 推理线程数 |
+| `SPEECH_TRANSPORT` | `dds`（默认）或 `ros2` |
 
 运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
 按配置文件所在目录解析。

@@ -12,7 +12,7 @@ It also runs on other Jetson-powered robots and Linux edge computers such as NVI
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
-- **Robot-independent DDS interface**: Unified speech events are published to `rt/g1/hri/speech/final`
+- **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
 - **High performance**: 0.01–0.2 s recognition latency with high accuracy
 
 ## Verified Platforms
@@ -53,7 +53,9 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-Recognition results are published to `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same DDS messages, so no Agent-side changes are required.
+DDS is the default transport. Recognition results are published to
+`rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
+no Agent-side changes are required.
 
 ### Subscribe from an Agent
 
@@ -75,6 +77,30 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### ROS 2
+
+ROS 2 is optional and does not affect the default DDS deployment. After building
+the packages under `ros2/` in a sourced ROS 2 workspace, run either the
+standalone transport:
+
+```bash
+g1-speech serve --config config.json --transport ros2
+ros2 topic echo /hri/speech/final
+```
+
+or the managed lifecycle node:
+
+```bash
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json"
+ros2 lifecycle set /g1_speech configure
+ros2 lifecycle set /g1_speech activate
+```
+
+ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent` and subscribes to
+`g1_speech_msgs/msg/PlaybackState`, preserving the complete DDS event contract.
+See [ROS 2 setup and lifecycle details](ros2/README.md).
+
 ## How It Works
 
 ```text
@@ -82,8 +108,8 @@ Microphone
   → 16 kHz mono audio
   → Silero VAD
   → SenseVoice-Small
-  → rt/g1/hri/speech/final
-  → Robot / Agent / ROS bridge / application
+  → DDS or ROS 2 transport
+  → Robot / Agent / application
 
 TTS or playback
   → rt/g1/hri/playback/state
@@ -94,6 +120,8 @@ TTS or playback
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | Final speech recognition events |
 | `rt/g1/hri/playback/state` | Agent → Service | Pause recognition during playback so the robot does not hear itself |
+| `/hri/speech/final` | Service → ROS 2 Agent | Final structured `SpeechEvent` |
+| `/hri/playback/state` | ROS 2 Agent → Service | Structured playback gate state |
 
 Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audio duration, inference latency, source, and timestamp. The publisher retries after transient DDS failures, while subscribers deduplicate events by `event_id`.
 
@@ -148,6 +176,7 @@ Copy `deploy.env.example` and enter your own device settings. No fixed IP addres
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
 | `SENSEVOICE_THREADS` | Number of CPU inference threads |
+| `SPEECH_TRANSPORT` | `dds` (default) or `ros2` |
 
 Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
 

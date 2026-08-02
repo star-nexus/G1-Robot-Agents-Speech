@@ -75,3 +75,29 @@ def test_unknown_config_key_is_rejected(tmp_path):
     path.write_text('{"online_provider": "forbidden"}', encoding="utf-8")
     with pytest.raises(ValueError, match="unknown settings"):
         load_config(path)
+
+
+def test_transport_defaults_to_dds_and_ros2_has_independent_topics(tmp_path):
+    path = write_config(tmp_path / "config.json")
+    config = load_config(path)
+
+    assert config.transport.backend == "dds"
+    assert config.dds.speech_topic == "rt/g1/hri/speech/final"
+    assert config.ros2.speech_topic == "hri/speech/final"
+
+
+def test_transport_backend_can_be_selected_from_environment(tmp_path):
+    path = write_config(
+        tmp_path / "config.json",
+        environment={"SPEECH_TRANSPORT": "ros2"},
+    )
+
+    assert load_config(path).transport.backend == "ros2"
+
+
+def test_invalid_transport_backend_is_rejected(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text('{"transport": {"backend": "mqtt"}}', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="transport.backend"):
+        load_config(path)

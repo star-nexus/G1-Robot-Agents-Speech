@@ -28,6 +28,9 @@
     "use_itn": true,
     "num_threads": 4
   },
+  "transport": {
+    "backend": "dds"
+  },
   "dds": {
     "domain_id": 0,
     "network_interface": null,
@@ -37,6 +40,12 @@
     "retry_interval_seconds": 0.2,
     "delivery_ttl_seconds": 120.0,
     "outbox_capacity": 128
+  },
+  "ros2": {
+    "node_name": "g1_speech",
+    "speech_topic": "hri/speech/final",
+    "playback_topic": "hri/playback/state",
+    "qos_depth": 10
   },
   "playback": {
     "resume_delay_ms": 250,

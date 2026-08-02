@@ -24,7 +24,9 @@ from .dds import DdsSpeechSubscriber, initialize_dds
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Offline SenseVoice DDS service for robot Agents")
+    parser = argparse.ArgumentParser(
+        description="Offline SenseVoice service for robot Agents"
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -48,12 +50,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     config_init.add_argument("--force", action="store_true", help="Overwrite output")
 
-    serve = sub.add_parser("serve", help="Start microphone, VAD, SenseVoice, and DDS")
+    serve = sub.add_parser("serve", help="Start microphone, VAD, SenseVoice, and transport")
     serve.add_argument("--config", required=True)
+    serve.add_argument("--transport", choices=("dds", "ros2"))
     serve.add_argument("--run-seconds", type=float, default=0.0, help="0 runs continuously")
 
-    doctor = sub.add_parser("doctor", help="Check models, microphone, runtime, and DDS")
+    doctor = sub.add_parser(
+        "doctor", help="Check models, microphone, and selected transport runtime"
+    )
     doctor.add_argument("--config", required=True)
+    doctor.add_argument("--transport", choices=("dds", "ros2"))
     doctor.add_argument("--load-model", action="store_true")
     doctor.add_argument("--skip-audio", action="store_true", help="Skip microphone checks")
 
@@ -84,9 +90,9 @@ def main(argv: list[str] | None = None) -> int:
             args.force,
         )
     if args.command == "serve":
-        return _serve(args.config, args.run_seconds)
+        return _serve(args.config, args.run_seconds, args.transport)
     if args.command == "doctor":
-        return _doctor(args.config, args.load_model, args.skip_audio)
+        return _doctor(args.config, args.load_model, args.skip_audio, args.transport)
     if args.command == "listen":
         return _listen(args.config, args.timeout, args.once)
     if args.command == "transcribe":
@@ -113,9 +119,9 @@ def _config_init(
     return 0
 
 
-def _serve(config_path: str, run_seconds: float) -> int:
+def _serve(config_path: str, run_seconds: float, transport: str | None = None) -> int:
     config = load_config(config_path)
-    service = SpeechService(config)
+    service = SpeechService(config, transport_backend=transport)
     stopped = threading.Event()
 
     def stop(*_args) -> None:
@@ -132,14 +138,7 @@ def _serve(config_path: str, run_seconds: float) -> int:
             if run_seconds > 0 and now - started >= run_seconds:
                 break
             if now >= next_metrics:
-                payload = asdict(service.pipeline.metrics())
-                payload.update(
-                    dds_outbox_size=service.sink.queue_size,
-                    dds_delivered=service.sink.delivered,
-                    dds_retries=service.sink.retries,
-                    dds_expired=service.sink.expired,
-                    dds_dropped=service.sink.dropped,
-                )
+                payload = service.metrics()
                 logging.getLogger(__name__).info("metrics=%s", json.dumps(payload))
                 next_metrics = now + config.metrics_interval_seconds
     finally:
@@ -147,8 +146,14 @@ def _serve(config_path: str, run_seconds: float) -> int:
     return 0
 
 
-def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int:
+def _doctor(
+    config_path: str,
+    load_model: bool,
+    skip_audio: bool = False,
+    transport: str | None = None,
+) -> int:
     config = load_config(config_path)
+    selected_transport = transport or config.transport.backend
     checks: list[tuple[str, bool, str]] = []
 
     def check(name, callback) -> None:
@@ -168,7 +173,11 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
     check("sherpa_onnx", lambda: _module_path("sherpa_onnx"))
     if not skip_audio:
         check("sounddevice/microphone", _audio_devices)
-    check("cyclonedds", lambda: _module_path("cyclonedds"))
+    if selected_transport == "dds":
+        check("cyclonedds", lambda: _module_path("cyclonedds"))
+    else:
+        check("rclpy", lambda: _module_path("rclpy"))
+        check("g1_speech_msgs", lambda: _module_path("g1_speech_msgs"))
     if load_model:
         engine = SenseVoiceEngine(
             model_dir=config.sensevoice.model_dir,

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 from .contracts import EventSink, SpeechEvent
+from .config import DdsConfig
 from .dds_types import DDS_IDL_AVAILABLE, PlaybackStateMessage, SpeechEventMessage
 from .gate import PlaybackGate
 
@@ -518,3 +519,38 @@ class DdsPlaybackPublisher:
 
     def close(self) -> None:
         self._publisher.close()
+
+
+class DdsTransport:
+    """Complete DDS transport: speech output plus playback-gate input."""
+
+    def __init__(self, config: DdsConfig, gate: PlaybackGate) -> None:
+        initialize_dds(config.domain_id, config.network_interface)
+        self._playback = DdsPlaybackSubscriber(gate, topic=config.playback_topic)
+        writer = DdsEventWriter(config.speech_topic)
+        self.sink = RetryingEventSink(
+            writer,
+            capacity=config.outbox_capacity,
+            write_timeout_seconds=config.write_timeout_seconds,
+            retry_interval_seconds=config.retry_interval_seconds,
+            delivery_ttl_seconds=config.delivery_ttl_seconds,
+        )
+
+    def start(self) -> None:
+        self._playback.start()
+
+    def stop(self) -> None:
+        self._playback.close()
+
+    def close(self) -> None:
+        self.stop()
+
+    def metrics(self) -> dict[str, Any]:
+        return {
+            "transport_backend": "dds",
+            "dds_outbox_size": self.sink.queue_size,
+            "dds_delivered": self.sink.delivered,
+            "dds_retries": self.sink.retries,
+            "dds_expired": self.sink.expired,
+            "dds_dropped": self.sink.dropped,
+        }
