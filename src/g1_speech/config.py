@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Mapping, Sequence
 
 
 @dataclass(frozen=True)
@@ -45,7 +46,7 @@ class DdsConfig:
     playback_topic: str = "rt/g1/hri/playback/state"
     write_timeout_seconds: float = 0.5
     retry_interval_seconds: float = 0.2
-    delivery_ttl_seconds: float = 30.0
+    delivery_ttl_seconds: float = 120.0
     outbox_capacity: int = 128
 
 
@@ -87,6 +88,45 @@ class ServiceConfig:
             raise ValueError("dds.outbox_capacity must be greater than zero")
 
 
+def default_config_dict() -> dict[str, Any]:
+    """Return the canonical, JSON-serializable service defaults."""
+    return asdict(ServiceConfig())
+
+
+def write_config(
+    path: str | Path,
+    *,
+    base: str | Path | None = None,
+    environment: Mapping[str, str] | None = None,
+    overrides: Sequence[str] = (),
+    overwrite: bool = False,
+) -> Path:
+    """Generate a validated config from canonical defaults and explicit overrides."""
+    target = Path(path).expanduser().resolve()
+    if target.exists() and not overwrite:
+        raise FileExistsError(f"configuration already exists: {target}")
+
+    if base is None:
+        raw = default_config_dict()
+    else:
+        base_path = Path(base).expanduser().resolve()
+        raw = json.loads(base_path.read_text(encoding="utf-8"))
+
+    raw = deepcopy(raw)
+    if environment is not None:
+        _apply_environment_overrides(raw, environment)
+    for assignment in overrides:
+        _apply_assignment(raw, assignment)
+
+    _config_from_raw(deepcopy(raw), target.parent)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(raw, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
 def _merge_dataclass(cls, raw: dict[str, Any]):
     allowed = cls.__dataclass_fields__.keys()
     unknown = set(raw) - set(allowed)
@@ -98,12 +138,15 @@ def _merge_dataclass(cls, raw: dict[str, Any]):
 def load_config(path: str | Path) -> ServiceConfig:
     config_path = Path(path).expanduser().resolve()
     raw = json.loads(config_path.read_text(encoding="utf-8"))
+    return _config_from_raw(raw, config_path.parent)
+
+
+def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
     allowed_top = ServiceConfig.__dataclass_fields__.keys()
     unknown_top = set(raw) - set(allowed_top)
     if unknown_top:
         raise ValueError(f"ServiceConfig contains unknown settings: {sorted(unknown_top)}")
 
-    base = config_path.parent
     audio = _merge_dataclass(AudioConfig, raw.pop("audio", {}))
     vad_raw = raw.pop("vad", {})
     vad_raw["model"] = str(_resolve_path(base, vad_raw.get("model", VadConfig.model)))
@@ -129,6 +172,84 @@ def load_config(path: str | Path) -> ServiceConfig:
     )
     config.validate()
     return config
+
+
+def _parse_optional_device(value: str) -> int | str | None:
+    value = value.strip()
+    if not value or value.lower() == "null":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
+def _parse_optional_string(value: str) -> str | None:
+    value = value.strip()
+    return value or None
+
+
+def _parse_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"invalid boolean value: {value!r}")
+
+
+_ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
+    "MICROPHONE_DEVICE": ("audio", "device", _parse_optional_device),
+    "SENSEVOICE_DEVICE": ("sensevoice", "device", str),
+    "SENSEVOICE_THREADS": ("sensevoice", "num_threads", int),
+    "SENSEVOICE_LANGUAGE": ("sensevoice", "language", str),
+    "SENSEVOICE_USE_ITN": ("sensevoice", "use_itn", _parse_bool),
+    "VAD_THRESHOLD": ("vad", "threshold", float),
+    "VAD_PRE_ROLL_SECONDS": ("vad", "speech_pre_roll_seconds", float),
+    "VAD_MIN_SILENCE_SECONDS": ("vad", "min_silence_seconds", float),
+    "VAD_MIN_SPEECH_SECONDS": ("vad", "min_speech_seconds", float),
+    "VAD_MAX_SPEECH_SECONDS": ("vad", "max_speech_seconds", float),
+    "DDS_DOMAIN_ID": ("dds", "domain_id", int),
+    "DDS_NETWORK_INTERFACE": ("dds", "network_interface", _parse_optional_string),
+    "SPEECH_TOPIC": ("dds", "speech_topic", str),
+    "PLAYBACK_TOPIC": ("dds", "playback_topic", str),
+    "DDS_DELIVERY_TTL_SECONDS": ("dds", "delivery_ttl_seconds", float),
+    "DDS_OUTBOX_CAPACITY": ("dds", "outbox_capacity", int),
+    "PLAYBACK_RESUME_DELAY_MS": ("playback", "resume_delay_ms", int),
+    "PLAYBACK_MAX_ACTIVE_SECONDS": ("playback", "max_active_seconds", float),
+}
+
+
+def _apply_environment_overrides(
+    raw: dict[str, Any], environment: Mapping[str, str]
+) -> None:
+    for name, (section, field_name, parser) in _ENV_OVERRIDES.items():
+        if name not in environment:
+            continue
+        try:
+            value = parser(environment[name])
+        except ValueError as exc:
+            raise ValueError(f"invalid {name}: {environment[name]!r}") from exc
+        raw[section][field_name] = value
+
+
+def _apply_assignment(raw: dict[str, Any], assignment: str) -> None:
+    key, separator, encoded = assignment.partition("=")
+    if not separator or not key:
+        raise ValueError(f"override must use section.field=value: {assignment!r}")
+    parts = key.split(".")
+    if len(parts) != 2:
+        raise ValueError(f"override must target section.field: {key!r}")
+    section, field_name = parts
+    if section not in raw or not isinstance(raw[section], dict):
+        raise ValueError(f"unknown configuration section: {section!r}")
+    if field_name not in raw[section]:
+        raise ValueError(f"unknown configuration field: {key!r}")
+    try:
+        value = json.loads(encoded)
+    except json.JSONDecodeError:
+        value = encoded
+    raw[section][field_name] = value
 
 
 def _resolve_path(base: Path, value: str) -> Path:

@@ -35,24 +35,8 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 
 : "${RUNTIME_PYTHON:=python3}"
 : "${DDS_NETWORK_INTERFACE:=}"
-: "${DDS_DOMAIN_ID:=0}"
-: "${SPEECH_TOPIC:=rt/g1/hri/speech/final}"
-: "${PLAYBACK_TOPIC:=rt/g1/hri/playback/state}"
 : "${MICROPHONE_DEVICE:=}"
 : "${PROMPT_FOR_MIC_DEVICE:=1}"
-: "${SENSEVOICE_DEVICE:=cpu}"
-: "${SENSEVOICE_THREADS:=6}"
-: "${SENSEVOICE_LANGUAGE:=zh}"
-: "${SENSEVOICE_USE_ITN:=1}"
-: "${VAD_THRESHOLD:=0.35}"
-: "${VAD_PRE_ROLL_SECONDS:=0.5}"
-: "${VAD_MIN_SILENCE_SECONDS:=0.35}"
-: "${VAD_MIN_SPEECH_SECONDS:=0.15}"
-: "${VAD_MAX_SPEECH_SECONDS:=10.0}"
-: "${DDS_DELIVERY_TTL_SECONDS:=120.0}"
-: "${DDS_OUTBOX_CAPACITY:=128}"
-: "${PLAYBACK_RESUME_DELAY_MS:=250}"
-: "${PLAYBACK_MAX_ACTIVE_SECONDS:=30.0}"
 : "${AUTO_INSTALL_CYCLONEDDS:=1}"
 : "${CYCLONEDDS_SOURCE_DIR:=$HOME/.cache/g1-speech/cyclonedds}"
 : "${CYCLONEDDS_HOME:=$CYCLONEDDS_SOURCE_DIR/install}"
@@ -156,58 +140,11 @@ MODEL_FILE="$(find "$ROOT/models" -maxdepth 2 -name model.int8.onnx -print -quit
 ok "Offline models"
 
 log "Generating config.json from deploy.env"
-export G1_ROOT="$ROOT"
-export G1_DDS_NETWORK_INTERFACE="$DDS_NETWORK_INTERFACE"
-"$PY" <<'PY'
-import json
-import os
-from pathlib import Path
-
-root = Path(os.environ["G1_ROOT"])
-path = root / "config.json"
-source = path if path.exists() else root / "config.example.json"
-config = json.loads(source.read_text(encoding="utf-8"))
-
-raw_device = os.environ.get("MICROPHONE_DEVICE", "").strip()
-if not raw_device or raw_device.lower() == "null":
-    device = None
-else:
-    try:
-        device = int(raw_device)
-    except ValueError:
-        device = raw_device
-
-config["audio"].update(sample_rate=16000, device=device)
-config["sensevoice"].update(
-    model_dir="models",
-    model_file=None,
-    device=os.environ.get("SENSEVOICE_DEVICE", "cpu"),
-    language=os.environ.get("SENSEVOICE_LANGUAGE", "zh"),
-    use_itn=os.environ.get("SENSEVOICE_USE_ITN", "1") == "1",
-    num_threads=int(os.environ.get("SENSEVOICE_THREADS", "6")),
-)
-config["vad"].update(
-    threshold=float(os.environ.get("VAD_THRESHOLD", "0.35")),
-    speech_pre_roll_seconds=float(os.environ.get("VAD_PRE_ROLL_SECONDS", "0.5")),
-    min_silence_seconds=float(os.environ.get("VAD_MIN_SILENCE_SECONDS", "0.35")),
-    min_speech_seconds=float(os.environ.get("VAD_MIN_SPEECH_SECONDS", "0.15")),
-    max_speech_seconds=float(os.environ.get("VAD_MAX_SPEECH_SECONDS", "10.0")),
-)
-config["dds"].update(
-    domain_id=int(os.environ.get("DDS_DOMAIN_ID", "0")),
-    network_interface=os.environ.get("G1_DDS_NETWORK_INTERFACE") or None,
-    speech_topic=os.environ.get("SPEECH_TOPIC", "rt/g1/hri/speech/final"),
-    playback_topic=os.environ.get("PLAYBACK_TOPIC", "rt/g1/hri/playback/state"),
-    delivery_ttl_seconds=float(os.environ.get("DDS_DELIVERY_TTL_SECONDS", "120")),
-    outbox_capacity=int(os.environ.get("DDS_OUTBOX_CAPACITY", "128")),
-)
-config["playback"].update(
-    resume_delay_ms=int(os.environ.get("PLAYBACK_RESUME_DELAY_MS", "250")),
-    max_active_seconds=float(os.environ.get("PLAYBACK_MAX_ACTIVE_SECONDS", "30")),
-)
-path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-print(path)
-PY
+CONFIG_ARGS=(config init --output "$ROOT/config.json" --from-env --force)
+if [[ -f "$ROOT/config.json" ]]; then
+    CONFIG_ARGS+=(--base "$ROOT/config.json")
+fi
+"$ROOT/.venv/bin/g1-speech" "${CONFIG_ARGS[@]}"
 "$PY" -m json.tool "$ROOT/config.json" >/dev/null
 ok "config.json"
 

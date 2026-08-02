@@ -155,6 +155,15 @@ GPU 部署会：
 运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
 按配置文件所在目录解析。
 
+也可以直接根据应用的统一默认值生成配置：
+
+```bash
+g1-speech config init --output config.json
+```
+
+安装脚本使用同一个命令，并且只应用 `deploy.env` 中明确设置的覆盖项，因此 CPU、
+GPU、示例配置和代码调用不会再分别维护默认参数。
+
 ## 验证与测试
 
 检查 CPU 部署：

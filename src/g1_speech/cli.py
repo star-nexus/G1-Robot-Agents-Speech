@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import signal
 import sys
 import threading
@@ -16,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from .app import SpeechService
-from .config import load_config
+from .config import load_config, write_config
 from .engine import SenseVoiceEngine, find_model_files
 from .contracts import Utterance
 from .dds import DdsSpeechSubscriber, initialize_dds
@@ -26,6 +27,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Offline SenseVoice DDS service for robot Agents")
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    config = sub.add_parser("config", help="Create a validated service configuration")
+    config_sub = config.add_subparsers(dest="config_command", required=True)
+    config_init = config_sub.add_parser("init", help="Generate a service configuration")
+    config_init.add_argument("--output", required=True)
+    config_init.add_argument("--base", help="Start from an existing JSON configuration")
+    config_init.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Apply supported deployment environment variables",
+    )
+    config_init.add_argument(
+        "--set",
+        dest="overrides",
+        action="append",
+        default=[],
+        metavar="SECTION.FIELD=VALUE",
+        help="Apply an explicit JSON or string override; may be repeated",
+    )
+    config_init.add_argument("--force", action="store_true", help="Overwrite output")
 
     serve = sub.add_parser("serve", help="Start microphone, VAD, SenseVoice, and DDS")
     serve.add_argument("--config", required=True)
@@ -54,6 +75,14 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
+    if args.command == "config":
+        return _config_init(
+            args.output,
+            args.base,
+            args.from_env,
+            args.overrides,
+            args.force,
+        )
     if args.command == "serve":
         return _serve(args.config, args.run_seconds)
     if args.command == "doctor":
@@ -64,6 +93,24 @@ def main(argv: list[str] | None = None) -> int:
         return _transcribe(args.config, args.wav)
     parser.error("unknown command")
     return 2
+
+
+def _config_init(
+    output: str,
+    base: str | None,
+    from_env: bool,
+    overrides: list[str],
+    force: bool,
+) -> int:
+    path = write_config(
+        output,
+        base=base,
+        environment=os.environ if from_env else None,
+        overrides=overrides,
+        overwrite=force,
+    )
+    print(path)
+    return 0
 
 
 def _serve(config_path: str, run_seconds: float) -> int:

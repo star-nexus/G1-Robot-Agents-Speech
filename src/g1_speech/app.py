@@ -47,14 +47,8 @@ class SpeechService:
             queue_seconds=config.audio.queue_seconds,
         )
         segmenter = SileroVadSegmenter(
-            model=config.vad.model,
+            settings=config.vad,
             sample_rate=config.audio.sample_rate,
-            threshold=config.vad.threshold,
-            speech_pre_roll_seconds=config.vad.speech_pre_roll_seconds,
-            min_silence_seconds=config.vad.min_silence_seconds,
-            min_speech_seconds=config.vad.min_speech_seconds,
-            max_speech_seconds=config.vad.max_speech_seconds,
-            buffer_seconds=config.vad.buffer_seconds,
         )
         engine = SenseVoiceEngine(
             model_dir=config.sensevoice.model_dir,

@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 
+from .config import VadConfig
 from .contracts import AudioChunk, Utterance
 
 
@@ -15,17 +16,11 @@ class SileroVadSegmenter:
     def __init__(
         self,
         *,
-        model: str,
+        settings: VadConfig,
         sample_rate: int = 16000,
-        threshold: float = 0.35,
-        speech_pre_roll_seconds: float = 0.5,
-        min_silence_seconds: float = 0.35,
-        min_speech_seconds: float = 0.15,
-        max_speech_seconds: float = 10.0,
-        buffer_seconds: float = 30.0,
         sherpa_module: Any | None = None,
     ) -> None:
-        model_path = Path(model).expanduser().resolve()
+        model_path = Path(settings.model).expanduser().resolve()
         if not model_path.is_file():
             raise FileNotFoundError(f"Silero VAD model not found: {model_path}")
         if sample_rate != 16000:
@@ -36,18 +31,18 @@ class SileroVadSegmenter:
             sherpa_module = sherpa_onnx
         config = sherpa_module.VadModelConfig()
         config.silero_vad.model = str(model_path)
-        config.silero_vad.threshold = threshold
-        config.silero_vad.min_silence_duration = min_silence_seconds
-        config.silero_vad.min_speech_duration = min_speech_seconds
-        config.silero_vad.max_speech_duration = max_speech_seconds
+        config.silero_vad.threshold = settings.threshold
+        config.silero_vad.min_silence_duration = settings.min_silence_seconds
+        config.silero_vad.min_speech_duration = settings.min_speech_seconds
+        config.silero_vad.max_speech_duration = settings.max_speech_seconds
         config.sample_rate = sample_rate
         self._vad = sherpa_module.VoiceActivityDetector(
-            config, buffer_size_in_seconds=buffer_seconds
+            config, buffer_size_in_seconds=settings.buffer_seconds
         )
         self._sample_rate = sample_rate
         self._window_size = config.silero_vad.window_size
-        self._pre_roll_samples = round(speech_pre_roll_seconds * sample_rate)
-        self._history_limit_samples = round(buffer_seconds * sample_rate)
+        self._pre_roll_samples = round(settings.speech_pre_roll_seconds * sample_rate)
+        self._history_limit_samples = round(settings.buffer_seconds * sample_rate)
         self._pending = np.empty(0, dtype=np.float32)
         self._history = np.empty(0, dtype=np.float32)
         self._history_start_sample = 0

@@ -150,6 +150,14 @@ Copy `deploy.env.example` and enter your own device settings. No fixed IP addres
 
 Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
 
+Generate a configuration directly from the application's canonical defaults:
+
+```bash
+g1-speech config init --output config.json
+```
+
+The setup scripts use the same command and apply only variables explicitly set in `deploy.env`. This keeps CPU, GPU, example, and programmatic defaults consistent.
+
 ## Validation and Testing
 
 Check the CPU deployment:

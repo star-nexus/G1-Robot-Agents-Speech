@@ -32,7 +32,7 @@
     "playback_topic": "rt/g1/hri/playback/state",
     "write_timeout_seconds": 0.5,
     "retry_interval_seconds": 0.2,
-    "delivery_ttl_seconds": 30.0,
+    "delivery_ttl_seconds": 120.0,
     "outbox_capacity": 128
   },
   "playback": {

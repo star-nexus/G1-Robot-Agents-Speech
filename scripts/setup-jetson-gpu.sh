@@ -65,28 +65,20 @@ log "Downloading the SenseVoice FP32 model"
 bash "$ROOT/scripts/download_models_gpu.sh" "$ROOT/models"
 
 log "Generating config.gpu.json"
-export G1_ROOT="$ROOT"
-"$PY" - <<'PY'
-import json
-import os
-from pathlib import Path
-
-root = Path(os.environ["G1_ROOT"])
-source = root / "config.json"
-if not source.exists():
-    source = root / "config.example.json"
-config = json.loads(source.read_text(encoding="utf-8"))
-model_dir = "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
-config["sensevoice"].update(
-    model_dir=model_dir,
-    model_file=f"{model_dir}/model.onnx",
-    device="cuda",
-    num_threads=1,
+MODEL_DIR="models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+CONFIG_ARGS=(
+    config init
+    --output "$ROOT/config.gpu.json"
+    --set "sensevoice.model_dir=$MODEL_DIR"
+    --set "sensevoice.model_file=$MODEL_DIR/model.onnx"
+    --set sensevoice.device=cuda
+    --set sensevoice.num_threads=1
+    --force
 )
-target = root / "config.gpu.json"
-target.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-print(target)
-PY
+if [[ -f "$ROOT/config.json" ]]; then
+    CONFIG_ARGS+=(--base "$ROOT/config.json")
+fi
+"$ROOT/.venv-gpu/bin/g1-speech" "${CONFIG_ARGS[@]}"
 
 TEST_WAV="$(find "$ROOT/models" -path '*/test_wavs/zh.wav' -print -quit)"
 [[ -n "$TEST_WAV" ]] || fail "SenseVoice zh.wav is missing"
