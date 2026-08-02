@@ -11,6 +11,7 @@ It also runs on other Jetson-powered robots and Linux edge computers such as NVI
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
+- **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **Robot-independent DDS interface**: Unified speech events are published to `rt/g1/hri/speech/final`
 - **High performance**: 0.01–0.2 s recognition latency with high accuracy
 

@@ -12,6 +12,70 @@ from .config import VadConfig
 from .contracts import AudioChunk, Utterance
 
 
+class _SampleRingBuffer:
+    """Fixed-size float32 history addressed by absolute sample positions."""
+
+    def __init__(self, capacity: int) -> None:
+        if capacity < 1:
+            raise ValueError("ring buffer capacity must be greater than zero")
+        self._data = np.empty(capacity, dtype=np.float32)
+        self._write_index = 0
+        self._size = 0
+        self._total_samples = 0
+
+    @property
+    def start_sample(self) -> int:
+        return self._total_samples - self._size
+
+    @property
+    def end_sample(self) -> int:
+        return self._total_samples
+
+    def append(self, samples: np.ndarray) -> None:
+        values = np.asarray(samples, dtype=np.float32).reshape(-1)
+        count = values.size
+        if count == 0:
+            return
+        self._total_samples += count
+        capacity = self._data.size
+        if count >= capacity:
+            self._data[:] = values[-capacity:]
+            self._write_index = 0
+            self._size = capacity
+            return
+
+        first = min(count, capacity - self._write_index)
+        self._data[self._write_index : self._write_index + first] = values[:first]
+        remaining = count - first
+        if remaining:
+            self._data[:remaining] = values[first:]
+        self._write_index = (self._write_index + count) % capacity
+        self._size = min(capacity, self._size + count)
+
+    def read(self, start_sample: int, end_sample: int) -> np.ndarray | None:
+        if (
+            start_sample < self.start_sample
+            or end_sample > self.end_sample
+            or end_sample <= start_sample
+        ):
+            return None
+        count = end_sample - start_sample
+        oldest = (self._write_index - self._size) % self._data.size
+        offset = start_sample - self.start_sample
+        first_index = (oldest + offset) % self._data.size
+        first = min(count, self._data.size - first_index)
+        result = np.empty(count, dtype=np.float32)
+        result[:first] = self._data[first_index : first_index + first]
+        if first < count:
+            result[first:] = self._data[: count - first]
+        return result
+
+    def clear(self) -> None:
+        self._write_index = 0
+        self._size = 0
+        self._total_samples = 0
+
+
 class SileroVadSegmenter:
     def __init__(
         self,
@@ -43,23 +107,33 @@ class SileroVadSegmenter:
         self._window_size = config.silero_vad.window_size
         self._pre_roll_samples = round(settings.speech_pre_roll_seconds * sample_rate)
         self._history_limit_samples = round(settings.buffer_seconds * sample_rate)
-        self._pending = np.empty(0, dtype=np.float32)
-        self._history = np.empty(0, dtype=np.float32)
-        self._history_start_sample = 0
-        self._accepted_samples = 0
+        self._pending = np.empty(self._window_size, dtype=np.float32)
+        self._pending_size = 0
+        self._history = _SampleRingBuffer(self._history_limit_samples)
 
     def accept(self, chunk: AudioChunk) -> list[Utterance]:
         if chunk.sample_rate != self._sample_rate:
             raise ValueError("VAD received an unexpected sample rate")
-        self._pending = np.concatenate(
-            (self._pending, np.asarray(chunk.samples, dtype=np.float32).reshape(-1))
-        )
-        while self._pending.size >= self._window_size:
-            window = self._pending[: self._window_size]
-            self._pending = self._pending[self._window_size :]
-            self._append_history(window)
-            self._vad.accept_waveform(window)
-            self._accepted_samples += window.size
+        samples = np.asarray(chunk.samples, dtype=np.float32).reshape(-1)
+        offset = 0
+        if self._pending_size:
+            count = min(self._window_size - self._pending_size, samples.size)
+            end = self._pending_size + count
+            self._pending[self._pending_size : end] = samples[:count]
+            self._pending_size = end
+            offset = count
+            if self._pending_size == self._window_size:
+                self._accept_window(self._pending)
+                self._pending_size = 0
+
+        while offset + self._window_size <= samples.size:
+            self._accept_window(samples[offset : offset + self._window_size])
+            offset += self._window_size
+
+        remaining = samples.size - offset
+        if remaining:
+            self._pending[:remaining] = samples[offset:]
+            self._pending_size = remaining
 
         utterances: list[Utterance] = []
         now = time.monotonic_ns()
@@ -69,14 +143,11 @@ class SileroVadSegmenter:
             segment_start = int(segment.start)
             segment_end = segment_start + vad_samples.size
             wanted_start = max(
-                self._history_start_sample,
+                self._history.start_sample,
                 segment_start - self._pre_roll_samples,
             )
-            local_start = wanted_start - self._history_start_sample
-            local_end = segment_end - self._history_start_sample
-            if 0 <= local_start < local_end <= self._history.size:
-                samples = self._history[local_start:local_end].copy()
-            else:
+            samples = self._history.read(wanted_start, segment_end)
+            if samples is None:
                 samples = vad_samples.copy()
             self._vad.pop()
             duration_ns = round(samples.size * 1_000_000_000 / self._sample_rate)
@@ -91,10 +162,8 @@ class SileroVadSegmenter:
         return utterances
 
     def reset(self) -> None:
-        self._pending = np.empty(0, dtype=np.float32)
-        self._history = np.empty(0, dtype=np.float32)
-        self._history_start_sample = 0
-        self._accepted_samples = 0
+        self._pending_size = 0
+        self._history.clear()
         reset = getattr(self._vad, "reset", None)
         if reset is not None:
             reset()
@@ -106,9 +175,6 @@ class SileroVadSegmenter:
         while not self._vad.empty():
             self._vad.pop()
 
-    def _append_history(self, window: np.ndarray) -> None:
-        self._history = np.concatenate((self._history, window))
-        overflow = self._history.size - self._history_limit_samples
-        if overflow > 0:
-            self._history = self._history[overflow:]
-            self._history_start_sample += overflow
+    def _accept_window(self, window: np.ndarray) -> None:
+        self._history.append(window)
+        self._vad.accept_waveform(window)

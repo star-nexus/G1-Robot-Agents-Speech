@@ -54,6 +54,8 @@ class SpeechEvent:
 class PipelineMetricsSnapshot:
     audio_chunks_received: int
     audio_chunks_dropped: int
+    audio_reconnections: int
+    audio_reconnect_failures: int
     utterances_detected: int
     utterances_dropped: int
     recognitions_succeeded: int

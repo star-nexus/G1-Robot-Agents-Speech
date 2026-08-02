@@ -40,12 +40,7 @@ class SpeechService:
             retry_interval_seconds=config.dds.retry_interval_seconds,
             delivery_ttl_seconds=config.dds.delivery_ttl_seconds,
         )
-        source = SoundDeviceSource(
-            sample_rate=config.audio.sample_rate,
-            block_ms=config.audio.block_ms,
-            device=config.audio.device,
-            queue_seconds=config.audio.queue_seconds,
-        )
+        source = SoundDeviceSource(settings=config.audio)
         segmenter = SileroVadSegmenter(
             settings=config.vad,
             sample_rate=config.audio.sample_rate,

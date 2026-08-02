@@ -6,7 +6,10 @@
     "sample_rate": 16000,
     "block_ms": 100,
     "device": null,
-    "queue_seconds": 5.0
+    "queue_seconds": 5.0,
+    "heartbeat_timeout_seconds": 2.0,
+    "reconnect_initial_seconds": 0.5,
+    "reconnect_max_seconds": 10.0
   },
   "vad": {
     "model": "models/silero_vad.onnx",

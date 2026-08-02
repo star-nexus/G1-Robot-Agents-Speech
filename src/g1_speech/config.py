@@ -15,6 +15,9 @@ class AudioConfig:
     block_ms: int = 100
     device: int | str | None = None
     queue_seconds: float = 5.0
+    heartbeat_timeout_seconds: float = 2.0
+    reconnect_initial_seconds: float = 0.5
+    reconnect_max_seconds: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,14 @@ class ServiceConfig:
             raise ValueError("audio.block_ms must be between 1 and 500")
         if self.audio.queue_seconds <= 0:
             raise ValueError("audio.queue_seconds must be greater than zero")
+        if self.audio.heartbeat_timeout_seconds <= 0:
+            raise ValueError("audio.heartbeat_timeout_seconds must be greater than zero")
+        if self.audio.reconnect_initial_seconds <= 0:
+            raise ValueError("audio.reconnect_initial_seconds must be greater than zero")
+        if self.audio.reconnect_max_seconds < self.audio.reconnect_initial_seconds:
+            raise ValueError(
+                "audio.reconnect_max_seconds must be at least reconnect_initial_seconds"
+            )
         if self.utterance_queue_capacity < 1:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
@@ -84,6 +95,8 @@ class ServiceConfig:
             raise ValueError("sensevoice.device must be cpu, cuda, or auto")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
             raise ValueError("vad.max_speech_seconds must exceed min_speech_seconds")
+        if self.vad.buffer_seconds <= 0:
+            raise ValueError("vad.buffer_seconds must be greater than zero")
         if self.dds.outbox_capacity < 1:
             raise ValueError("dds.outbox_capacity must be greater than zero")
 

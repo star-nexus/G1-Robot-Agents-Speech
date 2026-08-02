@@ -12,10 +12,13 @@ from g1_speech.pipeline import SpeechPipeline
 
 class FakeSource:
     dropped_chunks = 0
+    reconnections = 0
+    reconnect_failures = 0
 
     def __init__(self):
         self.items = queue.Queue()
         self.started = False
+        self.discontinuity_count = 0
 
     @property
     def queue_size(self):
@@ -134,3 +137,20 @@ def test_playback_audio_is_suppressed_not_recognized():
 
     assert len(sink.events) == 1
     assert segmenter.reset_count >= 1
+
+
+def test_audio_reconnect_resets_vad_state():
+    source = FakeSource()
+    segmenter = EveryChunkIsUtterance()
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=segmenter,
+        engine=FakeEngine(),
+        sink=CollectingSink(),
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+    )
+    pipeline.start()
+    source.discontinuity_count += 1
+    source.items.put(chunk())
+    wait_for(lambda: segmenter.reset_count == 1)
+    pipeline.close()

@@ -109,6 +109,8 @@ class SpeechPipeline:
         return PipelineMetricsSnapshot(
             audio_chunks_received=metrics.audio_chunks_received,
             audio_chunks_dropped=self._source.dropped_chunks,
+            audio_reconnections=getattr(self._source, "reconnections", 0),
+            audio_reconnect_failures=getattr(self._source, "reconnect_failures", 0),
             utterances_detected=metrics.utterances_detected,
             utterances_dropped=metrics.utterances_dropped,
             recognitions_succeeded=metrics.recognitions_succeeded,
@@ -126,8 +128,17 @@ class SpeechPipeline:
 
     def _segment_loop(self) -> None:
         was_muted = False
+        discontinuity_count = getattr(self._source, "discontinuity_count", 0)
         while not self._stop.is_set():
             chunk = self._source.read(timeout=0.2)
+            current_discontinuities = getattr(
+                self._source, "discontinuity_count", discontinuity_count
+            )
+            if current_discontinuities != discontinuity_count:
+                self._segmenter.reset()
+                was_muted = False
+                discontinuity_count = current_discontinuities
+                logger.warning("Audio discontinuity detected; VAD state reset")
             if chunk is None:
                 continue
             self._increment("audio_chunks_received")
