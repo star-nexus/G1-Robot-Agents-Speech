@@ -1,10 +1,13 @@
 # G1 Speech Service
 
-面向 Unitree G1 与机器人 Agent 的离线语音识别服务，将麦克风语音识别为文本并发布到 DDS。
+[English](README_EN.md) | 简体中文
 
+面向机器人和 Agent 的离线语音识别服务，将语音识别文本实时发布到 DDS。
+
+- **高性能**: 识别速度0.01-0.2s,高准确度
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
-- **统一 DDS 输出**：识别结果发布到 `rt/g1/hri/speech/final`，切换后端无需修改 Agent
+- **统一 DDS 输出**：识别结果发布到 `rt/g1/hri/speech/final`, 方便任何程序订阅.
 
 ## 性能
 
@@ -15,10 +18,7 @@ Jetson ORIN NX，同一段 5.592 秒中文音频，预热 3 次、运行 30 次�
 | CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
 | GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
 
-GPU 平均推理约快 **3 倍**，而服务接口和 DDS 消息完全一致。以上是速度测试；
-准确率应使用自己的业务语料单独评测。
-
-## 一分钟接入
+## 快速接入
 
 ### 运行语音服务
 
@@ -194,34 +194,10 @@ sudo g1-speech-service stop
 - CPU：`g1-speech.service`
 - GPU：`g1-speech-gpu.service`
 
-## 致谢与引用
+## 引用
 
 本项目基于以下开源工作构建，感谢原作者和社区贡献者：
 
 - [SenseVoice](https://github.com/QwenAudio/SenseVoice)：多语言语音识别模型
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)：SenseVoice ONNX 推理与跨平台部署
 - [Silero VAD](https://github.com/snakers4/silero-vad)：语音活动检测
-
-如果本项目用于研究或论文，请引用 SenseVoice 所属的 FunAudioLLM 工作：
-
-```bibtex
-@misc{an2024funaudiollm,
-  title         = {FunAudioLLM: Voice Understanding and Generation Foundation Models
-                   for Natural Interaction Between Humans and LLMs},
-  author        = {Keyu An and Qian Chen and Chong Deng and Zhihao Du and Changfeng Gao
-                   and Zhifu Gao and Yue Gu and Ting He and Hangrui Hu and Kai Hu
-                   and Shengpeng Ji and Yabin Li and Zerui Li and Heng Lu and Haoneng Luo
-                   and Xiang Lv and Bin Ma and Ziyang Ma and Chongjia Ni and Changhe Song
-                   and Jiaqi Shi and Xian Shi and Hao Wang and Wen Wang and Yuxuan Wang
-                   and Zhangyu Xiao and Zhijie Yan and Yexin Yang and Bin Zhang
-                   and Qinglin Zhang and Shiliang Zhang and Nan Zhao and Siqi Zheng},
-  year          = {2024},
-  eprint        = {2407.04051},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.SD},
-  doi           = {10.48550/arXiv.2407.04051}
-}
-```
-
-论文：[arXiv:2407.04051](https://arxiv.org/abs/2407.04051)。使用模型、运行库和 VAD 时，
-还请遵循各上游项目的许可证与引用要求。
