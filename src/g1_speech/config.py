@@ -68,30 +68,30 @@ class ServiceConfig:
 
     def validate(self) -> None:
         if self.audio.sample_rate != 16000:
-            raise ValueError("SenseVoice/Silero VAD 服务固定使用 16000 Hz")
+            raise ValueError("SenseVoice and Silero VAD require a 16000 Hz sample rate")
         if self.audio.block_ms <= 0 or self.audio.block_ms > 500:
-            raise ValueError("audio.block_ms 必须在 1..500 之间")
+            raise ValueError("audio.block_ms must be between 1 and 500")
         if self.audio.queue_seconds <= 0:
-            raise ValueError("audio.queue_seconds 必须大于 0")
+            raise ValueError("audio.queue_seconds must be greater than zero")
         if self.utterance_queue_capacity < 1:
-            raise ValueError("utterance_queue_capacity 必须大于 0")
+            raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
-            raise ValueError("vad.threshold 必须在 0..1 之间")
+            raise ValueError("vad.threshold must be between 0 and 1")
         if not 0 <= self.vad.speech_pre_roll_seconds <= 1:
-            raise ValueError("vad.speech_pre_roll_seconds 必须在 0..1 之间")
+            raise ValueError("vad.speech_pre_roll_seconds must be between 0 and 1")
         if self.sensevoice.device not in {"cpu", "cuda", "auto"}:
-            raise ValueError("sensevoice.device 必须是 cpu、cuda 或 auto")
+            raise ValueError("sensevoice.device must be cpu, cuda, or auto")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
-            raise ValueError("vad.max_speech_seconds 必须大于 min_speech_seconds")
+            raise ValueError("vad.max_speech_seconds must exceed min_speech_seconds")
         if self.dds.outbox_capacity < 1:
-            raise ValueError("dds.outbox_capacity 必须大于 0")
+            raise ValueError("dds.outbox_capacity must be greater than zero")
 
 
 def _merge_dataclass(cls, raw: dict[str, Any]):
     allowed = cls.__dataclass_fields__.keys()
     unknown = set(raw) - set(allowed)
     if unknown:
-        raise ValueError(f"{cls.__name__} 含未知配置项: {sorted(unknown)}")
+        raise ValueError(f"{cls.__name__} contains unknown settings: {sorted(unknown)}")
     return cls(**raw)
 
 
@@ -101,7 +101,7 @@ def load_config(path: str | Path) -> ServiceConfig:
     allowed_top = ServiceConfig.__dataclass_fields__.keys()
     unknown_top = set(raw) - set(allowed_top)
     if unknown_top:
-        raise ValueError(f"ServiceConfig 含未知配置项: {sorted(unknown_top)}")
+        raise ValueError(f"ServiceConfig contains unknown settings: {sorted(unknown_top)}")
 
     base = config_path.parent
     audio = _merge_dataclass(AudioConfig, raw.pop("audio", {}))

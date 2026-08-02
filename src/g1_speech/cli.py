@@ -19,29 +19,29 @@ from .app import SpeechService
 from .config import load_config
 from .engine import SenseVoiceEngine, find_model_files
 from .contracts import Utterance
-from .dds import DdsSpeechSubscriber, initialize_unitree_dds
+from .dds import DdsSpeechSubscriber, initialize_dds
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="G1 离线 SenseVoice DDS 服务")
+    parser = argparse.ArgumentParser(description="Offline SenseVoice DDS service for robot Agents")
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    serve = sub.add_parser("serve", help="启动麦克风、VAD、SenseVoice 和 DDS")
+    serve = sub.add_parser("serve", help="Start microphone, VAD, SenseVoice, and DDS")
     serve.add_argument("--config", required=True)
-    serve.add_argument("--run-seconds", type=float, default=0.0, help="0 表示持续运行")
+    serve.add_argument("--run-seconds", type=float, default=0.0, help="0 runs continuously")
 
-    doctor = sub.add_parser("doctor", help="检查模型、麦克风、运行库和 DDS")
+    doctor = sub.add_parser("doctor", help="Check models, microphone, runtime, and DDS")
     doctor.add_argument("--config", required=True)
     doctor.add_argument("--load-model", action="store_true")
-    doctor.add_argument("--skip-audio", action="store_true", help="部署时暂不检查麦克风")
+    doctor.add_argument("--skip-audio", action="store_true", help="Skip microphone checks")
 
-    listen = sub.add_parser("listen", help="订阅本机 DDS 语音结果并输出 JSON")
+    listen = sub.add_parser("listen", help="Print DDS speech results as JSON")
     listen.add_argument("--config", required=True)
-    listen.add_argument("--timeout", type=float, default=0.0, help="0 表示持续监听")
-    listen.add_argument("--once", action="store_true", help="收到第一条结果后退出")
+    listen.add_argument("--timeout", type=float, default=0.0, help="0 listens continuously")
+    listen.add_argument("--once", action="store_true", help="Exit after the first result")
 
-    transcribe = sub.add_parser("transcribe", help="用相同 SenseVoice 引擎识别 WAV")
+    transcribe = sub.add_parser("transcribe", help="Transcribe a WAV with the service engine")
     transcribe.add_argument("--config", required=True)
     transcribe.add_argument("wav")
     return parser
@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         return _listen(args.config, args.timeout, args.once)
     if args.command == "transcribe":
         return _transcribe(args.config, args.wav)
-    parser.error("未知命令")
+    parser.error("unknown command")
     return 2
 
 
@@ -112,16 +112,16 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
             checks.append((name, False, f"{type(exc).__name__}: {exc}"))
 
     check(
-        "SenseVoice 模型文件",
+        "SenseVoice model files",
         lambda: find_model_files(
             config.sensevoice.model_dir, config.sensevoice.model_file
         ),
     )
-    check("Silero VAD 模型", lambda: _require_file(config.vad.model))
+    check("Silero VAD model", lambda: _require_file(config.vad.model))
     check("sherpa_onnx", lambda: _module_path("sherpa_onnx"))
     if not skip_audio:
-        check("sounddevice/麦克风", _audio_devices)
-    check("unitree_sdk2py/cyclonedds", lambda: _module_path("unitree_sdk2py"))
+        check("sounddevice/microphone", _audio_devices)
+    check("cyclonedds", lambda: _module_path("cyclonedds"))
     if load_model:
         engine = SenseVoiceEngine(
             model_dir=config.sensevoice.model_dir,
@@ -132,7 +132,7 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
             use_itn=config.sensevoice.use_itn,
             num_threads=config.sensevoice.num_threads,
         )
-        check("SenseVoice 实际加载", lambda: engine.load() or "已加载")
+        check("SenseVoice runtime load", lambda: engine.load() or "loaded")
 
     for name, ok, detail in checks:
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: {detail}")
@@ -141,9 +141,9 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
 
 def _listen(config_path: str, timeout: float, once: bool) -> int:
     if timeout < 0:
-        raise ValueError("timeout 不能小于 0")
+        raise ValueError("timeout must not be negative")
     config = load_config(config_path)
-    initialize_unitree_dds(config.dds.domain_id, config.dds.network_interface)
+    initialize_dds(config.dds.domain_id, config.dds.network_interface)
     stopped = threading.Event()
 
     def on_speech(event) -> None:
@@ -190,7 +190,7 @@ def _transcribe(config_path: str, wav_path: str) -> int:
 def _read_wav(path: str) -> tuple[np.ndarray, int]:
     with wave.open(str(Path(path).expanduser()), "rb") as handle:
         if handle.getnchannels() != 1 or handle.getsampwidth() != 2:
-            raise ValueError("只支持 mono 16-bit PCM WAV")
+            raise ValueError("only mono 16-bit PCM WAV files are supported")
         sample_rate = handle.getframerate()
         raw = handle.readframes(handle.getnframes())
     return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0, sample_rate
@@ -214,7 +214,7 @@ def _audio_devices() -> str:
     devices = sd.query_devices()
     inputs = [device["name"] for device in devices if device["max_input_channels"] > 0]
     if not inputs:
-        raise RuntimeError("没有输入设备")
+        raise RuntimeError("no audio input device found")
     return ", ".join(inputs)
 
 

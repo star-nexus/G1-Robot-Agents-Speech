@@ -18,13 +18,10 @@ Repository = "https://github.com/star-nexus/G1-Robot-Agents-Speech"
 Issues = "https://github.com/star-nexus/G1-Robot-Agents-Speech/issues"
 
 [project.optional-dependencies]
-orin = [
+cpu = [
   "sounddevice>=0.4.6",
   "sherpa-onnx>=1.13",
-]
-dgx = [
-  "sounddevice>=0.4.6",
-  "sherpa-onnx>=1.13",
+  "cyclonedds==0.10.2",
 ]
 dev = ["pytest>=7.4"]
 
@@ -35,6 +32,5 @@ g1-speech = "g1_speech.cli:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"

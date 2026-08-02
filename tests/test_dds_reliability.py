@@ -109,7 +109,7 @@ def test_playback_does_not_start_until_gate_is_deliverable():
             self.outcomes = iter([False, False, True])
             self.calls = 0
 
-        def Write(self, message, timeout):
+        def write(self, message, timeout):
             self.calls += 1
             return next(self.outcomes)
 

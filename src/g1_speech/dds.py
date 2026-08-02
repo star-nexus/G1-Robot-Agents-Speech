@@ -1,13 +1,14 @@
-"""Unitree SDK2 DDS adapters, retry outbox, and Agent-side deduplication."""
+"""Cyclone DDS transport, reliable delivery, and Agent-side deduplication."""
 
 from __future__ import annotations
 
+import html
 import logging
 import threading
 import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol
 
 from .contracts import EventSink, SpeechEvent
 from .dds_types import DDS_IDL_AVAILABLE, PlaybackStateMessage, SpeechEventMessage
@@ -15,13 +16,64 @@ from .gate import PlaybackGate
 
 logger = logging.getLogger(__name__)
 
+_runtime_lock = threading.Lock()
+_dds_domain: Any = None
+_dds_participant: Any = None
+_dds_settings: tuple[int, str | None] | None = None
 
-def initialize_unitree_dds(domain_id: int = 0, network_interface: str | None = None) -> None:
+
+def _domain_config(network_interface: str | None) -> str:
+    if network_interface:
+        interface = html.escape(network_interface, quote=True)
+        selection = (
+            f'<NetworkInterface name="{interface}" priority="default" multicast="default"/>'
+        )
+    else:
+        selection = (
+            '<NetworkInterface autodetermine="true" priority="default" multicast="default"/>'
+        )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<CycloneDDS><Domain Id="any"><General><Interfaces>'
+        f"{selection}"
+        '</Interfaces></General></Domain></CycloneDDS>'
+    )
+
+
+def initialize_dds(domain_id: int = 0, network_interface: str | None = None) -> Any:
+    """Initialize the process-wide Cyclone DDS participant once."""
+
+    global _dds_domain, _dds_participant, _dds_settings
     if not DDS_IDL_AVAILABLE:
-        raise RuntimeError("缺少 cyclonedds；请先安装 unitree_sdk2_python 及其 CycloneDDS 依赖")
-    from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+        raise RuntimeError("cyclonedds is not installed; install the DDS runtime first")
 
-    ChannelFactoryInitialize(domain_id, network_interface)
+    settings = (domain_id, network_interface)
+    with _runtime_lock:
+        if _dds_participant is not None:
+            if settings != _dds_settings:
+                raise RuntimeError(
+                    "DDS is already initialized with different settings: "
+                    f"current={_dds_settings!r}, requested={settings!r}"
+                )
+            return _dds_participant
+
+        from cyclonedds.domain import Domain, DomainParticipant
+
+        _dds_domain = Domain(domain_id, _domain_config(network_interface))
+        _dds_participant = DomainParticipant(domain_id)
+        _dds_settings = settings
+        logger.info(
+            "Cyclone DDS initialized: domain_id=%d network_interface=%r",
+            domain_id,
+            network_interface,
+        )
+        return _dds_participant
+
+
+def _participant() -> Any:
+    if _dds_participant is None:
+        raise RuntimeError("DDS is not initialized; call initialize_dds() first")
+    return _dds_participant
 
 
 def event_to_message(event: SpeechEvent) -> SpeechEventMessage:
@@ -56,6 +108,147 @@ def message_to_event(message: SpeechEventMessage) -> SpeechEvent:
     )
 
 
+class _DdsWriter:
+    def __init__(self, topic_name: str, data_type: Any) -> None:
+        self._topic_name = topic_name
+        self._data_type = data_type
+        self._topic = None
+        self._writer = None
+        self._listener = None
+        self._matched_readers = 0
+        self._condition = threading.Condition()
+
+    def start(self) -> None:
+        if self._writer is not None:
+            return
+        from cyclonedds.core import Listener
+        from cyclonedds.pub import DataWriter
+        from cyclonedds.topic import Topic
+
+        participant = _participant()
+        self._topic = Topic(participant, self._topic_name, self._data_type)
+        self._listener = Listener(on_publication_matched=self._on_publication_matched)
+        self._writer = DataWriter(participant, self._topic, listener=self._listener)
+
+    def write(self, sample: Any, timeout: float | None = None) -> bool:
+        if self._writer is None:
+            raise RuntimeError("DDS writer is not started")
+
+        if timeout is not None:
+            deadline = time.monotonic() + max(timeout, 0.0)
+            with self._condition:
+                while self._matched_readers == 0:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return False
+                    self._condition.wait(timeout=remaining)
+        try:
+            self._writer.write(sample)
+        except Exception:  # noqa: BLE001
+            logger.exception("DDS write failed on topic %s", self._topic_name)
+            return False
+        return True
+
+    def close(self) -> None:
+        with self._condition:
+            self._writer = None
+            self._topic = None
+            self._listener = None
+            self._matched_readers = 0
+            self._condition.notify_all()
+
+    def _on_publication_matched(self, _writer: Any, status: Any) -> None:
+        with self._condition:
+            self._matched_readers = int(status.current_count)
+            self._condition.notify_all()
+
+
+class _DdsReader:
+    def __init__(
+        self,
+        topic_name: str,
+        data_type: Any,
+        callback: Callable[[Any], None],
+        queue_len: int,
+    ) -> None:
+        if queue_len <= 0:
+            raise ValueError("DDS reader queue_len must be greater than zero")
+        self._topic_name = topic_name
+        self._data_type = data_type
+        self._callback = callback
+        self._capacity = queue_len
+        self._topic = None
+        self._reader = None
+        self._listener = None
+        self._queue: deque[Any] = deque()
+        self._condition = threading.Condition()
+        self._stop = False
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self._reader is not None:
+            return
+        from cyclonedds.core import Listener
+        from cyclonedds.sub import DataReader
+        from cyclonedds.topic import Topic
+
+        participant = _participant()
+        self._stop = False
+        self._thread = threading.Thread(
+            target=self._dispatch,
+            name="speech-dds-reader",
+            daemon=True,
+        )
+        self._thread.start()
+        self._topic = Topic(participant, self._topic_name, self._data_type)
+        self._listener = Listener(on_data_available=self._on_data_available)
+        self._reader = DataReader(participant, self._topic, listener=self._listener)
+
+    def close(self) -> None:
+        self._reader = None
+        self._topic = None
+        self._listener = None
+        with self._condition:
+            self._stop = True
+            self._queue.clear()
+            self._condition.notify_all()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+
+    def _on_data_available(self, reader: Any) -> None:
+        from cyclonedds.internal import InvalidSample
+
+        try:
+            samples = reader.take(1)
+        except Exception:  # noqa: BLE001
+            logger.exception("DDS read failed on topic %s", self._topic_name)
+            return
+        if not samples or isinstance(samples[0], InvalidSample):
+            return
+        with self._condition:
+            if self._stop:
+                return
+            if len(self._queue) >= self._capacity:
+                logger.warning("DDS reader queue is full; dropping a sample from %s", self._topic_name)
+                return
+            self._queue.append(samples[0])
+            self._condition.notify()
+
+    def _dispatch(self) -> None:
+        while True:
+            with self._condition:
+                while not self._queue and not self._stop:
+                    self._condition.wait()
+                if self._stop:
+                    return
+                sample = self._queue.popleft()
+            try:
+                self._callback(sample)
+            except Exception:  # noqa: BLE001
+                logger.exception("DDS subscriber callback failed on topic %s", self._topic_name)
+
+
 class EventWriter(Protocol):
     def start(self) -> None: ...
 
@@ -64,29 +257,20 @@ class EventWriter(Protocol):
     def close(self) -> None: ...
 
 
-class UnitreeDdsEventWriter:
+class DdsEventWriter:
     def __init__(self, topic: str = "rt/g1/hri/speech/final") -> None:
         self._topic = topic
-        self._publisher = None
+        self._writer = _DdsWriter(topic, SpeechEventMessage)
 
     def start(self) -> None:
-        if self._publisher is not None:
-            return
-        from unitree_sdk2py.core.channel import ChannelPublisher
-
-        self._publisher = ChannelPublisher(self._topic, SpeechEventMessage)
-        self._publisher.Init()
+        self._writer.start()
         logger.info("DDS SpeechEvent publisher: %s", self._topic)
 
     def write(self, event: SpeechEvent, timeout: float) -> bool:
-        if self._publisher is None:
-            raise RuntimeError("DDS publisher 尚未启动")
-        return bool(self._publisher.Write(event_to_message(event), timeout))
+        return self._writer.write(event_to_message(event), timeout)
 
     def close(self) -> None:
-        if self._publisher is not None:
-            self._publisher.Close()
-            self._publisher = None
+        self._writer.close()
 
 
 @dataclass
@@ -171,12 +355,12 @@ class RetryingEventSink(EventSink):
                     if self._pending and self._pending[0] is pending:
                         self._pending.popleft()
                         self.expired += 1
-                logger.error("SpeechEvent 过期未送达: %s", pending.event.event_id)
+                logger.error("SpeechEvent delivery expired: %s", pending.event.event_id)
                 continue
             try:
                 delivered = self._writer.write(pending.event, self._write_timeout)
             except Exception:  # noqa: BLE001
-                logger.exception("DDS 写入异常，将重试 event_id=%s", pending.event.event_id)
+                logger.exception("DDS write failed; retrying event_id=%s", pending.event.event_id)
                 delivered = False
             if delivered:
                 with self._condition:
@@ -230,26 +414,31 @@ class DdsSpeechSubscriber:
         self._topic = topic
         self._dedupe = deduplicator or EventDeduplicator()
         self._queue_len = queue_len
-        self._subscriber = None
+        self._subscriber: _DdsReader | None = None
         self.duplicates = 0
 
     def start(self) -> None:
-        from unitree_sdk2py.core.channel import ChannelSubscriber
-
-        self._subscriber = ChannelSubscriber(self._topic, SpeechEventMessage)
-        self._subscriber.Init(self._on_message, self._queue_len)
+        if self._subscriber is not None:
+            return
+        self._subscriber = _DdsReader(
+            self._topic,
+            SpeechEventMessage,
+            self._on_message,
+            self._queue_len,
+        )
+        self._subscriber.start()
         logger.info("DDS SpeechEvent subscriber: %s", self._topic)
 
     def close(self) -> None:
         if self._subscriber is not None:
-            self._subscriber.Close()
+            self._subscriber.close()
             self._subscriber = None
 
     def _on_message(self, message: SpeechEventMessage) -> None:
         event = message_to_event(message)
         if not self._dedupe.accept(event.event_id):
             self.duplicates += 1
-            logger.info("忽略重复 SpeechEvent: %s", event.event_id)
+            logger.info("Ignoring duplicate SpeechEvent: %s", event.event_id)
             return
         self._callback(event)
 
@@ -263,49 +452,49 @@ class DdsPlaybackSubscriber:
     ) -> None:
         self._gate = gate
         self._topic = topic
-        self._subscriber = None
+        self._subscriber: _DdsReader | None = None
 
     def start(self) -> None:
-        from unitree_sdk2py.core.channel import ChannelSubscriber
-
-        self._subscriber = ChannelSubscriber(self._topic, PlaybackStateMessage)
-        self._subscriber.Init(self._on_message, 8)
+        if self._subscriber is not None:
+            return
+        self._subscriber = _DdsReader(
+            self._topic,
+            PlaybackStateMessage,
+            self._on_message,
+            8,
+        )
+        self._subscriber.start()
         logger.info("DDS playback gate subscriber: %s", self._topic)
 
     def close(self) -> None:
         if self._subscriber is not None:
-            self._subscriber.Close()
+            self._subscriber.close()
             self._subscriber = None
 
     def _on_message(self, message: PlaybackStateMessage) -> None:
         self._gate.set_active(bool(message.active))
-        logger.info("播放门控 active=%s request_id=%s", message.active, message.request_id)
+        logger.info("Playback gate active=%s request_id=%s", message.active, message.request_id)
 
 
 class DdsPlaybackPublisher:
-    """Agent-side helper: wrap G1 TTS/playback with set_active(True/False)."""
+    """Agent-side helper for wrapping TTS/playback with set_active(True/False)."""
 
     def __init__(self, *, topic: str = "rt/g1/hri/playback/state", source: str = "agent") -> None:
         self._topic = topic
         self._source = source
-        self._publisher = None
+        self._publisher = _DdsWriter(topic, PlaybackStateMessage)
 
     def start(self) -> None:
-        from unitree_sdk2py.core.channel import ChannelPublisher
-
-        self._publisher = ChannelPublisher(self._topic, PlaybackStateMessage)
-        self._publisher.Init()
+        self._publisher.start()
 
     def set_active(self, active: bool, *, request_id: str, timeout: float = 0.5) -> bool:
-        if self._publisher is None:
-            raise RuntimeError("Playback publisher 尚未启动")
         message = PlaybackStateMessage(
             request_id=request_id,
             active=active,
             created_unix_ns=time.time_ns(),
             source=self._source,
         )
-        return bool(self._publisher.Write(message, timeout))
+        return self._publisher.write(message, timeout)
 
     def set_active_reliably(
         self,
@@ -316,17 +505,16 @@ class DdsPlaybackPublisher:
         write_timeout: float = 0.25,
         retry_interval: float = 0.1,
     ) -> None:
-        """Do not begin G1 playback until the Orin gate subscriber is matched."""
+        """Wait for the playback gate subscriber before reporting success."""
         deadline = time.monotonic() + delivery_timeout
         while time.monotonic() < deadline:
             if self.set_active(active, request_id=request_id, timeout=write_timeout):
                 return
             time.sleep(retry_interval)
         raise TimeoutError(
-            f"播放门控未在 {delivery_timeout:.1f}s 内送达: active={active} request_id={request_id}"
+            f"Playback gate was not reached within {delivery_timeout:.1f}s: "
+            f"active={active} request_id={request_id}"
         )
 
     def close(self) -> None:
-        if self._publisher is not None:
-            self._publisher.Close()
-            self._publisher = None
+        self._publisher.close()

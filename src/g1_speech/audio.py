@@ -85,7 +85,7 @@ class SoundDeviceSource:
             )
             self._stream.start()
             logger.info(
-                "麦克风已启动: device=%r sample_rate=%d block=%d capacity=%d",
+                "Microphone started: device=%r sample_rate=%d block=%d capacity=%d",
                 self.device,
                 self.sample_rate,
                 self.block_samples,

@@ -57,17 +57,16 @@ Recognition results are published to `rt/g1/hri/speech/final`. Both CPU and GPU 
 ### Subscribe from an Agent
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_unitree_dds
+from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
 
-# Initialize only once per process. Skip this line if your Agent has already
-# initialized Unitree DDS.
-initialize_unitree_dds(domain_id=0)
+# Initialize Cyclone DDS once per Agent process.
+initialize_dds(domain_id=0)
 
 subscriber = DdsSpeechSubscriber(lambda event: print(event.text))
 subscriber.start()
 ```
 
-Call `subscriber.close()` when the Agent exits. The callback runs on the DDS thread; in production Agents, enqueue the event in the callback and let a worker thread invoke the LLM, tools, or robot actions.
+Call `subscriber.close()` when the Agent exits. The callback runs on a dedicated subscriber thread; in production Agents, enqueue the event in the callback and let a worker thread invoke the LLM, tools, or robot actions.
 
 You can also inspect recognition results without writing Agent code:
 
@@ -108,11 +107,11 @@ git clone https://github.com/star-nexus/G1-Robot-Agents-Speech.git
 cd G1-Robot-Agents-Speech
 
 cp deploy.env.example deploy.env
-# Set the DDS network interface for your machine. Leave the microphone empty
-# to select one interactively during installation.
-# ORIN_DDS_IFACE="your-interface"
+# Optionally set a DDS network interface. Leave the microphone empty to select
+# one interactively during installation.
+# DDS_NETWORK_INTERFACE="your-interface"
 
-bash scripts/setup-orin.sh
+bash scripts/setup-cpu.sh
 ```
 
 The script creates a project-local `.venv`, downloads the model, runs the doctor and fixed-WAV checks, and installs the CPU systemd service.
@@ -122,7 +121,7 @@ The script creates a project-local `.venv`, downloads the model, runs the doctor
 The GPU environment is completely isolated from the CPU environment and does not overwrite `.venv`, `config.json`, or the CPU INT8 model.
 
 ```bash
-bash scripts/setup-orin-gpu.sh
+bash scripts/setup-jetson-gpu.sh
 sudo g1-speech-service gpu
 ```
 
@@ -142,8 +141,8 @@ Copy `deploy.env.example` and enter your own device settings. No fixed IP addres
 
 | Setting | Description |
 |---|---|
-| `ORIN_DDS_IFACE` | Local network interface used by DDS; inspect available interfaces with `ip -br link` |
-| `ORIN_MIC_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
+| `DDS_NETWORK_INTERFACE` | Optional local interface used by DDS; leave empty for automatic selection |
+| `MICROPHONE_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
 | `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
@@ -214,3 +213,4 @@ This project builds on the following open-source work. Many thanks to their auth
 - [SenseVoice](https://github.com/QwenAudio/SenseVoice): Multilingual speech recognition model
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx): SenseVoice ONNX inference and cross-platform deployment
 - [Silero VAD](https://github.com/snakers4/silero-vad): Voice activity detection
+- [Eclipse Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds): Vendor-neutral DDS transport

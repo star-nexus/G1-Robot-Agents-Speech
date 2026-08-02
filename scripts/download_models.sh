@@ -23,4 +23,4 @@ if [[ ! -f silero_vad.onnx ]]; then
         -o silero_vad.onnx "$BASE_URL/silero_vad.onnx"
 fi
 
-echo "模型已就绪: $MODEL_DIR"
+echo "Models are ready: $MODEL_DIR"

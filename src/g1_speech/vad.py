@@ -27,9 +27,9 @@ class SileroVadSegmenter:
     ) -> None:
         model_path = Path(model).expanduser().resolve()
         if not model_path.is_file():
-            raise FileNotFoundError(f"Silero VAD 模型不存在: {model_path}")
+            raise FileNotFoundError(f"Silero VAD model not found: {model_path}")
         if sample_rate != 16000:
-            raise ValueError("当前 Silero VAD 模型只支持 16000 Hz")
+            raise ValueError("the current Silero VAD model requires 16000 Hz audio")
         if sherpa_module is None:
             import sherpa_onnx
 
@@ -55,7 +55,7 @@ class SileroVadSegmenter:
 
     def accept(self, chunk: AudioChunk) -> list[Utterance]:
         if chunk.sample_rate != self._sample_rate:
-            raise ValueError("VAD 收到不一致的采样率")
+            raise ValueError("VAD received an unexpected sample rate")
         self._pending = np.concatenate(
             (self._pending, np.asarray(chunk.samples, dtype=np.float32).reshape(-1))
         )

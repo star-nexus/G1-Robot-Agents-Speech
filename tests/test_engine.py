@@ -38,7 +38,7 @@ def test_cuda_rejects_cpu_only_sherpa_wheel():
     class CpuSherpa:
         __version__ = "1.13.4"
 
-    with pytest.raises(RuntimeError, match="拒绝静默回退"):
+    with pytest.raises(RuntimeError, match="refusing to silently fall back"):
         ensure_provider_available(CpuSherpa, "cuda")
 
 

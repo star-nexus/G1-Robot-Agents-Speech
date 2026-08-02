@@ -9,7 +9,7 @@ import uuid
 from g1_speech.dds import (
     DdsPlaybackPublisher,
     DdsSpeechSubscriber,
-    initialize_unitree_dds,
+    initialize_dds,
 )
 
 
@@ -24,8 +24,8 @@ def main() -> None:
     parser.add_argument("--domain", type=int, default=0)
     args = parser.parse_args()
 
-    # In the real Agent, initialize DDS only once before SDK2 clients/subscribers.
-    initialize_unitree_dds(args.domain, args.network_interface)
+    # Initialize the shared DDS runtime once in the Agent process.
+    initialize_dds(args.domain, args.network_interface)
     speech = DdsSpeechSubscriber(on_speech)
     playback = DdsPlaybackPublisher()
     speech.start()

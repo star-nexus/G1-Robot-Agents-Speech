@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG_FILE="$ROOT/deploy.env"
 
 usage() {
-    echo "Usage: bash scripts/setup-orin.sh [--config /path/to/deploy.env]"
+    echo "Usage: bash scripts/setup-cpu.sh [--config /path/to/deploy.env]"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -33,12 +33,12 @@ ok()   { echo "[PASS] $*"; }
 warn() { echo "[WARN] $*"; }
 fail() { echo "[FAIL] $*" >&2; exit 1; }
 
-: "${ORIN_PYTHON:=python3}"
-: "${ORIN_DDS_IFACE:=}"
+: "${RUNTIME_PYTHON:=python3}"
+: "${DDS_NETWORK_INTERFACE:=}"
 : "${DDS_DOMAIN_ID:=0}"
 : "${SPEECH_TOPIC:=rt/g1/hri/speech/final}"
 : "${PLAYBACK_TOPIC:=rt/g1/hri/playback/state}"
-: "${ORIN_MIC_DEVICE:=}"
+: "${MICROPHONE_DEVICE:=}"
 : "${PROMPT_FOR_MIC_DEVICE:=1}"
 : "${SENSEVOICE_DEVICE:=cpu}"
 : "${SENSEVOICE_THREADS:=6}"
@@ -53,33 +53,32 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 : "${DDS_OUTBOX_CAPACITY:=128}"
 : "${PLAYBACK_RESUME_DELAY_MS:=250}"
 : "${PLAYBACK_MAX_ACTIVE_SECONDS:=30.0}"
-: "${AUTO_INSTALL_UNITREE_SDK:=0}"
-: "${CYCLONEDDS_SOURCE_DIR:=$HOME/cyclonedds}"
+: "${AUTO_INSTALL_CYCLONEDDS:=1}"
+: "${CYCLONEDDS_SOURCE_DIR:=$HOME/.cache/g1-speech/cyclonedds}"
 : "${CYCLONEDDS_HOME:=$CYCLONEDDS_SOURCE_DIR/install}"
-: "${UNITREE_SDK2_PYTHON_DIR:=$HOME/unitree_sdk2_python}"
 : "${MODEL_SOURCE_DIR:=}"
 : "${SKIP_MODEL_DOWNLOAD:=0}"
 : "${SKIP_APT:=0}"
 : "${UPGRADE_PIP:=1}"
 : "${RUN_LATENCY_TEST:=1}"
 : "${INSTALL_SYSTEMD:=1}"
-: "${ORIN_SYSTEMD_USER:=$(id -un)}"
+: "${SYSTEMD_USER:=$(id -un)}"
 
-[[ "$(uname -s)" == "Linux" ]] || fail "setup-orin.sh must run on Linux/Orin"
-if [[ "$(uname -m)" != "aarch64" ]]; then
-    warn "Architecture is $(uname -m), not aarch64. Continue only for a test host."
-fi
-command -v "$ORIN_PYTHON" >/dev/null || fail "Python not found: $ORIN_PYTHON"
-"$ORIN_PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' \
+[[ "$(uname -s)" == "Linux" ]] || fail "This setup script must run on Linux"
+command -v "$RUNTIME_PYTHON" >/dev/null || fail "Python not found: $RUNTIME_PYTHON"
+"$RUNTIME_PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' \
     || fail "Python >= 3.10 is required"
 
-[[ -n "$ORIN_DDS_IFACE" ]] || fail "Set ORIN_DDS_IFACE in deploy.env"
-ip link show "$ORIN_DDS_IFACE" >/dev/null 2>&1 \
-    || fail "Orin DDS interface does not exist: $ORIN_DDS_IFACE"
-ok "DDS interface: $ORIN_DDS_IFACE"
+if [[ -n "$DDS_NETWORK_INTERFACE" ]]; then
+    ip link show "$DDS_NETWORK_INTERFACE" >/dev/null 2>&1 \
+        || fail "DDS network interface does not exist: $DDS_NETWORK_INTERFACE"
+    ok "DDS interface: $DDS_NETWORK_INTERFACE"
+else
+    ok "DDS interface: automatic selection"
+fi
 
 if [[ "$SKIP_APT" != "1" ]]; then
-    log "Installing Orin system packages"
+    log "Installing system packages"
     sudo apt update
     sudo DEBIAN_FRONTEND=noninteractive apt install -y \
         python3-venv python3-dev build-essential cmake git curl bzip2 \
@@ -91,17 +90,17 @@ fi
 
 log "Creating Python environment"
 cd "$ROOT"
-"$ORIN_PYTHON" -m venv --system-site-packages .venv
+"$RUNTIME_PYTHON" -m venv --system-site-packages .venv
 PY="$ROOT/.venv/bin/python"
 PIP="$ROOT/.venv/bin/pip"
 if [[ "$UPGRADE_PIP" == "1" ]]; then
     "$PY" -m pip install --upgrade pip
 fi
-"$PIP" install -e "${ROOT}[orin]"
-ok "g1-speech[orin] installed"
+"$PIP" install -e "$ROOT" sounddevice sherpa-onnx
+ok "CPU speech runtime installed"
 
-if [[ -z "$ORIN_MIC_DEVICE" && "$PROMPT_FOR_MIC_DEVICE" == "1" && -t 0 ]]; then
-    log "Selecting the Orin microphone"
+if [[ -z "$MICROPHONE_DEVICE" && "$PROMPT_FOR_MIC_DEVICE" == "1" && -t 0 ]]; then
+    log "Selecting the microphone"
     "$PY" - <<'PY'
 import sounddevice as sd
 for index, device in enumerate(sd.query_devices()):
@@ -109,47 +108,35 @@ for index, device in enumerate(sd.query_devices()):
         print(f"  {index}: {device['name']}")
 print("Current default:", sd.default.device)
 PY
-    read -r -p "Microphone index/name (Enter keeps PortAudio default): " ORIN_MIC_DEVICE
-    export ORIN_MIC_DEVICE
+    read -r -p "Microphone index/name (Enter keeps PortAudio default): " MICROPHONE_DEVICE
+    export MICROPHONE_DEVICE
 fi
 
-install_unitree_sdk() {
-    log "Installing CycloneDDS 0.10.x and Unitree SDK2 Python"
-    if [[ ! -d "$CYCLONEDDS_SOURCE_DIR/.git" ]]; then
-        git clone -b releases/0.10.x \
-            https://github.com/eclipse-cyclonedds/cyclonedds.git \
-            "$CYCLONEDDS_SOURCE_DIR"
-    fi
-    cmake -S "$CYCLONEDDS_SOURCE_DIR" -B "$CYCLONEDDS_SOURCE_DIR/build" \
-        -DCMAKE_INSTALL_PREFIX="$CYCLONEDDS_HOME"
-    cmake --build "$CYCLONEDDS_SOURCE_DIR/build" --target install -j"$(nproc)"
-
-    if [[ ! -d "$UNITREE_SDK2_PYTHON_DIR/.git" ]]; then
-        git clone https://github.com/unitreerobotics/unitree_sdk2_python.git \
-            "$UNITREE_SDK2_PYTHON_DIR"
-    fi
-    export CYCLONEDDS_HOME
-    "$PIP" install -e "$UNITREE_SDK2_PYTHON_DIR"
+install_cyclonedds() {
+    log "Installing Cyclone DDS 0.10.x"
+    CYCLONEDDS_SOURCE_DIR="$CYCLONEDDS_SOURCE_DIR" \
+        CYCLONEDDS_HOME="$CYCLONEDDS_HOME" \
+        bash "$ROOT/scripts/install-cyclonedds.sh" "$PY"
 }
 
-if ! "$PY" -c 'import unitree_sdk2py, cyclonedds' 2>/dev/null; then
-    if [[ "$AUTO_INSTALL_UNITREE_SDK" == "1" ]]; then
-        install_unitree_sdk
+if ! "$PY" -c 'import cyclonedds' 2>/dev/null; then
+    if [[ "$AUTO_INSTALL_CYCLONEDDS" == "1" ]]; then
+        install_cyclonedds
     else
         cat >&2 <<EOF
-[FAIL] unitree_sdk2py/cyclonedds is unavailable in $PY
+[FAIL] cyclonedds is unavailable in $PY
 
-Either install it into this venv manually:
+Install it into this environment manually:
   export CYCLONEDDS_HOME="$CYCLONEDDS_HOME"
-  "$PIP" install -e "$UNITREE_SDK2_PYTHON_DIR"
+  "$PIP" install "cyclonedds==0.10.2"
 
-Or set AUTO_INSTALL_UNITREE_SDK=1 in deploy.env and rerun this script.
+Or set AUTO_INSTALL_CYCLONEDDS=1 in deploy.env and rerun this script.
 EOF
         exit 1
     fi
 fi
-"$PY" -c 'import unitree_sdk2py, cyclonedds; print("Unitree DDS imports OK")'
-ok "Unitree SDK2 Python"
+"$PY" -c 'import cyclonedds; print("Cyclone DDS import OK")'
+ok "Cyclone DDS Python"
 
 if [[ -n "$MODEL_SOURCE_DIR" ]]; then
     log "Copying offline models from $MODEL_SOURCE_DIR"
@@ -170,7 +157,7 @@ ok "Offline models"
 
 log "Generating config.json from deploy.env"
 export G1_ROOT="$ROOT"
-export G1_ORIN_DDS_IFACE="$ORIN_DDS_IFACE"
+export G1_DDS_NETWORK_INTERFACE="$DDS_NETWORK_INTERFACE"
 "$PY" <<'PY'
 import json
 import os
@@ -181,7 +168,7 @@ path = root / "config.json"
 source = path if path.exists() else root / "config.example.json"
 config = json.loads(source.read_text(encoding="utf-8"))
 
-raw_device = os.environ.get("ORIN_MIC_DEVICE", "").strip()
+raw_device = os.environ.get("MICROPHONE_DEVICE", "").strip()
 if not raw_device or raw_device.lower() == "null":
     device = None
 else:
@@ -208,7 +195,7 @@ config["vad"].update(
 )
 config["dds"].update(
     domain_id=int(os.environ.get("DDS_DOMAIN_ID", "0")),
-    network_interface=os.environ["G1_ORIN_DDS_IFACE"],
+    network_interface=os.environ.get("G1_DDS_NETWORK_INTERFACE") or None,
     speech_topic=os.environ.get("SPEECH_TOPIC", "rt/g1/hri/speech/final"),
     playback_topic=os.environ.get("PLAYBACK_TOPIC", "rt/g1/hri/playback/state"),
     delivery_ttl_seconds=float(os.environ.get("DDS_DELIVERY_TTL_SECONDS", "120")),
@@ -235,7 +222,7 @@ for index, name in inputs:
 print("Default:", sd.default.device)
 PY
 
-log "Running Orin doctor"
+log "Running deployment checks"
 "$ROOT/.venv/bin/g1-speech" doctor --config "$ROOT/config.json" --load-model
 
 TEST_WAV="$(find "$ROOT/models" -path '*/test_wavs/zh.wav' -print -quit)"
@@ -251,7 +238,7 @@ fi
 
 if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
     log "Installing systemd service"
-    ORIN_SYSTEMD_USER="$ORIN_SYSTEMD_USER" \
+    SYSTEMD_USER="$SYSTEMD_USER" \
         bash "$ROOT/scripts/install-speech-services.sh"
     sudo /usr/local/bin/g1-speech-service cpu
     sudo systemctl --no-pager --full status g1-speech
@@ -259,7 +246,7 @@ if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
 fi
 
 echo
-echo "Orin setup complete."
+echo "CPU setup complete."
 echo "Config: $ROOT/config.json"
 echo "Manual start: $ROOT/.venv/bin/g1-speech serve --config $ROOT/config.json"
 echo "Service backend: sudo g1-speech-service cpu"

@@ -34,5 +34,5 @@ def test_paths_are_relative_to_config_file(tmp_path):
 def test_unknown_config_key_is_rejected(tmp_path):
     path = tmp_path / "config.json"
     path.write_text('{"online_provider": "forbidden"}', encoding="utf-8")
-    with pytest.raises(ValueError, match="未知配置项"):
+    with pytest.raises(ValueError, match="unknown settings"):
         load_config(path)

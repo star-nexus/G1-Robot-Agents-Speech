@@ -11,21 +11,21 @@ if [[ -f "$CONFIG_FILE" ]]; then
     set +a
 fi
 
-: "${ORIN_PYTHON:=python3}"
-: "${CYCLONEDDS_HOME:=/home/nvidia/cyclonedds/install}"
-: "${UNITREE_SDK2_PYTHON_DIR:=/home/nvidia/unitree_sdk2_python}"
+: "${RUNTIME_PYTHON:=python3}"
+: "${CYCLONEDDS_SOURCE_DIR:=$HOME/.cache/g1-speech/cyclonedds}"
+: "${CYCLONEDDS_HOME:=$CYCLONEDDS_SOURCE_DIR/install}"
 : "${UPGRADE_PIP:=1}"
 : "${INSTALL_SYSTEMD:=1}"
-: "${ORIN_SYSTEMD_USER:=$(id -un)}"
+: "${SYSTEMD_USER:=$(id -un)}"
 
 log() { echo; echo "[GPU SETUP] $*"; }
 fail() { echo "[FAIL] $*" >&2; exit 1; }
 
-[[ "$(uname -m)" == "aarch64" ]] || fail "只支持 Jetson aarch64"
-command -v "$ORIN_PYTHON" >/dev/null || fail "Python 不存在: $ORIN_PYTHON"
+[[ "$(uname -m)" == "aarch64" ]] || fail "Jetson GPU setup requires aarch64"
+command -v "$RUNTIME_PYTHON" >/dev/null || fail "Python not found: $RUNTIME_PYTHON"
 
-log "创建独立 .venv-gpu（不会修改 .venv）"
-"$ORIN_PYTHON" -m venv --system-site-packages "$ROOT/.venv-gpu"
+log "Creating an isolated .venv-gpu environment"
+"$RUNTIME_PYTHON" -m venv --system-site-packages "$ROOT/.venv-gpu"
 PY="$ROOT/.venv-gpu/bin/python"
 PIP="$ROOT/.venv-gpu/bin/pip"
 if [[ "$UPGRADE_PIP" == "1" ]]; then
@@ -33,19 +33,17 @@ if [[ "$UPGRADE_PIP" == "1" ]]; then
 fi
 "$PIP" install -e "$ROOT" sounddevice
 
-if ! "$PY" -c 'import unitree_sdk2py, cyclonedds' 2>/dev/null; then
-    [[ -d "$UNITREE_SDK2_PYTHON_DIR" ]] \
-        || fail "Unitree SDK 源码目录不存在: $UNITREE_SDK2_PYTHON_DIR"
-    export CYCLONEDDS_HOME
-    "$PIP" install "cyclonedds==0.10.2"
-    "$PIP" install -e "$UNITREE_SDK2_PYTHON_DIR"
+if ! "$PY" -c 'import cyclonedds' 2>/dev/null; then
+    CYCLONEDDS_SOURCE_DIR="$CYCLONEDDS_SOURCE_DIR" \
+        CYCLONEDDS_HOME="$CYCLONEDDS_HOME" \
+        bash "$ROOT/scripts/install-cyclonedds.sh" "$PY"
 fi
 
-log "构建并安装 CUDA sherpa-onnx"
+log "Building and installing CUDA sherpa-onnx"
 GPU_PYTHON="$PY" bash "$ROOT/scripts/build-sherpa-onnx-gpu.sh"
 wheel="$(find "$ROOT/dist/gpu" -maxdepth 1 -type f \
     -name 'sherpa_onnx-*+cuda-*-linux_aarch64.whl' -print -quit)"
-[[ -n "$wheel" ]] || fail "CUDA wheel 不存在"
+[[ -n "$wheel" ]] || fail "CUDA wheel not found"
 "$PIP" install --force-reinstall --no-deps "$wheel"
 
 "$PY" - <<'PY'
@@ -54,19 +52,19 @@ import sherpa_onnx
 
 version = str(sherpa_onnx.__version__)
 if "+cuda" not in version:
-    raise SystemExit(f"[FAIL] 不是 CUDA sherpa-onnx: {version}")
+    raise SystemExit(f"[FAIL] sherpa-onnx is not a CUDA build: {version}")
 lib_dir = pathlib.Path(sherpa_onnx.__file__).parent / "lib"
 required = ["libonnxruntime_providers_cuda.so", "libonnxruntime_providers_shared.so"]
 missing = [name for name in required if not (lib_dir / name).is_file()]
 if missing:
-    raise SystemExit(f"[FAIL] CUDA provider 动态库缺失: {missing}")
+    raise SystemExit(f"[FAIL] CUDA provider libraries are missing: {missing}")
 print(f"[PASS] sherpa-onnx {version}")
 PY
 
-log "下载 SenseVoice FP32 模型"
+log "Downloading the SenseVoice FP32 model"
 bash "$ROOT/scripts/download_models_gpu.sh" "$ROOT/models"
 
-log "生成 config.gpu.json"
+log "Generating config.gpu.json"
 export G1_ROOT="$ROOT"
 "$PY" - <<'PY'
 import json
@@ -91,22 +89,22 @@ print(target)
 PY
 
 TEST_WAV="$(find "$ROOT/models" -path '*/test_wavs/zh.wav' -print -quit)"
-[[ -n "$TEST_WAV" ]] || fail "缺少 SenseVoice zh.wav"
+[[ -n "$TEST_WAV" ]] || fail "SenseVoice zh.wav is missing"
 
-log "GPU 实际加载与识别"
+log "Running a real GPU model load and transcription"
 "$ROOT/.venv-gpu/bin/g1-speech" doctor \
     --config "$ROOT/config.gpu.json" --load-model --skip-audio
 "$ROOT/.venv-gpu/bin/g1-speech" transcribe \
     --config "$ROOT/config.gpu.json" "$TEST_WAV"
 
 if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
-    log "安装 CPU/GPU systemd 后台服务"
-    ORIN_SYSTEMD_USER="$ORIN_SYSTEMD_USER" \
+    log "Installing CPU/GPU systemd services"
+    SYSTEMD_USER="$SYSTEMD_USER" \
         bash "$ROOT/scripts/install-speech-services.sh"
 fi
 
 echo
-echo "GPU setup complete. 当前服务后端未切换。"
-echo "选择 CPU: sudo g1-speech-service cpu"
-echo "选择 GPU: sudo g1-speech-service gpu"
-echo "查看状态: g1-speech-service status"
+echo "GPU setup complete. The active service backend was not changed."
+echo "Select CPU: sudo g1-speech-service cpu"
+echo "Select GPU: sudo g1-speech-service gpu"
+echo "Show status: g1-speech-service status"

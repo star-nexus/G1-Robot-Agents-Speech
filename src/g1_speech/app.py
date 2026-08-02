@@ -1,4 +1,4 @@
-"""Composition root for the Orin speech service."""
+"""Composition root for the speech recognition service."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import logging
 from .audio import SoundDeviceSource
 from .config import ServiceConfig
 from .dds import (
+    DdsEventWriter,
     DdsPlaybackSubscriber,
     RetryingEventSink,
-    UnitreeDdsEventWriter,
-    initialize_unitree_dds,
+    initialize_dds,
 )
 from .engine import SenseVoiceEngine
 from .gate import PlaybackGate
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class SpeechService:
     def __init__(self, config: ServiceConfig) -> None:
         self.config = config
-        initialize_unitree_dds(config.dds.domain_id, config.dds.network_interface)
+        initialize_dds(config.dds.domain_id, config.dds.network_interface)
 
         self.gate = PlaybackGate(
             resume_delay_ms=config.playback.resume_delay_ms,
@@ -32,7 +32,7 @@ class SpeechService:
         self.playback_subscriber = DdsPlaybackSubscriber(
             self.gate, topic=config.dds.playback_topic
         )
-        writer = UnitreeDdsEventWriter(config.dds.speech_topic)
+        writer = DdsEventWriter(config.dds.speech_topic)
         self.sink = RetryingEventSink(
             writer,
             capacity=config.dds.outbox_capacity,

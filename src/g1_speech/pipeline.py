@@ -84,7 +84,7 @@ class SpeechPipeline:
         for thread in self._threads:
             thread.start()
         self._started = True
-        logger.info("语音流水线已启动: session_id=%s", self._session_id)
+        logger.info("Speech pipeline started: session_id=%s", self._session_id)
 
     def close(self, *, join_timeout: float = 3.0) -> None:
         if not self._started:
@@ -94,11 +94,11 @@ class SpeechPipeline:
         for thread in self._threads:
             thread.join(timeout=join_timeout)
             if thread.is_alive():
-                logger.warning("线程 %s 未在 %.1fs 内退出", thread.name, join_timeout)
+                logger.warning("Thread %s did not stop within %.1fs", thread.name, join_timeout)
         self._threads.clear()
         self._sink.close()
         self._started = False
-        logger.info("语音流水线已停止")
+        logger.info("Speech pipeline stopped")
 
     def wait(self, timeout: float | None = None) -> bool:
         return self._stop.wait(timeout)
@@ -143,7 +143,7 @@ class SpeechPipeline:
             try:
                 utterances = self._segmenter.accept(chunk)
             except Exception:  # noqa: BLE001
-                logger.exception("VAD 处理失败，重置分段器")
+                logger.exception("VAD processing failed; resetting segmenter")
                 self._segmenter.reset()
                 continue
             for utterance in utterances:
@@ -175,7 +175,7 @@ class SpeechPipeline:
                 result = self._engine.transcribe(utterance)
             except Exception:  # noqa: BLE001
                 self._increment("recognition_errors")
-                logger.exception("SenseVoice 识别失败")
+                logger.exception("SenseVoice recognition failed")
                 continue
             if not result.text:
                 self._increment("recognitions_empty")
@@ -198,4 +198,4 @@ class SpeechPipeline:
             if self._sink.publish(event):
                 self._increment("publish_enqueued")
             else:
-                logger.error("DDS outbox 已满，丢弃 event_id=%s", event.event_id)
+                logger.error("DDS outbox is full; dropping event_id=%s", event.event_id)

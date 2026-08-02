@@ -17,4 +17,4 @@ if [[ ! -f "$MODEL_NAME/model.onnx" || ! -f "$MODEL_NAME/tokens.txt" ]]; then
     rm "$MODEL_NAME.tar.bz2"
 fi
 
-echo "GPU FP32 模型已就绪: $MODEL_DIR/$MODEL_NAME/model.onnx"
+echo "GPU FP32 model is ready: $MODEL_DIR/$MODEL_NAME/model.onnx"

@@ -27,12 +27,12 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=30)
     args = parser.parse_args()
     if args.warmup < 0 or args.runs < 1:
-        raise ValueError("warmup 必须 >= 0，runs 必须 >= 1")
+        raise ValueError("warmup must be >= 0 and runs must be >= 1")
 
     config = load_config(args.config)
     samples, sample_rate = _read_wav(args.wav)
     if sample_rate != config.audio.sample_rate:
-        raise ValueError(f"WAV 是 {sample_rate} Hz，要求 {config.audio.sample_rate} Hz")
+        raise ValueError(f"WAV is {sample_rate} Hz; expected {config.audio.sample_rate} Hz")
 
     utterance = Utterance(samples, sample_rate, 0, 0)
     engine = SenseVoiceEngine(

@@ -1,4 +1,4 @@
-"""Run the real Orin service and fail on queue saturation or RSS growth."""
+"""Run the real service and fail on queue saturation or RSS growth."""
 
 from __future__ import annotations
 

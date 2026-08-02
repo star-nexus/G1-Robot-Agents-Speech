@@ -15,12 +15,12 @@ FORCE_REBUILD="${SHERPA_ONNX_GPU_FORCE_REBUILD:-0}"
 log() { echo; echo "[GPU BUILD] $*"; }
 fail() { echo "[FAIL] $*" >&2; exit 1; }
 
-[[ "$(uname -s)" == "Linux" ]] || fail "只支持 Linux"
-[[ "$(uname -m)" == "aarch64" ]] || fail "Jetson GPU wheel 要求 aarch64"
-[[ -x "$PYTHON" ]] || fail "Python 环境不存在: $PYTHON"
-[[ -x "$CUDA_ROOT/bin/nvcc" ]] || fail "未找到 CUDA nvcc: $CUDA_ROOT/bin/nvcc"
-command -v cmake >/dev/null || fail "未安装 cmake"
-command -v curl >/dev/null || fail "未安装 curl"
+[[ "$(uname -s)" == "Linux" ]] || fail "Linux is required"
+[[ "$(uname -m)" == "aarch64" ]] || fail "The Jetson GPU wheel requires aarch64"
+[[ -x "$PYTHON" ]] || fail "Python environment not found: $PYTHON"
+[[ -x "$CUDA_ROOT/bin/nvcc" ]] || fail "CUDA nvcc not found: $CUDA_ROOT/bin/nvcc"
+command -v cmake >/dev/null || fail "cmake is not installed"
+command -v curl >/dev/null || fail "curl is not installed"
 
 if [[ -r /etc/nv_tegra_release ]]; then
     log "Jetson: $(head -1 /etc/nv_tegra_release)"
@@ -31,13 +31,13 @@ mkdir -p "$BUILD_ROOT" "$WHEEL_DIR"
 wheel="$(find "$WHEEL_DIR" -maxdepth 1 -type f \
     -name "sherpa_onnx-${SHERPA_VERSION}+cuda-*-linux_aarch64.whl" -print -quit)"
 if [[ -n "$wheel" && "$FORCE_REBUILD" != "1" ]]; then
-    log "复用已有 CUDA wheel"
+    log "Reusing the existing CUDA wheel"
     echo "GPU wheel: $wheel"
     exit 0
 fi
 
 if [[ ! -f "$SOURCE_DIR/CMakeLists.txt" ]]; then
-    log "下载 sherpa-onnx v$SHERPA_VERSION 源码归档"
+    log "Downloading the sherpa-onnx v$SHERPA_VERSION source archive"
     if ! tar tzf "$SOURCE_ARCHIVE" >/dev/null 2>&1; then
         curl -fL -C - --retry 10 --retry-all-errors \
             -o "$SOURCE_ARCHIVE" \
@@ -47,7 +47,7 @@ if [[ ! -f "$SOURCE_DIR/CMakeLists.txt" ]]; then
     tar xzf "$SOURCE_ARCHIVE" -C "$BUILD_ROOT"
 fi
 
-log "编译 CUDA sherpa-onnx wheel"
+log "Building the CUDA sherpa-onnx wheel"
 export PATH="$CUDA_ROOT/bin:$PATH"
 export SHERPA_ONNX_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=Release \
 -DSHERPA_ONNX_ENABLE_GPU=ON \
@@ -63,6 +63,6 @@ cd "$SOURCE_DIR"
 
 wheel="$(find "$WHEEL_DIR" -maxdepth 1 -type f \
     -name "sherpa_onnx-${SHERPA_VERSION}+cuda-*-linux_aarch64.whl" -print -quit)"
-[[ -n "$wheel" ]] || fail "没有生成预期的 CUDA wheel"
+[[ -n "$wheel" ]] || fail "The expected CUDA wheel was not generated"
 echo
 echo "GPU wheel: $wheel"

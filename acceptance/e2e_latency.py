@@ -18,7 +18,7 @@ from g1_speech.vad import SileroVadSegmenter
 def read_wav(path: str) -> tuple[np.ndarray, int]:
     with wave.open(str(Path(path)), "rb") as handle:
         if handle.getnchannels() != 1 or handle.getsampwidth() != 2:
-            raise ValueError("只支持 mono 16-bit PCM WAV")
+            raise ValueError("only mono 16-bit PCM WAV files are supported")
         rate = handle.getframerate()
         raw = handle.readframes(handle.getnframes())
     return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0, rate
@@ -27,7 +27,7 @@ def read_wav(path: str) -> tuple[np.ndarray, int]:
 def trim_trailing_silence(samples: np.ndarray, threshold: float = 0.008) -> np.ndarray:
     non_silent = np.flatnonzero(np.abs(samples) >= threshold)
     if non_silent.size == 0:
-        raise ValueError("WAV 没有检测到语音")
+        raise ValueError("no speech was detected in the WAV file")
     return samples[: non_silent[-1] + 1]
 
 
@@ -40,7 +40,7 @@ def main() -> int:
     config = load_config(args.config)
     samples, rate = read_wav(args.wav)
     if rate != config.audio.sample_rate:
-        raise ValueError(f"WAV 是 {rate} Hz，要求 {config.audio.sample_rate} Hz")
+        raise ValueError(f"WAV is {rate} Hz; expected {config.audio.sample_rate} Hz")
     samples = trim_trailing_silence(samples)
 
     vad = SileroVadSegmenter(
@@ -81,7 +81,7 @@ def main() -> int:
         if segments:
             utterance = segments[0]
     if utterance is None:
-        raise RuntimeError("VAD 在 3 秒内没有结束当前语句")
+        raise RuntimeError("VAD did not complete the utterance within 3 seconds")
 
     result = engine.transcribe(utterance)
     latency_ms = (time.monotonic() - speech_ended) * 1000
@@ -89,7 +89,7 @@ def main() -> int:
     print(f"inference_ms={result.inference_ms:.1f}")
     print(f"speech_end_to_final_ms={latency_ms:.1f}")
     if not result.text:
-        print("FAIL: 识别结果为空")
+        print("FAIL: recognition result is empty")
         return 1
     if latency_ms > args.target_ms:
         print(f"FAIL: {latency_ms:.1f}ms > {args.target_ms:.1f}ms")

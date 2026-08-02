@@ -58,16 +58,16 @@ Agent 无需修改。
 ### Agent 订阅
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_unitree_dds
+from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
 
-# 每个进程只初始化一次；如果 Agent 已初始化 Unitree DDS，请跳过这一行。
-initialize_unitree_dds(domain_id=0)
+# 每个 Agent 进程只初始化一次 Cyclone DDS。
+initialize_dds(domain_id=0)
 
 subscriber = DdsSpeechSubscriber(lambda event: print(event.text))
 subscriber.start()
 ```
 
-Agent 退出时调用 `subscriber.close()`。回调运行在 DDS 线程中，正式 Agent 建议只在
+Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程中，正式 Agent 建议只在
 回调里入队，再由业务线程调用 LLM、工具或机器人动作。
 
 无需编写 Agent 代码也可以快速查看识别结果：
@@ -110,10 +110,10 @@ git clone https://github.com/star-nexus/G1-Robot-Agents-Speech.git
 cd G1-Robot-Agents-Speech
 
 cp deploy.env.example deploy.env
-# 设置实际 DDS 网卡；麦克风留空时可在安装过程中选择
-# ORIN_DDS_IFACE="your-interface"
+# DDS 网卡可选；麦克风留空时可在安装过程中选择
+# DDS_NETWORK_INTERFACE="your-interface"
 
-bash scripts/setup-orin.sh
+bash scripts/setup-cpu.sh
 ```
 
 脚本会创建项目私有的 `.venv`、下载模型、运行 doctor 和固定 WAV 测试，并安装 CPU
@@ -124,7 +124,7 @@ systemd 服务。
 GPU 环境与 CPU 环境完全隔离，不会覆盖 `.venv`、`config.json` 或 CPU INT8 模型。
 
 ```bash
-bash scripts/setup-orin-gpu.sh
+bash scripts/setup-jetson-gpu.sh
 sudo g1-speech-service gpu
 ```
 
@@ -145,8 +145,8 @@ GPU 部署会：
 
 | 配置 | 说明 |
 |---|---|
-| `ORIN_DDS_IFACE` | DDS 使用的本机网卡，可用 `ip -br link` 查看 |
-| `ORIN_MIC_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
+| `DDS_NETWORK_INTERFACE` | DDS 使用的本机网卡；留空时自动选择 |
+| `MICROPHONE_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
 | `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
@@ -218,3 +218,4 @@ sudo g1-speech-service stop
 - [SenseVoice](https://github.com/QwenAudio/SenseVoice)：多语言语音识别模型
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)：SenseVoice ONNX 推理与跨平台部署
 - [Silero VAD](https://github.com/snakers4/silero-vad)：语音活动检测
+- [Eclipse Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds)：厂商无关的 DDS 通信
