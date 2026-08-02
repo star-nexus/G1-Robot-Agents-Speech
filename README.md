@@ -104,8 +104,8 @@ Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audi
 CPU is the default backend. It is suitable for resource-constrained devices and Linux hosts without CUDA.
 
 ```bash
-git clone https://github.com/star-nexus/Unitree_G1_Voice.git
-cd Unitree_G1_Voice
+git clone https://github.com/star-nexus/G1-Robot-Agents-Speech.git
+cd G1-Robot-Agents-Speech
 
 cp deploy.env.example deploy.env
 # Set the DDS network interface for your machine. Leave the microphone empty

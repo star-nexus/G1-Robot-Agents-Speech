@@ -106,8 +106,8 @@ TTS or playback
 CPU 是默认后端，适合资源受限设备和不具备 CUDA 的 Linux 主机。
 
 ```bash
-git clone https://github.com/star-nexus/Unitree_G1_Voice.git
-cd Unitree_G1_Voice
+git clone https://github.com/star-nexus/G1-Robot-Agents-Speech.git
+cd G1-Robot-Agents-Speech
 
 cp deploy.env.example deploy.env
 # 设置实际 DDS 网卡；麦克风留空时可在安装过程中选择

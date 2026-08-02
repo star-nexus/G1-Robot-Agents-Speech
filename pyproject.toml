@@ -5,12 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "g1-speech"
 version = "0.1.0"
-description = "Offline SenseVoice microphone and DDS service for Unitree G1 agents"
+description = "Offline speech recognition and DDS service for robot agents on NVIDIA Jetson and Linux edge computers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24",
 ]
+
+[project.urls]
+Homepage = "https://github.com/star-nexus/G1-Robot-Agents-Speech"
+Repository = "https://github.com/star-nexus/G1-Robot-Agents-Speech"
+Issues = "https://github.com/star-nexus/G1-Robot-Agents-Speech/issues"
 
 [project.optional-dependencies]
 orin = [
