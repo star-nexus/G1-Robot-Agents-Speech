@@ -7,6 +7,19 @@ import pytest
 from g1_speech.config import load_config
 
 
+def test_vad_defaults_are_tuned_for_far_field_speech(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
+
+    config = load_config(config_path)
+
+    assert config.vad.threshold == 0.35
+    assert config.vad.speech_pre_roll_seconds == 0.5
+    assert config.vad.min_silence_seconds == 0.35
+    assert config.vad.min_speech_seconds == 0.15
+    assert config.vad.max_speech_seconds == 10.0
+
+
 def test_paths_are_relative_to_config_file(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(

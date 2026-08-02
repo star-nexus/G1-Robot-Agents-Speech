@@ -44,10 +44,10 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 : "${SENSEVOICE_THREADS:=6}"
 : "${SENSEVOICE_LANGUAGE:=zh}"
 : "${SENSEVOICE_USE_ITN:=1}"
-: "${VAD_THRESHOLD:=0.5}"
-: "${VAD_PRE_ROLL_SECONDS:=0.3}"
+: "${VAD_THRESHOLD:=0.35}"
+: "${VAD_PRE_ROLL_SECONDS:=0.5}"
 : "${VAD_MIN_SILENCE_SECONDS:=0.35}"
-: "${VAD_MIN_SPEECH_SECONDS:=0.25}"
+: "${VAD_MIN_SPEECH_SECONDS:=0.15}"
 : "${VAD_MAX_SPEECH_SECONDS:=10.0}"
 : "${DDS_DELIVERY_TTL_SECONDS:=120.0}"
 : "${DDS_OUTBOX_CAPACITY:=128}"
@@ -187,10 +187,10 @@ config["sensevoice"].update(
     num_threads=int(os.environ.get("SENSEVOICE_THREADS", "6")),
 )
 config["vad"].update(
-    threshold=float(os.environ.get("VAD_THRESHOLD", "0.5")),
-    speech_pre_roll_seconds=float(os.environ.get("VAD_PRE_ROLL_SECONDS", "0.3")),
+    threshold=float(os.environ.get("VAD_THRESHOLD", "0.35")),
+    speech_pre_roll_seconds=float(os.environ.get("VAD_PRE_ROLL_SECONDS", "0.5")),
     min_silence_seconds=float(os.environ.get("VAD_MIN_SILENCE_SECONDS", "0.35")),
-    min_speech_seconds=float(os.environ.get("VAD_MIN_SPEECH_SECONDS", "0.25")),
+    min_speech_seconds=float(os.environ.get("VAD_MIN_SPEECH_SECONDS", "0.15")),
     max_speech_seconds=float(os.environ.get("VAD_MAX_SPEECH_SECONDS", "10.0")),
 )
 config["dds"].update(

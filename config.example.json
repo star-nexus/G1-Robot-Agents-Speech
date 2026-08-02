@@ -10,11 +10,11 @@
   },
   "vad": {
     "model": "models/silero_vad.onnx",
-    "threshold": 0.5,
-    "speech_pre_roll_seconds": 0.3,
+    "threshold": 0.35,
+    "speech_pre_roll_seconds": 0.5,
     "min_silence_seconds": 0.35,
-    "min_speech_seconds": 0.25,
-    "max_speech_seconds": 15.0,
+    "min_speech_seconds": 0.15,
+    "max_speech_seconds": 10.0,
     "buffer_seconds": 30.0
   },
   "sensevoice": {

@@ -19,11 +19,11 @@ class AudioConfig:
 @dataclass(frozen=True)
 class VadConfig:
     model: str = "models/silero_vad.onnx"
-    threshold: float = 0.5
-    speech_pre_roll_seconds: float = 0.3
+    threshold: float = 0.35
+    speech_pre_roll_seconds: float = 0.5
     min_silence_seconds: float = 0.35
-    min_speech_seconds: float = 0.25
-    max_speech_seconds: float = 15.0
+    min_speech_seconds: float = 0.15
+    max_speech_seconds: float = 10.0
     buffer_seconds: float = 30.0
 
 
