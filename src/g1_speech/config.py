@@ -57,7 +57,7 @@ class PlaybackConfig:
 
 @dataclass(frozen=True)
 class ServiceConfig:
-    source_name: str = "g1_orin_mic"
+    source_name: str = "g1_speech_mic"
     utterance_queue_capacity: int = 4
     metrics_interval_seconds: float = 60.0
     audio: AudioConfig = field(default_factory=AudioConfig)

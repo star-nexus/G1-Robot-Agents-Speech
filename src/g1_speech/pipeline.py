@@ -44,7 +44,7 @@ class SpeechPipeline:
         engine: AsrEngine,
         sink: EventSink,
         playback_gate: PlaybackGate,
-        source_name: str = "g1_orin_mic",
+        source_name: str = "g1_speech_mic",
         utterance_queue_capacity: int = 4,
         session_id: str | None = None,
     ) -> None:

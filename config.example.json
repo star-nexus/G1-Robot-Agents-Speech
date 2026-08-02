@@ -1,5 +1,5 @@
 {
-  "source_name": "g1_orin_mic",
+  "source_name": "g1_speech_mic",
   "utterance_queue_capacity": 4,
   "metrics_interval_seconds": 60.0,
   "audio": {
@@ -27,7 +27,7 @@
   },
   "dds": {
     "domain_id": 0,
-    "network_interface": "eth0",
+    "network_interface": null,
     "speech_topic": "rt/g1/hri/speech/final",
     "playback_topic": "rt/g1/hri/playback/state",
     "write_timeout_seconds": 0.5,
