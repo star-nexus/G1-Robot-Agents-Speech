@@ -1,65 +1,64 @@
 # G1 Speech Service
 
-[English](README_EN.md) | 简体中文
+English | [简体中文](README_ZH.md)
 
-面向机器人和 Agent 的离线语音识别服务，将语音识别文本实时发布到 DDS。
+An offline speech recognition service for robots and AI agents that streams recognized text over DDS.
 
-- **高性能**: 识别速度0.01-0.2s,高准确度
-- **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
-- **完全离线**：语音识别在本地完成，音频和文本无需上传云端
-- **统一 DDS 输出**：识别结果发布到 `rt/g1/hri/speech/final`, 方便任何程序订阅.
+- **High performance**: 0.01–0.2 s recognition latency with high accuracy
+- **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
+- **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
+- **Unified DDS output**: Results are published to `rt/g1/hri/speech/final` for any application to subscribe to
 
-## 性能
+## Performance
 
-Jetson ORIN NX，同一段 5.592 秒中文音频，预热 3 次、运行 30 次：
+Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample, with 3 warm-up runs and 30 measured runs:
 
-| 后端 | 模型 | 平均耗时 | 中位数 | P95 | RTF |
+| Backend | Model | Mean latency | Median | P95 | RTF |
 |---|---|---:|---:|---:|---:|
 | CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
 | GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
 
-## 快速接入
+## Quick Start
 
-### 运行语音服务
+### Start the Speech Service
 
-部署完成后，选择一个后台后端：
+After deployment, select a backend to run as a background service:
 
 ```bash
-# 低资源、默认选择
+# Low-resource, default option
 sudo g1-speech-service cpu
 
-# Jetson CUDA 加速
+# Jetson CUDA acceleration
 sudo g1-speech-service gpu
 
 g1-speech-service status
 g1-speech-service logs
 ```
 
-识别结果统一发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用相同的 DDS 消息，
-Agent 无需修改。
+Recognition results are published to `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same DDS messages, so no Agent-side changes are required.
 
-### Agent 订阅
+### Subscribe from an Agent
 
 ```python
 from g1_speech.dds import DdsSpeechSubscriber, initialize_unitree_dds
 
-# 每个进程只初始化一次；如果 Agent 已初始化 Unitree DDS，请跳过这一行。
+# Initialize only once per process. Skip this line if your Agent has already
+# initialized Unitree DDS.
 initialize_unitree_dds(domain_id=0)
 
 subscriber = DdsSpeechSubscriber(lambda event: print(event.text))
 subscriber.start()
 ```
 
-Agent 退出时调用 `subscriber.close()`。回调运行在 DDS 线程中，正式 Agent 建议只在
-回调里入队，再由业务线程调用 LLM、工具或机器人动作。
+Call `subscriber.close()` when the Agent exits. The callback runs on the DDS thread; in production Agents, enqueue the event in the callback and let a worker thread invoke the LLM, tools, or robot actions.
 
-无需编写 Agent 代码也可以快速查看识别结果：
+You can also inspect recognition results without writing Agent code:
 
 ```bash
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
-## 工作方式
+## How It Works
 
 ```text
 Microphone
@@ -74,92 +73,89 @@ TTS or playback
   → temporarily pause recognition
 ```
 
-| Topic | 方向 | 用途 |
+| Topic | Direction | Purpose |
 |---|---|---|
-| `rt/g1/hri/speech/final` | Service → Agent | 最终语音识别事件 |
-| `rt/g1/hri/playback/state` | Agent → Service | 播放期间暂停识别，避免机器人听到自己 |
+| `rt/g1/hri/speech/final` | Service → Agent | Final speech recognition events |
+| `rt/g1/hri/playback/state` | Agent → Service | Pause recognition during playback so the robot does not hear itself |
 
-`SpeechEvent` 包含稳定的 `event_id`、文本、语言、音频时长、推理耗时、来源和时间戳。
-发布端会在短暂 DDS 故障时重试，订阅端会按 `event_id` 去重。
+Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audio duration, inference latency, source, and timestamp. The publisher retries after transient DDS failures, while subscribers deduplicate events by `event_id`.
 
-## 部署
+## Deployment
 
 ### CPU INT8
 
-CPU 是默认后端，适合资源受限设备和不具备 CUDA 的 Linux 主机。
+CPU is the default backend. It is suitable for resource-constrained devices and Linux hosts without CUDA.
 
 ```bash
 git clone https://github.com/star-nexus/Unitree_G1_Voice.git
 cd Unitree_G1_Voice
 
 cp deploy.env.example deploy.env
-# 设置实际 DDS 网卡；麦克风留空时可在安装过程中选择
+# Set the DDS network interface for your machine. Leave the microphone empty
+# to select one interactively during installation.
 # ORIN_DDS_IFACE="your-interface"
 
 bash scripts/setup-orin.sh
 ```
 
-脚本会创建项目私有的 `.venv`、下载模型、运行 doctor 和固定 WAV 测试，并安装 CPU
-systemd 服务。
+The script creates a project-local `.venv`, downloads the model, runs the doctor and fixed-WAV checks, and installs the CPU systemd service.
 
 ### Jetson GPU FP32
 
-GPU 环境与 CPU 环境完全隔离，不会覆盖 `.venv`、`config.json` 或 CPU INT8 模型。
+The GPU environment is completely isolated from the CPU environment and does not overwrite `.venv`, `config.json`, or the CPU INT8 model.
 
 ```bash
 bash scripts/setup-orin-gpu.sh
 sudo g1-speech-service gpu
 ```
 
-GPU 部署会：
+The GPU setup will:
 
-1. 创建独立的 `.venv-gpu`
-2. 为 Jetson aarch64 编译 sherpa-onnx CUDA wheel
-3. 安装 SenseVoice FP32 模型
-4. 生成 `config.gpu.json`
-5. 安装互斥的 `g1-speech-gpu.service`
+1. Create a separate `.venv-gpu`
+2. Build a sherpa-onnx CUDA wheel for Jetson aarch64
+3. Install the SenseVoice FP32 model
+4. Generate `config.gpu.json`
+5. Install the mutually exclusive `g1-speech-gpu.service`
 
-当前 GPU 构建针对 CUDA 12.6、sherpa-onnx 1.13.4 和 ONNX Runtime 1.18.1。
-如果 CUDA wheel 不可用，服务会明确失败，不会静默回退 CPU。
+The current GPU build targets CUDA 12.6, sherpa-onnx 1.13.4, and ONNX Runtime 1.18.1. If the CUDA wheel is unavailable, the service fails explicitly instead of silently falling back to the CPU.
 
-## 配置
+## Configuration
 
-复制 `deploy.env.example` 后只填写自己的设备信息，不需要固定 IP：
+Copy `deploy.env.example` and enter your own device settings. No fixed IP address is required:
 
-| 配置 | 说明 |
+| Setting | Description |
 |---|---|
-| `ORIN_DDS_IFACE` | DDS 使用的本机网卡，可用 `ip -br link` 查看 |
-| `ORIN_MIC_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
-| `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
-| `SPEECH_TOPIC` | 最终识别结果 Topic |
-| `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
-| `SENSEVOICE_THREADS` | CPU 推理线程数 |
+| `ORIN_DDS_IFACE` | Local network interface used by DDS; inspect available interfaces with `ip -br link` |
+| `ORIN_MIC_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
+| `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
+| `SPEECH_TOPIC` | Topic for final recognition results |
+| `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
+| `SENSEVOICE_THREADS` | Number of CPU inference threads |
 
-运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
-按配置文件所在目录解析。
+Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
 
-## 验证与测试
+## Validation and Testing
 
-检查 CPU 部署：
+Check the CPU deployment:
 
 ```bash
 .venv/bin/g1-speech doctor --config config.json --load-model
 ```
 
-检查 GPU 部署：
+Check the GPU deployment:
 
 ```bash
 .venv-gpu/bin/g1-speech doctor \
   --config config.gpu.json --load-model --skip-audio
 ```
 
-识别固定 WAV：
+Transcribe a WAV file:
 
 ```bash
 .venv/bin/g1-speech transcribe --config config.json path/to/audio.wav
 ```
 
-复现性能测试：
+Reproduce the performance benchmark:
 
 ```bash
 .venv/bin/python acceptance/benchmark_engine.py \
@@ -171,13 +167,13 @@ GPU 部署会：
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
 ```
 
-运行单元测试：
+Run the unit tests:
 
 ```bash
 .venv/bin/python -m pytest
 ```
 
-## 服务管理
+## Service Management
 
 ```bash
 g1-speech-service status
@@ -189,15 +185,15 @@ sudo g1-speech-service restart
 sudo g1-speech-service stop
 ```
 
-底层 systemd 单元：
+Underlying systemd units:
 
-- CPU：`g1-speech.service`
-- GPU：`g1-speech-gpu.service`
+- CPU: `g1-speech.service`
+- GPU: `g1-speech-gpu.service`
 
-## 引用
+## References
 
-本项目基于以下开源工作构建，感谢原作者和社区贡献者：
+This project builds on the following open-source work. Many thanks to their authors and communities:
 
-- [SenseVoice](https://github.com/QwenAudio/SenseVoice)：多语言语音识别模型
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)：SenseVoice ONNX 推理与跨平台部署
-- [Silero VAD](https://github.com/snakers4/silero-vad)：语音活动检测
+- [SenseVoice](https://github.com/QwenAudio/SenseVoice): Multilingual speech recognition model
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx): SenseVoice ONNX inference and cross-platform deployment
+- [Silero VAD](https://github.com/snakers4/silero-vad): Voice activity detection

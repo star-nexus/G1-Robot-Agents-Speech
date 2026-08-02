@@ -1,4 +1,4 @@
-"""Integrate this pattern into the NVIDIA Spark Agent process."""
+"""Subscribe to speech events from a robot or Agent process."""
 
 from __future__ import annotations
 

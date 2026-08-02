@@ -35,7 +35,6 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 
 : "${ORIN_PYTHON:=python3}"
 : "${ORIN_DDS_IFACE:=}"
-: "${SPARK_HOST:=}"
 : "${DDS_DOMAIN_ID:=0}"
 : "${SPEECH_TOPIC:=rt/g1/hri/speech/final}"
 : "${PLAYBACK_TOPIC:=rt/g1/hri/playback/state}"
@@ -74,19 +73,10 @@ command -v "$ORIN_PYTHON" >/dev/null || fail "Python not found: $ORIN_PYTHON"
 "$ORIN_PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' \
     || fail "Python >= 3.10 is required"
 
-if [[ -z "$ORIN_DDS_IFACE" && -n "$SPARK_HOST" ]]; then
-    ORIN_DDS_IFACE="$(ip route get "$SPARK_HOST" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}')"
-fi
 [[ -n "$ORIN_DDS_IFACE" ]] || fail "Set ORIN_DDS_IFACE in deploy.env"
 ip link show "$ORIN_DDS_IFACE" >/dev/null 2>&1 \
     || fail "Orin DDS interface does not exist: $ORIN_DDS_IFACE"
 ok "DDS interface: $ORIN_DDS_IFACE"
-
-if [[ -n "$SPARK_HOST" ]]; then
-    ping -I "$ORIN_DDS_IFACE" -c 2 -W 2 "$SPARK_HOST" >/dev/null \
-        || fail "Cannot ping Spark $SPARK_HOST via $ORIN_DDS_IFACE"
-    ok "Orin -> Spark network"
-fi
 
 if [[ "$SKIP_APT" != "1" ]]; then
     log "Installing Orin system packages"
