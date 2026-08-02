@@ -1,14 +1,14 @@
 [Unit]
-Description=Unitree G1 offline SenseVoice DDS service (CPU INT8)
+Description=Unitree G1 offline SenseVoice DDS service (GPU FP32)
 After=network-online.target sound.target
 Wants=network-online.target
-Conflicts=g1-speech-gpu.service
+Conflicts=g1-speech.service
 
 [Service]
 Type=simple
 User=unitree
 WorkingDirectory=/opt/g1-speech
-ExecStart=/opt/g1-speech/.venv/bin/g1-speech serve --config /opt/g1-speech/config.json
+ExecStart=/opt/g1-speech/.venv-gpu/bin/g1-speech serve --config /opt/g1-speech/config.gpu.json
 Restart=on-failure
 RestartSec=2
 TimeoutStopSec=8

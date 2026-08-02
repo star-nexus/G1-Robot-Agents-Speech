@@ -203,6 +203,7 @@ else:
 config["audio"].update(sample_rate=16000, device=device)
 config["sensevoice"].update(
     model_dir="models",
+    model_file=None,
     device=os.environ.get("SENSEVOICE_DEVICE", "cpu"),
     language=os.environ.get("SENSEVOICE_LANGUAGE", "zh"),
     use_itn=os.environ.get("SENSEVOICE_USE_ITN", "1") == "1",
@@ -260,16 +261,9 @@ fi
 
 if [[ "$INSTALL_SYSTEMD" == "1" ]]; then
     log "Installing systemd service"
-    SERVICE_TMP="$(mktemp)"
-    trap 'rm -f "$SERVICE_TMP"' EXIT
-    sed \
-        -e "s|^User=.*|User=$ORIN_SYSTEMD_USER|" \
-        -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
-        -e "s|^ExecStart=.*|ExecStart=$ROOT/.venv/bin/g1-speech serve --config $ROOT/config.json|" \
-        "$ROOT/systemd/g1-speech.service" > "$SERVICE_TMP"
-    sudo install -m 0644 "$SERVICE_TMP" /etc/systemd/system/g1-speech.service
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now g1-speech
+    ORIN_SYSTEMD_USER="$ORIN_SYSTEMD_USER" \
+        bash "$ROOT/scripts/install-speech-services.sh"
+    sudo /usr/local/bin/g1-speech-service cpu
     sudo systemctl --no-pager --full status g1-speech
     ok "systemd g1-speech"
 fi
@@ -278,3 +272,4 @@ echo
 echo "Orin setup complete."
 echo "Config: $ROOT/config.json"
 echo "Manual start: $ROOT/.venv/bin/g1-speech serve --config $ROOT/config.json"
+echo "Service backend: sudo g1-speech-service cpu"

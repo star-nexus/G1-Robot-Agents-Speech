@@ -55,6 +55,7 @@ def main() -> int:
     )
     engine = SenseVoiceEngine(
         model_dir=config.sensevoice.model_dir,
+        model_file=config.sensevoice.model_file,
         device=config.sensevoice.device,
         sample_rate=rate,
         language=config.sensevoice.language,

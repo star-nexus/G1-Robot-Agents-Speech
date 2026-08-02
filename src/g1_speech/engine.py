@@ -16,10 +16,22 @@ from .contracts import RecognitionResult, Utterance
 logger = logging.getLogger(__name__)
 
 
-def find_model_files(model_dir: str | os.PathLike) -> tuple[Path, Path]:
+def find_model_files(
+    model_dir: str | os.PathLike,
+    model_file: str | os.PathLike | None = None,
+) -> tuple[Path, Path]:
     root = Path(model_dir).expanduser().resolve()
     if not root.exists():
         raise FileNotFoundError(f"SenseVoice 模型目录不存在: {root}")
+
+    if model_file:
+        model = Path(model_file).expanduser().resolve()
+        if not model.is_file():
+            raise FileNotFoundError(f"SenseVoice 模型文件不存在: {model}")
+        tokens = model.parent / "tokens.txt"
+        if not tokens.is_file():
+            raise FileNotFoundError(f"SenseVoice tokens.txt 不存在: {tokens}")
+        return model, tokens
 
     candidates: list[Path] = []
     if (root / "model.int8.onnx").is_file() or (root / "model.onnx").is_file():
@@ -35,6 +47,18 @@ def find_model_files(model_dir: str | os.PathLike) -> tuple[Path, Path]:
     raise FileNotFoundError(f"在 {root} 下未找到 SenseVoice model.int8.onnx/model.onnx 和 tokens.txt")
 
 
+def ensure_provider_available(sherpa_module: Any, device: str) -> None:
+    """Reject sherpa CPU wheels that would silently fall back from CUDA to CPU."""
+    if device != "cuda":
+        return
+    version = str(getattr(sherpa_module, "__version__", ""))
+    if "+cuda" not in version:
+        raise RuntimeError(
+            "sensevoice.device=cuda，但当前 sherpa-onnx 不是 CUDA 构建"
+            f"（version={version or 'unknown'}）；拒绝静默回退到 CPU"
+        )
+
+
 class SenseVoiceEngine:
     name = "sensevoice"
 
@@ -42,6 +66,7 @@ class SenseVoiceEngine:
         self,
         *,
         model_dir: str | os.PathLike,
+        model_file: str | os.PathLike | None = None,
         device: str = "cpu",
         sample_rate: int = 16000,
         language: str = "zh",
@@ -50,6 +75,7 @@ class SenseVoiceEngine:
         sherpa_module: Any | None = None,
     ) -> None:
         self._model_dir = model_dir
+        self._model_file = model_file
         self._device = device
         self._sample_rate = sample_rate
         self._language = language
@@ -67,7 +93,8 @@ class SenseVoiceEngine:
                 import sherpa_onnx
 
                 self._sherpa = sherpa_onnx
-            model, tokens = find_model_files(self._model_dir)
+            ensure_provider_available(self._sherpa, self._device)
+            model, tokens = find_model_files(self._model_dir, self._model_file)
             provider = "cpu" if self._device in ("cpu", "auto") else self._device
             logger.info("加载 SenseVoice: model=%s provider=%s", model, provider)
             self._recognizer = self._sherpa.OfflineRecognizer.from_sense_voice(

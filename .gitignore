@@ -1,10 +1,13 @@
 .venv/
+.venv-gpu/
 models/
 config.json
+config.gpu.json
 deploy.env
 deploy-dgx.env
 .deps/
 build/
+.build/
 dist/
 *.egg-info/
 .pytest_cache/

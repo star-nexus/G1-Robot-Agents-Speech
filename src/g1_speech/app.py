@@ -58,6 +58,7 @@ class SpeechService:
         )
         engine = SenseVoiceEngine(
             model_dir=config.sensevoice.model_dir,
+            model_file=config.sensevoice.model_file,
             device=config.sensevoice.device,
             sample_rate=config.audio.sample_rate,
             language=config.sensevoice.language,

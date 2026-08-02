@@ -30,6 +30,7 @@ class VadConfig:
 @dataclass(frozen=True)
 class SenseVoiceConfig:
     model_dir: str = "models"
+    model_file: str | None = None
     device: str = "cpu"
     language: str = "zh"
     use_itn: bool = True
@@ -78,6 +79,8 @@ class ServiceConfig:
             raise ValueError("vad.threshold 必须在 0..1 之间")
         if not 0 <= self.vad.speech_pre_roll_seconds <= 1:
             raise ValueError("vad.speech_pre_roll_seconds 必须在 0..1 之间")
+        if self.sensevoice.device not in {"cpu", "cuda", "auto"}:
+            raise ValueError("sensevoice.device 必须是 cpu、cuda 或 auto")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
             raise ValueError("vad.max_speech_seconds 必须大于 min_speech_seconds")
         if self.dds.outbox_capacity < 1:
@@ -108,6 +111,10 @@ def load_config(path: str | Path) -> ServiceConfig:
     sense_raw = raw.pop("sensevoice", {})
     sense_raw["model_dir"] = str(
         _resolve_path(base, sense_raw.get("model_dir", SenseVoiceConfig.model_dir))
+    )
+    model_file = sense_raw.get("model_file")
+    sense_raw["model_file"] = (
+        str(_resolve_path(base, model_file)) if model_file else None
     )
     sensevoice = _merge_dataclass(SenseVoiceConfig, sense_raw)
     dds = _merge_dataclass(DdsConfig, raw.pop("dds", {}))

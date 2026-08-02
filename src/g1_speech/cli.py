@@ -111,7 +111,12 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
         except Exception as exc:  # noqa: BLE001
             checks.append((name, False, f"{type(exc).__name__}: {exc}"))
 
-    check("SenseVoice 模型文件", lambda: find_model_files(config.sensevoice.model_dir))
+    check(
+        "SenseVoice 模型文件",
+        lambda: find_model_files(
+            config.sensevoice.model_dir, config.sensevoice.model_file
+        ),
+    )
     check("Silero VAD 模型", lambda: _require_file(config.vad.model))
     check("sherpa_onnx", lambda: _module_path("sherpa_onnx"))
     if not skip_audio:
@@ -120,6 +125,7 @@ def _doctor(config_path: str, load_model: bool, skip_audio: bool = False) -> int
     if load_model:
         engine = SenseVoiceEngine(
             model_dir=config.sensevoice.model_dir,
+            model_file=config.sensevoice.model_file,
             device=config.sensevoice.device,
             sample_rate=config.audio.sample_rate,
             language=config.sensevoice.language,
@@ -169,6 +175,7 @@ def _transcribe(config_path: str, wav_path: str) -> int:
     utterance = Utterance(samples, sample_rate, now, now)
     engine = SenseVoiceEngine(
         model_dir=config.sensevoice.model_dir,
+        model_file=config.sensevoice.model_file,
         device=config.sensevoice.device,
         sample_rate=config.audio.sample_rate,
         language=config.sensevoice.language,

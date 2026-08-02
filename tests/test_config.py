@@ -13,7 +13,10 @@ def test_paths_are_relative_to_config_file(tmp_path):
         json.dumps(
             {
                 "vad": {"model": "assets/vad.onnx"},
-                "sensevoice": {"model_dir": "assets/sensevoice"},
+                "sensevoice": {
+                    "model_dir": "assets/sensevoice",
+                    "model_file": "assets/sensevoice/model.onnx",
+                },
             }
         ),
         encoding="utf-8",
@@ -23,6 +26,9 @@ def test_paths_are_relative_to_config_file(tmp_path):
 
     assert config.vad.model == str((tmp_path / "assets/vad.onnx").resolve())
     assert config.sensevoice.model_dir == str((tmp_path / "assets/sensevoice").resolve())
+    assert config.sensevoice.model_file == str(
+        (tmp_path / "assets/sensevoice/model.onnx").resolve()
+    )
 
 
 def test_unknown_config_key_is_rejected(tmp_path):

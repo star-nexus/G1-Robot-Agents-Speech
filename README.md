@@ -1,8 +1,9 @@
 # G1 Speech Service
 
-G1 上的离线快速 ASR 语音服务
+面向 Unitree G1 的离线 ASR 服务。默认使用 CPU INT8，Jetson 可选 CUDA FP32；识别结果
+统一发布到 DDS，Agent 不需要感知 SenseVoice、VAD、音频设备或推理后端。
 
-## 当前拓扑
+## 数据流
 
 ```text
 无线/USB
@@ -10,9 +11,9 @@ G1 上的离线快速 ASR 语音服务
   → Silero VAD
   → SenseVoice-Small
   → 发布 rt/g1/hri/speech/final
-  → DGX Agent 本机订阅
+  → Agent 订阅
 
-DGX Agent/TTS
+Agent/TTS
   → 发布 rt/g1/hri/playback/state
   → speech_service 本机订阅并暂停识别
 ```
@@ -55,13 +56,62 @@ bash scripts/verify-local.sh --config deploy-dgx.env --live
 .venv/bin/g1-speech listen --config config.json
 ```
 
-## 服务管理
+## Jetson ORIN CPU/GPU 服务
+
+CPU INT8 是默认部署，GPU 版本使用独立的 `.venv-gpu`、`config.gpu.json` 和
+`g1-speech-gpu.service`，不会覆盖 CPU 环境。首次部署 CPU：
 
 ```bash
-systemctl --user status g1-speech.service
-journalctl --user -u g1-speech.service -f
-systemctl --user restart g1-speech.service
+cp deploy.env.example deploy.env
+# 按现场网卡和麦克风修改 deploy.env
+bash scripts/setup-orin.sh
 ```
+
+安装可选 GPU 后端：
+
+```bash
+bash scripts/setup-orin-gpu.sh
+```
+
+CPU 和 GPU 都作为 systemd 后台服务运行。使用统一命令选择后端：
+
+```bash
+sudo g1-speech-service cpu
+sudo g1-speech-service gpu
+
+g1-speech-service status
+g1-speech-service logs
+sudo g1-speech-service restart
+sudo g1-speech-service stop
+```
+
+选择器会停止并禁用另一后端，只保留一个服务读取麦克风和发布 DDS；所选后端会设为
+开机启动。两种服务发布相同 Topic，Agent 接入代码不需要变化。
+
+GPU 脚本固定编译 sherpa-onnx 1.13.4、CUDA Execution Provider 和 Jetson aarch64
+ONNX Runtime 1.18.1。若 CUDA wheel 不可用，服务会报错退出，不会静默回退 CPU。
+
+### 性能测试
+
+Jetson ORIN NX 上使用同一段 5.592 秒中文音频，预热 3 次、运行 30 次：
+
+| 后端 | 模型 | 平均耗时 | 中位数 | P95 | RTF |
+|---|---|---:|---:|---:|---:|
+| CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
+| GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
+
+复现命令：
+
+```bash
+.venv/bin/python acceptance/benchmark_engine.py \
+  --config config.json --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
+
+.venv-gpu/bin/python acceptance/benchmark_engine.py \
+  --config config.gpu.json --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
+```
+
+以上只测试速度，不代表准确率结论。GPU 使用 FP32 模型，可避免 INT8 量化造成的潜在
+精度损失；准确率应使用业务语料单独评测。
 
 ## Agent 接入
 

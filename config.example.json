@@ -19,6 +19,7 @@
   },
   "sensevoice": {
     "model_dir": "models",
+    "model_file": null,
     "device": "cpu",
     "language": "zh",
     "use_itn": true,
