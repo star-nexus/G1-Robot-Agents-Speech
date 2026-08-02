@@ -1,15 +1,10 @@
 # G1 Speech Service
 
-> 把任意麦克风变成机器人 Agent 可直接订阅的离线语音输入。
+面向 Unitree G1 与机器人 Agent 的离线语音识别服务，将麦克风语音识别为文本并发布到 DDS。
 
-G1 Speech Service 持续完成 **麦克风采集 → VAD 断句 → SenseVoice 识别 → DDS 发布**。
-Agent 只需要订阅一个 Topic，不需要了解模型、音频驱动、线程或推理后端。
-
-- **接入简单**：几行 Python 即可获得最终识别文本
-- **通用解耦**：服务与 Agent 通过 DDS 通信，可独立部署、独立升级
-- **CPU/GPU 可选**：默认 CPU INT8；Jetson 可选 CUDA FP32，Agent 代码无需变化
-- **完全离线**：音频和文本不离开本地设备
-- **面向机器人**：内置播放门控、DDS 重试、事件去重和有界队列
+- **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
+- **完全离线**：语音识别在本地完成，音频和文本无需上传云端
+- **统一 DDS 输出**：识别结果发布到 `rt/g1/hri/speech/final`，切换后端无需修改 Agent
 
 ## 性能
 
@@ -40,8 +35,8 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-选择器会停止另一后端，并把当前选择设为开机启动。同一时间只有一个服务读取麦克风
-并向 `rt/g1/hri/speech/final` 发布结果。
+识别结果统一发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用相同的 DDS 消息，
+Agent 无需修改。
 
 ### Agent 订阅
 
@@ -198,3 +193,35 @@ sudo g1-speech-service stop
 
 - CPU：`g1-speech.service`
 - GPU：`g1-speech-gpu.service`
+
+## 致谢与引用
+
+本项目基于以下开源工作构建，感谢原作者和社区贡献者：
+
+- [SenseVoice](https://github.com/QwenAudio/SenseVoice)：多语言语音识别模型
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)：SenseVoice ONNX 推理与跨平台部署
+- [Silero VAD](https://github.com/snakers4/silero-vad)：语音活动检测
+
+如果本项目用于研究或论文，请引用 SenseVoice 所属的 FunAudioLLM 工作：
+
+```bibtex
+@misc{an2024funaudiollm,
+  title         = {FunAudioLLM: Voice Understanding and Generation Foundation Models
+                   for Natural Interaction Between Humans and LLMs},
+  author        = {Keyu An and Qian Chen and Chong Deng and Zhihao Du and Changfeng Gao
+                   and Zhifu Gao and Yue Gu and Ting He and Hangrui Hu and Kai Hu
+                   and Shengpeng Ji and Yabin Li and Zerui Li and Heng Lu and Haoneng Luo
+                   and Xiang Lv and Bin Ma and Ziyang Ma and Chongjia Ni and Changhe Song
+                   and Jiaqi Shi and Xian Shi and Hao Wang and Wen Wang and Yuxuan Wang
+                   and Zhangyu Xiao and Zhijie Yan and Yexin Yang and Bin Zhang
+                   and Qinglin Zhang and Shiliang Zhang and Nan Zhao and Siqi Zheng},
+  year          = {2024},
+  eprint        = {2407.04051},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.SD},
+  doi           = {10.48550/arXiv.2407.04051}
+}
+```
+
+论文：[arXiv:2407.04051](https://arxiv.org/abs/2407.04051)。使用模型、运行库和 VAD 时，
+还请遵循各上游项目的许可证与引用要求。
