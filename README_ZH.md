@@ -1,13 +1,29 @@
-# G1 Speech Service
+# G1 Speech Service — 机器人 Agent 离线语音识别
 
 [English](README.md) | 简体中文
 
-面向机器人和 Agent 的离线语音识别服务，将语音识别文本实时发布到 DDS。
+面向机器人 Agent 的离线语音识别服务，针对 NVIDIA Jetson 优化。
 
-- **高性能**: 识别速度0.01-0.2s,高准确度
+**已在[宇树 G1](https://www.unitree.com/operate/g1/) 和
+[银河通用 G1](https://www.galbot.com/g1) 上验证，并在 NVIDIA Jetson Orin NX 上完成性能测试。**
+同样适用于采用 Jetson 的其他机器人，以及 NVIDIA DGX Spark 等 Linux 边缘计算设备。
+
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
-- **统一 DDS 输出**：识别结果发布到 `rt/g1/hri/speech/final`, 方便任何程序订阅.
+- **机器人无关的 DDS 接口**：统一语音事件发布到 `rt/g1/hri/speech/final`
+- **高性能**：识别速度 0.01–0.2 秒，准确度高
+
+## 已验证平台
+
+| 平台 | 计算设备 | 可用后端 | 验证状态 |
+|---|---|---|---|
+| 宇树 G1 | Jetson Orin NX 测试配置 | CPU INT8 / CUDA FP32 | ✅ 已验证 |
+| 银河通用 G1 | Jetson Orin 测试配置 | CPU INT8 / CUDA FP32 | ✅ 已验证 |
+| Jetson Orin NX 边缘计算设备 | Jetson Linux | CPU INT8 / CUDA FP32 | ✅ 性能测试平台 |
+| NVIDIA DGX Spark | ARM64 Linux | CPU INT8 | ✅ 最初部署平台 |
+| 其他 Jetson/Linux 机器人 | Jetson 或 Linux 边缘计算设备 | CPU INT8；Jetson CUDA FP32 | 兼容目标 |
+
+验证状态仅代表本项目实际使用的配置；机器人厂商提供的硬件配置可能有所不同。
 
 ## 性能
 

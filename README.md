@@ -1,13 +1,29 @@
-# G1 Speech Service
+# G1 Speech Service — Offline ASR for Robot Agents
 
 English | [简体中文](README_ZH.md)
 
-An offline speech recognition service for robots and AI agents that streams recognized text over DDS.
+Offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
 
-- **High performance**: 0.01–0.2 s recognition latency with high accuracy
+**Tested on [Unitree G1](https://www.unitree.com/mobile/g1/) and
+[Galbot G1](https://www.galbot.com/g1). Benchmarked on NVIDIA Jetson Orin NX.**
+It also runs on other Jetson-powered robots and Linux edge computers such as NVIDIA DGX Spark.
+
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
-- **Unified DDS output**: Results are published to `rt/g1/hri/speech/final` for any application to subscribe to
+- **Robot-independent DDS interface**: Unified speech events are published to `rt/g1/hri/speech/final`
+- **High performance**: 0.01–0.2 s recognition latency with high accuracy
+
+## Verified Platforms
+
+| Platform | Compute | Available backends | Validation |
+|---|---|---|---|
+| Unitree G1 | Jetson Orin NX test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
+| Galbot G1 | Jetson Orin test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
+| Jetson Orin NX edge systems | Jetson Linux | CPU INT8 / CUDA FP32 | ✅ Benchmark platform |
+| NVIDIA DGX Spark | ARM64 Linux | CPU INT8 | ✅ Original deployment |
+| Other Jetson/Linux robots | Jetson or Linux edge computer | CPU INT8; CUDA FP32 on Jetson | Compatibility target |
+
+Validation refers to configurations tested by this project; vendor hardware configurations may vary.
 
 ## Performance
 
