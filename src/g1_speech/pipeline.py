@@ -65,12 +65,16 @@ class SpeechPipeline:
         self._threads: list[threading.Thread] = []
         self._started = False
 
+    def prepare(self) -> None:
+        """Load heavyweight inference resources without starting capture."""
+        self._engine.load()
+
     def start(self) -> None:
         if self._started:
             return
         self._sink.start()
         try:
-            self._engine.load()
+            self.prepare()
             self._source.start()
         except Exception:
             self._source.close()
@@ -96,6 +100,7 @@ class SpeechPipeline:
             if thread.is_alive():
                 logger.warning("Thread %s did not stop within %.1fs", thread.name, join_timeout)
         self._threads.clear()
+        self._segmenter.reset()
         self._sink.close()
         self._started = False
         logger.info("Speech pipeline stopped")
@@ -209,4 +214,4 @@ class SpeechPipeline:
             if self._sink.publish(event):
                 self._increment("publish_enqueued")
             else:
-                logger.error("DDS outbox is full; dropping event_id=%s", event.event_id)
+                logger.error("Transport rejected SpeechEvent: event_id=%s", event.event_id)

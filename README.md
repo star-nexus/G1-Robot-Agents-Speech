@@ -12,7 +12,7 @@ It also runs on other Jetson-powered robots and Linux edge computers such as NVI
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
-- **Robot-independent DDS interface**: Unified speech events are published to `rt/g1/hri/speech/final`
+- **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
 - **High performance**: 0.01–0.2 s recognition latency with high accuracy
 
 ## Verified Platforms
@@ -40,7 +40,8 @@ Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample
 
 ### Start the Speech Service
 
-After deployment, select a backend to run as a background service:
+After deployment, select the inference backend and transport. Every mode is a
+managed background service and starts again automatically after reboot:
 
 ```bash
 # Low-resource, default option
@@ -49,11 +50,17 @@ sudo g1-speech-service cpu
 # Jetson CUDA acceleration
 sudo g1-speech-service gpu
 
+# ROS 2 transport (CPU or GPU)
+sudo g1-speech-service cpu ros2
+sudo g1-speech-service gpu ros2
+
 g1-speech-service status
 g1-speech-service logs
 ```
 
-Recognition results are published to `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same DDS messages, so no Agent-side changes are required.
+DDS is the default transport. Recognition results are published to
+`rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
+no Agent-side changes are required.
 
 ### Subscribe from an Agent
 
@@ -75,6 +82,42 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### ROS 2
+
+ROS 2 is optional and does not affect the default DDS deployment. Prepare it
+once, then select it exactly like DDS—without manually sourcing environments:
+
+```bash
+bash scripts/setup-ros2.sh
+sudo g1-speech-service gpu ros2  # or: cpu ros2
+g1-speech-service status
+```
+
+Recognition results are published to `/hri/speech/final`. In a ROS-sourced
+terminal, inspect them with:
+
+```bash
+ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
+```
+
+The native lifecycle node supports both one-command startup and external
+lifecycle orchestration:
+
+```bash
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=true
+
+# Or let an external lifecycle manager control it:
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=false
+ros2 lifecycle set /g1_speech configure
+ros2 lifecycle set /g1_speech activate
+```
+
+ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent` and subscribes to
+`g1_speech_msgs/msg/PlaybackState`, preserving the complete DDS event contract.
+See [ROS 2 setup and lifecycle details](ros2/README.md).
+
 ## How It Works
 
 ```text
@@ -82,8 +125,8 @@ Microphone
   → 16 kHz mono audio
   → Silero VAD
   → SenseVoice-Small
-  → rt/g1/hri/speech/final
-  → Robot / Agent / ROS bridge / application
+  → DDS or ROS 2 transport
+  → Robot / Agent / application
 
 TTS or playback
   → rt/g1/hri/playback/state
@@ -94,6 +137,8 @@ TTS or playback
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | Final speech recognition events |
 | `rt/g1/hri/playback/state` | Agent → Service | Pause recognition during playback so the robot does not hear itself |
+| `/hri/speech/final` | Service → ROS 2 Agent | Final structured `SpeechEvent` |
+| `/hri/playback/state` | ROS 2 Agent → Service | Structured playback gate state |
 
 Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audio duration, inference latency, source, and timestamp. The publisher retries after transient DDS failures, while subscribers deduplicate events by `event_id`.
 
@@ -148,6 +193,10 @@ Copy `deploy.env.example` and enter your own device settings. No fixed IP addres
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
 | `SENSEVOICE_THREADS` | Number of CPU inference threads |
+| `SPEECH_TRANSPORT` | `dds` (default) or `ros2` |
+| `ROS2_SETUP` | Optional ROS 2 `setup.bash`; normally discovered automatically |
+| `ROS2_WORKSPACE_SETUP` | Optional custom workspace overlay path |
+| `ROS2_DOMAIN_ID` | Optional ROS graph domain; setup preserves the current shell value |
 
 Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
 
@@ -205,6 +254,8 @@ g1-speech-service status
 g1-speech-service logs
 g1-speech-service logs cpu
 g1-speech-service logs gpu
+g1-speech-service logs cpu ros2
+g1-speech-service logs gpu ros2
 
 sudo g1-speech-service restart
 sudo g1-speech-service stop
@@ -212,8 +263,13 @@ sudo g1-speech-service stop
 
 Underlying systemd units:
 
-- CPU: `g1-speech.service`
-- GPU: `g1-speech-gpu.service`
+- CPU + DDS: `g1-speech.service`
+- GPU + DDS: `g1-speech-gpu.service`
+- CPU + ROS 2: `g1-speech-ros2.service`
+- GPU + ROS 2: `g1-speech-gpu-ros2.service`
+
+All four units conflict with each other, so only the selected mode can own the
+microphone. The selector stops the previous mode and enables the new one at boot.
 
 ## References
 

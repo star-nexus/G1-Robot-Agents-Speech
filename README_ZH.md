@@ -12,7 +12,7 @@
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
-- **机器人无关的 DDS 接口**：统一语音事件发布到 `rt/g1/hri/speech/final`
+- **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
 - **高性能**：识别速度 0.01–0.2 秒，准确度高
 
 ## 已验证平台
@@ -40,7 +40,8 @@ Jetson ORIN NX，同一段 5.592 秒中文音频，预热 3 次、运行 30 次�
 
 ### 运行语音服务
 
-部署完成后，选择一个后台后端：
+部署完成后，直接选择推理后端和传输方式。四种模式都是由 systemd 管理的后台服务，
+并可随系统自动启动：
 
 ```bash
 # 低资源、默认选择
@@ -49,12 +50,16 @@ sudo g1-speech-service cpu
 # Jetson CUDA 加速
 sudo g1-speech-service gpu
 
+# ROS 2 传输（CPU/GPU 均可）
+sudo g1-speech-service cpu ros2
+sudo g1-speech-service gpu ros2
+
 g1-speech-service status
 g1-speech-service logs
 ```
 
-识别结果统一发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用相同的 DDS 消息，
-Agent 无需修改。
+DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
+相同的消息，Agent 无需修改。
 
 ### Agent 订阅
 
@@ -77,6 +82,40 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### ROS 2
+
+ROS 2 是可选能力，不影响默认 DDS 部署。首次准备一次，之后就可以像 DDS 一样选择，
+无需用户手工 source 环境：
+
+```bash
+bash scripts/setup-ros2.sh
+sudo g1-speech-service gpu ros2  # 也可以使用 cpu ros2
+g1-speech-service status
+```
+
+识别结果发布到 `/hri/speech/final`。在已 source ROS 的终端中可以直接查看：
+
+```bash
+ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
+```
+
+原生生命周期节点既支持一条命令自动进入工作状态，也支持交给外部 Lifecycle Manager：
+
+```bash
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=true
+
+# 或由外部 Lifecycle Manager 控制：
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=false
+ros2 lifecycle set /g1_speech configure
+ros2 lifecycle set /g1_speech activate
+```
+
+ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent` 和
+`g1_speech_msgs/msg/PlaybackState`，完整保留 DDS 事件契约。安装与生命周期说明见
+[ROS 2 文档](ros2/README.md)。
+
 ## 工作方式
 
 ```text
@@ -84,8 +123,8 @@ Microphone
   → 16 kHz mono audio
   → Silero VAD
   → SenseVoice-Small
-  → rt/g1/hri/speech/final
-  → Robot / Agent / ROS bridge / application
+  → DDS or ROS 2 transport
+  → Robot / Agent / application
 
 TTS or playback
   → rt/g1/hri/playback/state
@@ -96,6 +135,8 @@ TTS or playback
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | 最终语音识别事件 |
 | `rt/g1/hri/playback/state` | Agent → Service | 播放期间暂停识别，避免机器人听到自己 |
+| `/hri/speech/final` | Service → ROS 2 Agent | 最终结构化 `SpeechEvent` |
+| `/hri/playback/state` | ROS 2 Agent → Service | 结构化播放门控状态 |
 
 `SpeechEvent` 包含稳定的 `event_id`、文本、语言、音频时长、推理耗时、来源和时间戳。
 发布端会在短暂 DDS 故障时重试，订阅端会按 `event_id` 去重。
@@ -152,6 +193,10 @@ GPU 部署会：
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
 | `SENSEVOICE_THREADS` | CPU 推理线程数 |
+| `SPEECH_TRANSPORT` | `dds`（默认）或 `ros2` |
+| `ROS2_SETUP` | 可选 ROS 2 `setup.bash`；通常可自动发现 |
+| `ROS2_WORKSPACE_SETUP` | 可选自定义工作空间 overlay 路径 |
+| `ROS2_DOMAIN_ID` | 可选 ROS Domain；安装时默认沿用当前终端的值 |
 
 运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
 按配置文件所在目录解析。
@@ -211,6 +256,8 @@ g1-speech-service status
 g1-speech-service logs
 g1-speech-service logs cpu
 g1-speech-service logs gpu
+g1-speech-service logs cpu ros2
+g1-speech-service logs gpu ros2
 
 sudo g1-speech-service restart
 sudo g1-speech-service stop
@@ -218,8 +265,13 @@ sudo g1-speech-service stop
 
 底层 systemd 单元：
 
-- CPU：`g1-speech.service`
-- GPU：`g1-speech-gpu.service`
+- CPU + DDS：`g1-speech.service`
+- GPU + DDS：`g1-speech-gpu.service`
+- CPU + ROS 2：`g1-speech-ros2.service`
+- GPU + ROS 2：`g1-speech-gpu-ros2.service`
+
+四个单元彼此互斥，因此只有用户选择的模式会占用麦克风。切换时会停止原模式，并把
+新模式设为开机启动。
 
 ## 引用
 

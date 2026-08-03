@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-CPU_UNIT="g1-speech.service"
-GPU_UNIT="g1-speech-gpu.service"
+CPU_DDS_UNIT="g1-speech.service"
+GPU_DDS_UNIT="g1-speech-gpu.service"
+CPU_ROS2_UNIT="g1-speech-ros2.service"
+GPU_ROS2_UNIT="g1-speech-gpu-ros2.service"
+ALL_UNITS=("$CPU_DDS_UNIT" "$GPU_DDS_UNIT" "$CPU_ROS2_UNIT" "$GPU_ROS2_UNIT")
 
 usage() {
     cat <<'EOF'
 Usage:
-  sudo g1-speech-service cpu       Start CPU INT8 and enable it at boot
-  sudo g1-speech-service gpu       Start GPU FP32 and enable it at boot
-  sudo g1-speech-service stop      Stop and disable both backends
-  sudo g1-speech-service restart   Restart the active backend
-  g1-speech-service status         Show the selected backend
-  g1-speech-service logs [cpu|gpu] Follow service logs
+  sudo g1-speech-service cpu [dds|ros2]   Select CPU INT8 (DDS by default)
+  sudo g1-speech-service gpu [dds|ros2]   Select GPU FP32 (DDS by default)
+  sudo g1-speech-service stop             Stop and disable speech recognition
+  sudo g1-speech-service restart          Restart the selected service
+  g1-speech-service status                Show all modes and current selection
+  g1-speech-service logs [cpu|gpu] [dds|ros2]
+                                             Follow selected or specified logs
+
+Examples:
+  sudo g1-speech-service gpu ros2
+  sudo g1-speech-service cpu dds
+  g1-speech-service logs
 EOF
 }
 
@@ -24,83 +33,112 @@ require_root() {
 }
 
 unit_state() {
-    systemctl is-active "$1" 2>/dev/null || true
+    local state
+    state="$(systemctl is-active "$1" 2>/dev/null || true)"
+    [[ -n "$state" ]] && printf '%s\n' "$state" || printf '%s\n' "not-installed"
+}
+
+resolve_unit() {
+    local backend="$1" transport="${2:-dds}"
+    case "$backend:$transport" in
+        cpu:dds) echo "$CPU_DDS_UNIT" ;;
+        gpu:dds) echo "$GPU_DDS_UNIT" ;;
+        cpu:ros2) echo "$CPU_ROS2_UNIT" ;;
+        gpu:ros2) echo "$GPU_ROS2_UNIT" ;;
+        *) echo "[FAIL] Expected backend cpu|gpu and transport dds|ros2." >&2; exit 2 ;;
+    esac
+}
+
+unit_label() {
+    case "$1" in
+        "$CPU_DDS_UNIT") echo "cpu + dds" ;;
+        "$GPU_DDS_UNIT") echo "gpu + dds" ;;
+        "$CPU_ROS2_UNIT") echo "cpu + ros2" ;;
+        "$GPU_ROS2_UNIT") echo "gpu + ros2" ;;
+        *) return 1 ;;
+    esac
+}
+
+active_unit() {
+    local unit found=""
+    for unit in "${ALL_UNITS[@]}"; do
+        if [[ "$(unit_state "$unit")" == "active" ]]; then
+            if [[ -n "$found" ]]; then
+                echo "[FAIL] Multiple speech services are active." >&2
+                return 1
+            fi
+            found="$unit"
+        fi
+    done
+    [[ -n "$found" ]] || return 1
+    printf '%s\n' "$found"
 }
 
 show_status() {
-    local cpu_state gpu_state
-    cpu_state="$(unit_state "$CPU_UNIT")"
-    gpu_state="$(unit_state "$GPU_UNIT")"
-    printf 'CPU INT8: %s\nGPU FP32: %s\n' "$cpu_state" "$gpu_state"
-    if [[ "$cpu_state" == "active" && "$gpu_state" == "active" ]]; then
-        echo "Selected: ERROR (both backends are active)"
-        return 1
-    elif [[ "$cpu_state" == "active" ]]; then
-        echo "Selected: cpu"
-    elif [[ "$gpu_state" == "active" ]]; then
-        echo "Selected: gpu"
+    local unit selected
+    printf '%-12s %s\n' "CPU + DDS:" "$(unit_state "$CPU_DDS_UNIT")"
+    printf '%-12s %s\n' "GPU + DDS:" "$(unit_state "$GPU_DDS_UNIT")"
+    printf '%-12s %s\n' "CPU + ROS 2:" "$(unit_state "$CPU_ROS2_UNIT")"
+    printf '%-12s %s\n' "GPU + ROS 2:" "$(unit_state "$GPU_ROS2_UNIT")"
+    if unit="$(active_unit 2>/dev/null)"; then
+        selected="$(unit_label "$unit")"
+        echo "Selected: $selected"
     else
         echo "Selected: stopped"
     fi
 }
 
-select_backend() {
-    local selected="$1" other="$2" label="$3"
+select_mode() {
+    local backend="$1" transport="${2:-dds}" selected unit
     require_root
-    systemctl disable --now "$other" >/dev/null 2>&1 || true
+    selected="$(resolve_unit "$backend" "$transport")"
+    systemctl cat "$selected" >/dev/null 2>&1 || {
+        echo "[FAIL] $backend + $transport is not installed." >&2
+        if [[ "$transport" == "ros2" ]]; then
+            echo "       Run: bash scripts/setup-ros2.sh" >&2
+        fi
+        exit 1
+    }
+    for unit in "${ALL_UNITS[@]}"; do
+        [[ "$unit" == "$selected" ]] || systemctl disable --now "$unit" >/dev/null 2>&1 || true
+    done
     systemctl enable --now "$selected"
     systemctl is-active --quiet "$selected"
-    echo "[PASS] Active backend: $label"
-}
-
-resolve_unit() {
-    case "$1" in
-        cpu) echo "$CPU_UNIT" ;;
-        gpu) echo "$GPU_UNIT" ;;
-        *) echo "[FAIL] Backend must be cpu or gpu." >&2; exit 2 ;;
-    esac
+    echo "[PASS] Active mode: $(unit_label "$selected")"
 }
 
 command="${1:-status}"
 case "$command" in
-    cpu)
-        select_backend "$CPU_UNIT" "$GPU_UNIT" "CPU INT8"
-        ;;
-    gpu)
-        select_backend "$GPU_UNIT" "$CPU_UNIT" "GPU FP32"
+    cpu|gpu)
+        select_mode "$command" "${2:-dds}"
         ;;
     stop)
         require_root
-        systemctl disable --now "$CPU_UNIT" "$GPU_UNIT" >/dev/null 2>&1 || true
-        echo "[PASS] Both speech backends are stopped and disabled."
+        systemctl disable --now "${ALL_UNITS[@]}" >/dev/null 2>&1 || true
+        echo "[PASS] Speech recognition is stopped and disabled."
         ;;
     restart)
         require_root
-        cpu_state="$(unit_state "$CPU_UNIT")"
-        gpu_state="$(unit_state "$GPU_UNIT")"
-        if [[ "$cpu_state" == "active" && "$gpu_state" != "active" ]]; then
-            systemctl restart "$CPU_UNIT"
-        elif [[ "$gpu_state" == "active" && "$cpu_state" != "active" ]]; then
-            systemctl restart "$GPU_UNIT"
+        if unit="$(active_unit)"; then
+            systemctl restart "$unit"
+            systemctl is-active --quiet "$unit"
+            echo "[PASS] Restarted: $(unit_label "$unit")"
         else
-            echo "[FAIL] Exactly one backend must be active." >&2
+            echo "[FAIL] Exactly one speech service must be active." >&2
             exit 1
         fi
-        show_status
         ;;
     status)
         show_status
         ;;
     logs)
-        backend="${2:-}"
-        if [[ -z "$backend" ]]; then
-            if [[ "$(unit_state "$GPU_UNIT")" == "active" ]]; then
-                backend="gpu"
-            else
-                backend="cpu"
-            fi
+        if [[ -n "${2:-}" ]]; then
+            unit="$(resolve_unit "$2" "${3:-dds}")"
+        elif ! unit="$(active_unit)"; then
+            echo "[FAIL] No speech service is active; specify cpu|gpu and optionally dds|ros2." >&2
+            exit 1
         fi
-        exec journalctl -u "$(resolve_unit "$backend")" -f
+        exec journalctl -u "$unit" -f
         ;;
     -h|--help|help)
         usage

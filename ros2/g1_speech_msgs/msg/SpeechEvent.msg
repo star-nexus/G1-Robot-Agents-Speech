@@ -1,0 +1,11 @@
+string event_id
+string session_id
+uint64 sequence
+uint64 created_unix_ns
+string source
+string text
+string language
+uint32 audio_duration_ms
+float32 inference_ms
+string engine
+bool is_final

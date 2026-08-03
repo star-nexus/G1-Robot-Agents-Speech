@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Protocol
+from typing import Any, Callable, Protocol
 
 import numpy as np
 
@@ -95,6 +95,20 @@ class EventSink(Protocol):
     def publish(self, event: SpeechEvent) -> bool: ...
 
     def close(self) -> None: ...
+
+
+class SpeechTransport(Protocol):
+    """Bidirectional speech transport used by the service composition root."""
+
+    sink: EventSink
+
+    def start(self) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def close(self) -> None: ...
+
+    def metrics(self) -> dict[str, Any]: ...
 
 
 SpeechCallback = Callable[[SpeechEvent], None]

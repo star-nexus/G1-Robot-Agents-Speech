@@ -54,6 +54,19 @@ class DdsConfig:
 
 
 @dataclass(frozen=True)
+class Ros2Config:
+    node_name: str = "g1_speech"
+    speech_topic: str = "hri/speech/final"
+    playback_topic: str = "hri/playback/state"
+    qos_depth: int = 10
+
+
+@dataclass(frozen=True)
+class TransportConfig:
+    backend: str = "dds"
+
+
+@dataclass(frozen=True)
 class PlaybackConfig:
     resume_delay_ms: int = 250
     max_active_seconds: float = 30.0
@@ -67,7 +80,9 @@ class ServiceConfig:
     audio: AudioConfig = field(default_factory=AudioConfig)
     vad: VadConfig = field(default_factory=VadConfig)
     sensevoice: SenseVoiceConfig = field(default_factory=SenseVoiceConfig)
+    transport: TransportConfig = field(default_factory=TransportConfig)
     dds: DdsConfig = field(default_factory=DdsConfig)
+    ros2: Ros2Config = field(default_factory=Ros2Config)
     playback: PlaybackConfig = field(default_factory=PlaybackConfig)
 
     def validate(self) -> None:
@@ -99,6 +114,14 @@ class ServiceConfig:
             raise ValueError("vad.buffer_seconds must be greater than zero")
         if self.dds.outbox_capacity < 1:
             raise ValueError("dds.outbox_capacity must be greater than zero")
+        if self.transport.backend not in {"dds", "ros2"}:
+            raise ValueError("transport.backend must be dds or ros2")
+        if not self.ros2.node_name:
+            raise ValueError("ros2.node_name must not be empty")
+        if not self.ros2.speech_topic or not self.ros2.playback_topic:
+            raise ValueError("ROS 2 topic names must not be empty")
+        if self.ros2.qos_depth < 1:
+            raise ValueError("ros2.qos_depth must be greater than zero")
 
 
 def default_config_dict() -> dict[str, Any]:
@@ -173,13 +196,17 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
         str(_resolve_path(base, model_file)) if model_file else None
     )
     sensevoice = _merge_dataclass(SenseVoiceConfig, sense_raw)
+    transport = _merge_dataclass(TransportConfig, raw.pop("transport", {}))
     dds = _merge_dataclass(DdsConfig, raw.pop("dds", {}))
+    ros2 = _merge_dataclass(Ros2Config, raw.pop("ros2", {}))
     playback = _merge_dataclass(PlaybackConfig, raw.pop("playback", {}))
     config = ServiceConfig(
         audio=audio,
         vad=vad,
         sensevoice=sensevoice,
+        transport=transport,
         dds=dds,
+        ros2=ros2,
         playback=playback,
         **raw,
     )
@@ -217,6 +244,11 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "SENSEVOICE_THREADS": ("sensevoice", "num_threads", int),
     "SENSEVOICE_LANGUAGE": ("sensevoice", "language", str),
     "SENSEVOICE_USE_ITN": ("sensevoice", "use_itn", _parse_bool),
+    "SPEECH_TRANSPORT": ("transport", "backend", str),
+    "ROS2_NODE_NAME": ("ros2", "node_name", str),
+    "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),
+    "ROS2_PLAYBACK_TOPIC": ("ros2", "playback_topic", str),
+    "ROS2_QOS_DEPTH": ("ros2", "qos_depth", int),
     "VAD_THRESHOLD": ("vad", "threshold", float),
     "VAD_PRE_ROLL_SECONDS": ("vad", "speech_pre_roll_seconds", float),
     "VAD_MIN_SILENCE_SECONDS": ("vad", "min_silence_seconds", float),

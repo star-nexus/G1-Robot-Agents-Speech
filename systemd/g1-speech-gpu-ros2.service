@@ -1,14 +1,14 @@
 [Unit]
-Description=Offline speech recognition for robot Agents (GPU FP32, DDS)
+Description=Offline speech recognition for robot Agents (GPU FP32, ROS 2)
 After=network-online.target sound.target
 Wants=network-online.target
-Conflicts=g1-speech.service g1-speech-ros2.service g1-speech-gpu-ros2.service
+Conflicts=g1-speech.service g1-speech-gpu.service g1-speech-ros2.service
 
 [Service]
 Type=simple
 User=@SERVICE_USER@
 WorkingDirectory=@PROJECT_ROOT@
-ExecStart=/usr/bin/bash @PROJECT_ROOT@/scripts/run-speech-service gpu dds
+ExecStart=/usr/bin/bash @PROJECT_ROOT@/scripts/run-speech-service gpu ros2
 Restart=on-failure
 RestartSec=2
 TimeoutStopSec=8
