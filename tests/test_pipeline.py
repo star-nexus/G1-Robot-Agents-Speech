@@ -154,3 +154,21 @@ def test_audio_reconnect_resets_vad_state():
     source.items.put(chunk())
     wait_for(lambda: segmenter.reset_count == 1)
     pipeline.close()
+
+
+def test_close_resets_vad_before_pipeline_reactivation():
+    segmenter = EveryChunkIsUtterance()
+    pipeline = SpeechPipeline(
+        source=FakeSource(),
+        segmenter=segmenter,
+        engine=FakeEngine(),
+        sink=CollectingSink(),
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+    )
+
+    pipeline.start()
+    pipeline.close()
+    pipeline.start()
+    pipeline.close()
+
+    assert segmenter.reset_count == 2

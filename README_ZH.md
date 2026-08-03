@@ -99,11 +99,15 @@ g1-speech-service status
 ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
 ```
 
-需要显式控制 configure/activate 状态的应用，仍可使用原生生命周期节点：
+原生生命周期节点既支持一条命令自动进入工作状态，也支持交给外部 Lifecycle Manager：
 
 ```bash
 ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
-  config_file:="$PWD/config.json"
+  config_file:="$PWD/config.json" autostart:=true
+
+# 或由外部 Lifecycle Manager 控制：
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=false
 ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```

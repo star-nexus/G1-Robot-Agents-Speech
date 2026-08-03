@@ -100,6 +100,7 @@ class SpeechPipeline:
             if thread.is_alive():
                 logger.warning("Thread %s did not stop within %.1fs", thread.name, join_timeout)
         self._threads.clear()
+        self._segmenter.reset()
         self._sink.close()
         self._started = False
         logger.info("Speech pipeline stopped")

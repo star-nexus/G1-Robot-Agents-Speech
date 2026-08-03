@@ -100,12 +100,16 @@ terminal, inspect them with:
 ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
 ```
 
-The native lifecycle node remains available for applications that need explicit
-configure/activate transitions:
+The native lifecycle node supports both one-command startup and external
+lifecycle orchestration:
 
 ```bash
 ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
-  config_file:="$PWD/config.json"
+  config_file:="$PWD/config.json" autostart:=true
+
+# Or let an external lifecycle manager control it:
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=false
 ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```

@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import signal
+import threading
+
 import rclpy
-from rclpy.executors import ExternalShutdownException
+from rcl_interfaces.msg import SetParametersResult
+from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.lifecycle import LifecycleNode, TransitionCallbackReturn
 
 from g1_speech.app import SpeechService
 from g1_speech.config import load_config
 from g1_speech.lifecycle import SpeechLifecycleController
+
+logger = logging.getLogger(__name__)
 
 
 class SpeechLifecycleNode(LifecycleNode):
@@ -16,6 +23,26 @@ class SpeechLifecycleNode(LifecycleNode):
         super().__init__("g1_speech")
         self.declare_parameter("config_file", "config.json")
         self._controller = SpeechLifecycleController(self._create_service)
+        self.add_on_set_parameters_callback(self._validate_parameter_update)
+
+    def _validate_parameter_update(self, parameters):
+        for parameter in parameters:
+            if parameter.name != "config_file":
+                continue
+            if self._controller.configured:
+                return SetParametersResult(
+                    successful=False,
+                    reason=(
+                        "config_file can only be changed while the lifecycle node "
+                        "is Unconfigured; run cleanup first"
+                    ),
+                )
+            if not isinstance(parameter.value, str) or not parameter.value.strip():
+                return SetParametersResult(
+                    successful=False,
+                    reason="config_file must be a non-empty path",
+                )
+        return SetParametersResult(successful=True)
 
     def _create_service(self, config):
         return SpeechService(
@@ -74,17 +101,37 @@ class SpeechLifecycleNode(LifecycleNode):
 
 
 def main(args=None) -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
     rclpy.init(args=args)
     node = SpeechLifecycleNode()
+    stopped = threading.Event()
+    executor = SingleThreadedExecutor()
+    executor.add_node(node)
+
+    def stop(*_args) -> None:
+        logger.info("Lifecycle node shutdown requested")
+        stopped.set()
+        executor.wake()
+
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
     try:
-        rclpy.spin(node)
+        while not stopped.is_set():
+            executor.spin_once(timeout_sec=0.2)
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
+        logger.info("Lifecycle node cleanup started")
         node._controller.cleanup()
+        executor.remove_node(node)
+        executor.shutdown()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
+        logger.info("Lifecycle node shutdown complete")
 
 
 if __name__ == "__main__":

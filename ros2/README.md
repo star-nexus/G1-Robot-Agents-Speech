@@ -59,14 +59,19 @@ ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
 ## Lifecycle node
 
 For applications that need explicit lifecycle transitions instead of the
-standalone background service:
+standalone background service, launch and activate it in one command:
 
 ```bash
-source /opt/ros/$ROS_DISTRO/setup.bash
-source ros2_ws/install/setup.bash
-
 ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
-  config_file:="$PWD/config.json"
+  config_file:="$PWD/config.json" autostart:=true
+```
+
+Set `autostart:=false` when an external lifecycle manager should control the
+node, then transition it explicitly:
+
+```bash
+ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
+  config_file:="$PWD/config.json" autostart:=false
 ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```
@@ -78,6 +83,11 @@ The lifecycle mapping is:
 - `deactivate`: stop capture and workers while retaining the loaded model.
 - `cleanup`: release transport and pipeline resources.
 
+`config_file` is a startup/configuration parameter. It can be changed while the
+node is Unconfigured, but changes are rejected while Inactive or Active. Run
+`cleanup`, change the path, and configure again. Resource parameters are not
+hot-switched; CPU/GPU selection remains an explicit deployment decision.
+
 ## Acceptance test
 
 ```bash
@@ -85,3 +95,22 @@ source /opt/ros/$ROS_DISTRO/setup.bash
 source ros2_ws/install/setup.bash
 PYTHONPATH="$PWD/src:$PYTHONPATH" python acceptance/ros2_roundtrip.py
 ```
+
+The complete lifecycle test uses the current Python environment to load either
+the CPU or GPU runtime. Stop the background speech service first so the test can
+own the microphone:
+
+```bash
+sudo g1-speech-service stop
+
+PYTHONPATH="$PWD/src:$PYTHONPATH" \
+  .venv/bin/python acceptance/ros2_lifecycle.py --config config.json
+
+# GPU variant
+PYTHONPATH="$PWD/src:$PYTHONPATH" \
+  .venv-gpu/bin/python acceptance/ros2_lifecycle.py --config config.gpu.json
+```
+
+This test performs configure, activate, deactivate, reactivate, and cleanup on
+the real ROS graph. It also verifies that SenseVoice is loaded once, the
+microphone restarts, and unsafe `config_file` changes are rejected.
