@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BACKEND="${1:-}"
+TRANSPORT="${2:-dds}"
+
+if [[ -f "$ROOT/deploy.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT/deploy.env"
+    set +a
+fi
+
+case "$BACKEND" in
+    cpu)
+        EXECUTABLE="$ROOT/.venv/bin/g1-speech"
+        CONFIG="$ROOT/config.json"
+        ;;
+    gpu)
+        EXECUTABLE="$ROOT/.venv-gpu/bin/g1-speech"
+        CONFIG="$ROOT/config.gpu.json"
+        ;;
+    *)
+        echo "[FAIL] Backend must be cpu or gpu." >&2
+        exit 2
+        ;;
+esac
+
+case "$TRANSPORT" in
+    dds) ;;
+    ros2)
+        if [[ -n "${ROS2_DOMAIN_ID:-}" ]]; then
+            export ROS_DOMAIN_ID="$ROS2_DOMAIN_ID"
+        fi
+        # shellcheck disable=SC1091
+        source "$ROOT/scripts/ros2-environment.sh"
+        source_ros2_base
+        source_ros2_overlay "$ROOT"
+        ;;
+    *)
+        echo "[FAIL] Transport must be dds or ros2." >&2
+        exit 2
+        ;;
+esac
+
+[[ -x "$EXECUTABLE" ]] || { echo "[FAIL] Runtime is missing: $EXECUTABLE" >&2; exit 1; }
+[[ -f "$CONFIG" ]] || { echo "[FAIL] Config is missing: $CONFIG" >&2; exit 1; }
+
+exec "$EXECUTABLE" serve --config "$CONFIG" --transport "$TRANSPORT"

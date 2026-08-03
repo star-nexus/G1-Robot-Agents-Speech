@@ -40,7 +40,8 @@ Jetson ORIN NX，同一段 5.592 秒中文音频，预热 3 次、运行 30 次�
 
 ### 运行语音服务
 
-部署完成后，选择一个后台后端：
+部署完成后，直接选择推理后端和传输方式。四种模式都是由 systemd 管理的后台服务，
+并可随系统自动启动：
 
 ```bash
 # 低资源、默认选择
@@ -48,6 +49,10 @@ sudo g1-speech-service cpu
 
 # Jetson CUDA 加速
 sudo g1-speech-service gpu
+
+# ROS 2 传输（CPU/GPU 均可）
+sudo g1-speech-service cpu ros2
+sudo g1-speech-service gpu ros2
 
 g1-speech-service status
 g1-speech-service logs
@@ -79,15 +84,22 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 
 ### ROS 2
 
-ROS 2 是可选能力，不影响默认 DDS 部署。在已 source ROS 2 环境并用 colcon 构建
-`ros2/` 下的包后，可以运行独立 ROS 2 传输：
+ROS 2 是可选能力，不影响默认 DDS 部署。首次准备一次，之后就可以像 DDS 一样选择，
+无需用户手工 source 环境：
 
 ```bash
-g1-speech serve --config config.json --transport ros2
-ros2 topic echo /hri/speech/final
+bash scripts/setup-ros2.sh
+sudo g1-speech-service gpu ros2  # 也可以使用 cpu ros2
+g1-speech-service status
 ```
 
-也可以运行原生生命周期节点：
+识别结果发布到 `/hri/speech/final`。在已 source ROS 的终端中可以直接查看：
+
+```bash
+ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
+```
+
+需要显式控制 configure/activate 状态的应用，仍可使用原生生命周期节点：
 
 ```bash
 ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
@@ -178,6 +190,9 @@ GPU 部署会：
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
 | `SENSEVOICE_THREADS` | CPU 推理线程数 |
 | `SPEECH_TRANSPORT` | `dds`（默认）或 `ros2` |
+| `ROS2_SETUP` | 可选 ROS 2 `setup.bash`；通常可自动发现 |
+| `ROS2_WORKSPACE_SETUP` | 可选自定义工作空间 overlay 路径 |
+| `ROS2_DOMAIN_ID` | 可选 ROS Domain；安装时默认沿用当前终端的值 |
 
 运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
 按配置文件所在目录解析。
@@ -237,6 +252,8 @@ g1-speech-service status
 g1-speech-service logs
 g1-speech-service logs cpu
 g1-speech-service logs gpu
+g1-speech-service logs cpu ros2
+g1-speech-service logs gpu ros2
 
 sudo g1-speech-service restart
 sudo g1-speech-service stop
@@ -244,8 +261,13 @@ sudo g1-speech-service stop
 
 底层 systemd 单元：
 
-- CPU：`g1-speech.service`
-- GPU：`g1-speech-gpu.service`
+- CPU + DDS：`g1-speech.service`
+- GPU + DDS：`g1-speech-gpu.service`
+- CPU + ROS 2：`g1-speech-ros2.service`
+- GPU + ROS 2：`g1-speech-gpu-ros2.service`
+
+四个单元彼此互斥，因此只有用户选择的模式会占用麦克风。切换时会停止原模式，并把
+新模式设为开机启动。
 
 ## 引用
 

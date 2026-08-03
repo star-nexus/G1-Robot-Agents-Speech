@@ -40,7 +40,8 @@ Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample
 
 ### Start the Speech Service
 
-After deployment, select a backend to run as a background service:
+After deployment, select the inference backend and transport. Every mode is a
+managed background service and starts again automatically after reboot:
 
 ```bash
 # Low-resource, default option
@@ -48,6 +49,10 @@ sudo g1-speech-service cpu
 
 # Jetson CUDA acceleration
 sudo g1-speech-service gpu
+
+# ROS 2 transport (CPU or GPU)
+sudo g1-speech-service cpu ros2
+sudo g1-speech-service gpu ros2
 
 g1-speech-service status
 g1-speech-service logs
@@ -79,16 +84,24 @@ You can also inspect recognition results without writing Agent code:
 
 ### ROS 2
 
-ROS 2 is optional and does not affect the default DDS deployment. After building
-the packages under `ros2/` in a sourced ROS 2 workspace, run either the
-standalone transport:
+ROS 2 is optional and does not affect the default DDS deployment. Prepare it
+once, then select it exactly like DDS—without manually sourcing environments:
 
 ```bash
-g1-speech serve --config config.json --transport ros2
-ros2 topic echo /hri/speech/final
+bash scripts/setup-ros2.sh
+sudo g1-speech-service gpu ros2  # or: cpu ros2
+g1-speech-service status
 ```
 
-or the managed lifecycle node:
+Recognition results are published to `/hri/speech/final`. In a ROS-sourced
+terminal, inspect them with:
+
+```bash
+ros2 topic echo /hri/speech/final g1_speech_msgs/msg/SpeechEvent
+```
+
+The native lifecycle node remains available for applications that need explicit
+configure/activate transitions:
 
 ```bash
 ros2 launch g1_speech_ros2 speech_lifecycle.launch.py \
@@ -177,6 +190,9 @@ Copy `deploy.env.example` and enter your own device settings. No fixed IP addres
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
 | `SENSEVOICE_THREADS` | Number of CPU inference threads |
 | `SPEECH_TRANSPORT` | `dds` (default) or `ros2` |
+| `ROS2_SETUP` | Optional ROS 2 `setup.bash`; normally discovered automatically |
+| `ROS2_WORKSPACE_SETUP` | Optional custom workspace overlay path |
+| `ROS2_DOMAIN_ID` | Optional ROS graph domain; setup preserves the current shell value |
 
 Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
 
@@ -234,6 +250,8 @@ g1-speech-service status
 g1-speech-service logs
 g1-speech-service logs cpu
 g1-speech-service logs gpu
+g1-speech-service logs cpu ros2
+g1-speech-service logs gpu ros2
 
 sudo g1-speech-service restart
 sudo g1-speech-service stop
@@ -241,8 +259,13 @@ sudo g1-speech-service stop
 
 Underlying systemd units:
 
-- CPU: `g1-speech.service`
-- GPU: `g1-speech-gpu.service`
+- CPU + DDS: `g1-speech.service`
+- GPU + DDS: `g1-speech-gpu.service`
+- CPU + ROS 2: `g1-speech-ros2.service`
+- GPU + ROS 2: `g1-speech-gpu-ros2.service`
+
+All four units conflict with each other, so only the selected mode can own the
+microphone. The selector stops the previous mode and enables the new one at boot.
 
 ## References
 
