@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TRANSPORT=""
+EXPECT_TRANSPORT=0
+
+active_ros2_unit() {
+    local unit
+    for unit in g1-speech-ros2.service g1-speech-gpu-ros2.service; do
+        if systemctl is-active --quiet "$unit"; then
+            printf '%s\n' "$unit"
+            return 0
+        fi
+    done
+    return 1
+}
+
+for argument in "$@"; do
+    if [[ "$EXPECT_TRANSPORT" -eq 1 ]]; then
+        TRANSPORT="$argument"
+        EXPECT_TRANSPORT=0
+        continue
+    fi
+    case "$argument" in
+        --transport) EXPECT_TRANSPORT=1 ;;
+        --transport=*) TRANSPORT="${argument#--transport=}" ;;
+    esac
+done
+
+if [[ -z "$TRANSPORT" ]]; then
+    if ACTIVE_ROS2_UNIT="$(active_ros2_unit)"; then
+        TRANSPORT="ros2"
+    else
+        TRANSPORT="dds"
+    fi
+    set -- --transport "$TRANSPORT" "$@"
+fi
+
+if [[ -f "$ROOT/deploy.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT/deploy.env"
+    set +a
+fi
+
+if [[ "$TRANSPORT" == "ros2" ]]; then
+    if [[ -n "${ROS2_DOMAIN_ID:-}" ]]; then
+        export ROS_DOMAIN_ID="$ROS2_DOMAIN_ID"
+    elif [[ -z "${ROS_DOMAIN_ID:-}" ]]; then
+        ACTIVE_ROS2_UNIT="${ACTIVE_ROS2_UNIT:-$(active_ros2_unit || true)}"
+        if [[ -n "$ACTIVE_ROS2_UNIT" ]]; then
+            SERVICE_ENVIRONMENT="$(
+                systemctl show "$ACTIVE_ROS2_UNIT" --property=Environment --value
+            )"
+            for assignment in $SERVICE_ENVIRONMENT; do
+                case "$assignment" in
+                    ROS_DOMAIN_ID=*)
+                        export ROS_DOMAIN_ID="${assignment#ROS_DOMAIN_ID=}"
+                        break
+                        ;;
+                esac
+            done
+        fi
+    fi
+    # shellcheck disable=SC1091
+    source "$ROOT/scripts/ros2-environment.sh"
+    source_ros2_base
+    source_ros2_overlay "$ROOT"
+elif [[ "$TRANSPORT" != "dds" ]]; then
+    echo "[FAIL] Transport must be dds or ros2." >&2
+    exit 2
+fi
+
+[[ -x "$ROOT/.venv/bin/python" ]] || {
+    echo "[FAIL] CPU runtime is missing: $ROOT/.venv/bin/python" >&2
+    exit 1
+}
+
+exec "$ROOT/.venv/bin/python" "$ROOT/examples/qwen_voice_chat.py" "$@"

@@ -102,6 +102,23 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### Local Qwen Voice Chat
+
+Use speech recognition as input to a local Qwen3 model served by Ollama. The
+demo streams text replies in the terminal and keeps a bounded conversation
+history; it does not use TTS.
+
+```bash
+# One-time import of a local GGUF model
+bash scripts/import-ollama-gguf.sh /path/to/Qwen3-8B-Q5_K_M.gguf qwen3-8b-q5
+
+# Follow the active DDS or ROS 2 speech service automatically
+scripts/run-qwen-voice-chat --model qwen3-8b-q5
+```
+
+The speech callback only enqueues events, so LLM inference never blocks the
+subscriber. Say “清空对话” to reset the current history.
+
 ### ROS 2
 
 ROS 2 is optional and does not affect the default DDS deployment. Prepare it

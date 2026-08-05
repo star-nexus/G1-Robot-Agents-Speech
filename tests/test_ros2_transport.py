@@ -6,7 +6,13 @@ import types
 from g1_speech.config import Ros2Config
 from g1_speech.contracts import SpeechEvent
 from g1_speech.gate import PlaybackGate
-from g1_speech.ros2 import Ros2EventSink, Ros2Transport, event_to_ros_message
+from g1_speech.ros2 import (
+    Ros2EventSink,
+    Ros2SpeechSubscriber,
+    Ros2Transport,
+    event_to_ros_message,
+    ros_message_to_event,
+)
 
 
 class Message:
@@ -90,6 +96,28 @@ def test_event_to_ros_message_preserves_complete_contract():
         "engine": "sensevoice",
         "is_final": True,
     }
+
+
+def test_ros_message_to_event_preserves_complete_contract():
+    message = event_to_ros_message(event(), Message)
+    assert ros_message_to_event(message) == event()
+
+
+def test_agent_side_ros2_subscriber_delivers_transport_neutral_event(monkeypatch):
+    install_fake_ros_modules(monkeypatch)
+    node = Node()
+    received = []
+    subscriber = Ros2SpeechSubscriber(
+        received.append,
+        Ros2Config(speech_topic="/playback", qos_depth=7),
+        node=node,
+    )
+
+    node.subscription_callback(event_to_ros_message(event(), Message))
+
+    assert received == [event()]
+    subscriber.close()
+    assert "subscription" in node.destroyed
 
 
 def test_ros2_event_sink_reports_publish_success_and_errors():

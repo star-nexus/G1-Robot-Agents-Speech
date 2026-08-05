@@ -57,3 +57,10 @@ def test_ros2_systemd_installation_preserves_the_selected_domain():
     runner = (ROOT / "scripts" / "run-speech-service").read_text()
     assert "Environment=ROS_DOMAIN_ID=$domain_id" in installer
     assert 'export ROS_DOMAIN_ID="$ROS2_DOMAIN_ID"' in runner
+
+
+def test_voice_chat_runner_inherits_active_ros2_service_domain():
+    runner = (ROOT / "scripts" / "run-qwen-voice-chat").read_text()
+    assert "active_ros2_unit" in runner
+    assert '--property=Environment --value' in runner
+    assert 'ROS_DOMAIN_ID="${assignment#ROS_DOMAIN_ID=}"' in runner

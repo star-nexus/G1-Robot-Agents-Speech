@@ -100,6 +100,22 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### 本地 Qwen 语音对话
+
+把语音识别结果直接交给 Ollama 中的本地 Qwen3，回答以流式文本显示在终端，保留有限
+对话历史，暂不使用 TTS。
+
+```bash
+# 首次导入本地 GGUF 模型
+bash scripts/import-ollama-gguf.sh /path/to/Qwen3-8B-Q5_K_M.gguf qwen3-8b-q5
+
+# 自动跟随当前启用的 DDS 或 ROS 2 语音服务
+scripts/run-qwen-voice-chat --model qwen3-8b-q5
+```
+
+语音回调只负责把事件放入队列，不会被 LLM 推理阻塞。说“清空对话”可以清除
+当前对话历史。
+
 ### ROS 2
 
 ROS 2 是可选能力，不影响默认 DDS 部署。首次准备一次，之后就可以像 DDS 一样选择，
