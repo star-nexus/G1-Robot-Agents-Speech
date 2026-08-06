@@ -102,15 +102,44 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 
 ### 本地 Qwen 语音对话
 
-把语音识别结果直接交给 Ollama 中的本地 Qwen3，回答以流式文本显示在终端，保留有限
-对话历史，暂不使用 TTS。
+把语音识别结果直接交给本地 Qwen3，回答以流式文本显示在终端，保留有限对话历史，
+暂不使用 TTS。默认使用 llama.cpp 的 OpenAI-compatible 服务：
+
+```bash
+# 如果 `llama serve` 已包含所需加速后端，可直接使用；Jetson 建议启动
+# 通过 GGML_CUDA=ON 编译的独立 llama-server。
+llama-server -m /path/to/Qwen3-8B-Q5_K_M.gguf --alias qwen3-8b-q5 \
+  --host 127.0.0.1 --port 8080 -c 4096 -ngl all -np 1 \
+  --flash-attn on --reasoning off --no-webui
+
+# 自动跟随当前启用的 DDS 或 ROS 2 语音服务
+scripts/run-qwen-voice-chat --model qwen3-8b-q5
+```
+
+如果 llama.cpp 中运行的是视觉语言模型，指定 V4L2 摄像头后，每条识别到的语音
+都会和摄像头最新画面一起交给模型：
+
+```bash
+scripts/run-qwen-voice-chat \
+  --model qwen3-vl-2b-q4 \
+  --camera /dev/video0 \
+  --camera-width 1280 \
+  --camera-height 720 \
+  --camera-fps 5
+```
+
+摄像头会持续采集，但每句话只发送一张新鲜 JPEG，不会在内存里堆积视频，也不会让
+ROS 2/DDS 回调线程搬运视频流。该功能需要 FFmpeg；可用
+`v4l2-ctl --list-devices` 查找采集设备。不传 `--camera` 时仍是纯文本对话。
+
+在 Jetson 上应确认服务启动日志显示 `CUDA0`；Vulkan 版本也能运行，但在已测
+Orin NX 上速度较慢。Ollama 仍作为可选后端保留：
 
 ```bash
 # 首次导入本地 GGUF 模型
 bash scripts/import-ollama-gguf.sh /path/to/Qwen3-8B-Q5_K_M.gguf qwen3-8b-q5
 
-# 自动跟随当前启用的 DDS 或 ROS 2 语音服务
-scripts/run-qwen-voice-chat --model qwen3-8b-q5
+scripts/run-qwen-voice-chat --provider ollama --model qwen3-8b-q5
 ```
 
 语音回调只负责把事件放入队列，不会被 LLM 推理阻塞。说“清空对话”可以清除

@@ -104,16 +104,48 @@ You can also inspect recognition results without writing Agent code:
 
 ### Local Qwen Voice Chat
 
-Use speech recognition as input to a local Qwen3 model served by Ollama. The
-demo streams text replies in the terminal and keeps a bounded conversation
-history; it does not use TTS.
+Use speech recognition as input to a local Qwen3 model. The demo streams text
+replies in the terminal and keeps a bounded conversation history; it does not
+use TTS. A llama.cpp OpenAI-compatible server is the default backend:
+
+```bash
+# Use `llama serve` if that installation has the desired accelerator backend,
+# or launch a standalone llama-server built with GGML_CUDA=ON on Jetson.
+llama-server -m /path/to/Qwen3-8B-Q5_K_M.gguf --alias qwen3-8b-q5 \
+  --host 127.0.0.1 --port 8080 -c 4096 -ngl all -np 1 \
+  --flash-attn on --reasoning off --no-webui
+
+# Follow the active DDS or ROS 2 speech service automatically
+scripts/run-qwen-voice-chat --model qwen3-8b-q5
+```
+
+For a vision-language model served by llama.cpp, attach a V4L2 camera and the
+latest frame will accompany every recognized utterance:
+
+```bash
+scripts/run-qwen-voice-chat \
+  --model qwen3-vl-2b-q4 \
+  --camera /dev/video0 \
+  --camera-width 1280 \
+  --camera-height 720 \
+  --camera-fps 5
+```
+
+The camera runs continuously, but only one fresh JPEG is sent per utterance;
+raw video is never queued in memory. This keeps the interaction current without
+making the ROS 2/DDS callback or inference queue carry a video stream. FFmpeg is
+required. Use `v4l2-ctl --list-devices` to find the capture device, and omit
+`--camera` for text-only conversation.
+
+On Jetson, confirm that the server startup log reports `CUDA0`; a Vulkan build
+works but is slower on the tested Orin NX. Ollama remains available as an
+alternative backend:
 
 ```bash
 # One-time import of a local GGUF model
 bash scripts/import-ollama-gguf.sh /path/to/Qwen3-8B-Q5_K_M.gguf qwen3-8b-q5
 
-# Follow the active DDS or ROS 2 speech service automatically
-scripts/run-qwen-voice-chat --model qwen3-8b-q5
+scripts/run-qwen-voice-chat --provider ollama --model qwen3-8b-q5
 ```
 
 The speech callback only enqueues events, so LLM inference never blocks the
