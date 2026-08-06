@@ -74,8 +74,10 @@ class SoundDeviceSource:
             self._reconnect_delay = self._reconnect_initial
             self._outage_active = False
             logger.info(
-                "Microphone started: device=%r sample_rate=%d block=%d capacity=%d",
+                "Microphone started: configured_device=%r portaudio_device=%r "
+                "sample_rate=%d block=%d capacity=%d",
                 self.device,
+                self._resolved_device_name(),
                 self.sample_rate,
                 self.block_samples,
                 self._queue.maxsize,
@@ -180,7 +182,27 @@ class SoundDeviceSource:
             self._reconnect_delay = self._reconnect_initial
             self._outage_active = False
             self.reconnections += 1
-            logger.info("Microphone reconnected: device=%r", self.device)
+            logger.info(
+                "Microphone reconnected: configured_device=%r portaudio_device=%r",
+                self.device,
+                self._resolved_device_name(),
+            )
+
+    def _resolved_device_name(self) -> str:
+        query_devices = getattr(self._sd, "query_devices", None)
+        if query_devices is None:
+            return str(self.device)
+        try:
+            device = query_devices(self.device, "input")
+        except Exception:  # noqa: BLE001
+            logger.debug("Unable to resolve microphone device name", exc_info=True)
+            return str(self.device)
+        if isinstance(device, dict):
+            return str(device.get("name", self.device))
+        try:
+            return str(device["name"])
+        except (KeyError, TypeError):
+            return str(self.device)
 
     def _unhealthy_reason(self, now: float) -> str | None:
         if self._stream is None:

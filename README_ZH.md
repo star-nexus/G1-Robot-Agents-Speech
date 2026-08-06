@@ -58,6 +58,24 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
+机器人有多个音频输入时，应当固定语音服务使用的麦克风。USB 摄像头经常也会枚举出
+麦克风，PulseAudio 可能在摄像头接入时自动切换默认输入。先从设备列表中找到具有
+辨识度的名称，再写入本机的 `deploy.env`：
+
+```bash
+.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+
+# deploy.env——仅为示例，请填写自己设备列表中出现的名称
+MICROPHONE_DEVICE="USB Microphone"
+
+sudo g1-speech-service restart
+g1-speech-service status
+```
+
+推荐使用稳定的名称，而不是重启或 USB 重新枚举后可能变化的数字序号。`status` 和
+`logs` 都会显示当前配置的麦克风；使用 `pulse` 或 PortAudio 默认输入时，还会显示
+当前 PulseAudio 输入源，并提示热插拔可能改变它。
+
 DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
 相同的消息，Agent 无需修改。
 

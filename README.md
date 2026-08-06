@@ -58,6 +58,26 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
+Pin the microphone on robots that have more than one audio input. USB cameras
+often expose a microphone, and PulseAudio may automatically switch its default
+input when the camera is connected. Choose a distinctive device-name substring
+from the device list and set it in the host-local `deploy.env`:
+
+```bash
+.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+
+# deploy.env — example only; use a name shown on your own machine
+MICROPHONE_DEVICE="USB Microphone"
+
+sudo g1-speech-service restart
+g1-speech-service status
+```
+
+Prefer a stable name over a numeric index, which may change after reboot or USB
+re-enumeration. `status` and `logs` show the configured microphone; when set to
+`pulse` or the PortAudio default, they also show the current PulseAudio source
+and warn that hot-plugging can change it.
+
 DDS is the default transport. Recognition results are published to
 `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
 no Agent-side changes are required.

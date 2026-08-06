@@ -34,6 +34,14 @@ def test_selector_exposes_transport_without_breaking_backend_defaults():
     assert "logs [cpu|gpu] [dds|ros2]" in selector
 
 
+def test_status_and_logs_report_the_effective_microphone():
+    selector = (ROOT / "scripts" / "g1-speech-service").read_text()
+    assert 'show_microphone "$unit"' in selector
+    assert "pactl get-default-source" in selector
+    assert "MICROPHONE_DEVICE in deploy.env" in selector
+    assert "(pinned)" in selector
+
+
 def test_ros2_runner_discovers_environment_instead_of_hardcoding_distribution():
     runner = (ROOT / "scripts" / "run-speech-service").read_text()
     environment = (ROOT / "scripts" / "ros2-environment.sh").read_text()

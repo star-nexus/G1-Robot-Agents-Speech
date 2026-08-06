@@ -74,6 +74,73 @@ active_unit() {
     printf '%s\n' "$found"
 }
 
+unit_working_directory() {
+    systemctl show "$1" --property=WorkingDirectory --value 2>/dev/null || true
+}
+
+configured_microphone() {
+    local unit="$1" pid environment_line device root config python
+    pid="$(systemctl show "$unit" --property=MainPID --value 2>/dev/null || true)"
+    if [[ "$pid" =~ ^[1-9][0-9]*$ && -r "/proc/$pid/environ" ]]; then
+        environment_line="$(
+            tr '\0' '\n' <"/proc/$pid/environ" \
+                | sed -n '/^MICROPHONE_DEVICE=/{p;q;}' || true
+        )"
+        if [[ "$environment_line" == MICROPHONE_DEVICE=* ]]; then
+            device="${environment_line#MICROPHONE_DEVICE=}"
+            [[ -n "$device" ]] && printf '%s\n' "$device" || printf '%s\n' "default"
+            return
+        fi
+    fi
+
+    root="$(unit_working_directory "$unit")"
+    [[ -n "$root" ]] || { printf '%s\n' "unknown"; return; }
+    case "$unit" in
+        "$GPU_DDS_UNIT"|"$GPU_ROS2_UNIT") config="$root/config.gpu.json" ;;
+        *) config="$root/config.json" ;;
+    esac
+    if [[ -x "$root/.venv/bin/python" ]]; then
+        python="$root/.venv/bin/python"
+    elif command -v python3 >/dev/null 2>&1; then
+        python="$(command -v python3)"
+    else
+        printf '%s\n' "unknown"
+        return
+    fi
+    "$python" - "$config" <<'PY' 2>/dev/null || printf '%s\n' "unknown"
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as stream:
+        device = json.load(stream).get("audio", {}).get("device")
+except (OSError, ValueError):
+    device = "unknown"
+print("default" if device is None or device == "" else device)
+PY
+}
+
+show_microphone() {
+    local unit="$1" device pulse_source
+    device="$(configured_microphone "$unit")"
+    case "$device" in
+        pulse|default)
+            echo "Microphone: $device (follows the system default input)"
+            if command -v pactl >/dev/null 2>&1; then
+                pulse_source="$(pactl get-default-source 2>/dev/null || true)"
+                [[ -n "$pulse_source" ]] && echo "Audio source: $pulse_source"
+            fi
+            echo "Warning: USB cameras may change the default input; pin MICROPHONE_DEVICE in deploy.env."
+            ;;
+        unknown)
+            echo "Microphone: unknown"
+            ;;
+        *)
+            echo "Microphone: $device (pinned)"
+            ;;
+    esac
+}
+
 show_status() {
     local unit selected
     printf '%-12s %s\n' "CPU + DDS:" "$(unit_state "$CPU_DDS_UNIT")"
@@ -83,6 +150,7 @@ show_status() {
     if unit="$(active_unit 2>/dev/null)"; then
         selected="$(unit_label "$unit")"
         echo "Selected: $selected"
+        show_microphone "$unit"
     else
         echo "Selected: stopped"
     fi
@@ -138,6 +206,7 @@ case "$command" in
             echo "[FAIL] No speech service is active; specify cpu|gpu and optionally dds|ros2." >&2
             exit 1
         fi
+        show_microphone "$unit"
         exec journalctl -u "$unit" -f
         ;;
     -h|--help|help)
