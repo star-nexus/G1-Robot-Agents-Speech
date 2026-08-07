@@ -64,3 +64,17 @@ def test_voice_chat_runner_inherits_active_ros2_service_domain():
     assert "active_ros2_unit" in runner
     assert '--property=Environment --value' in runner
     assert 'ROS_DOMAIN_ID="${assignment#ROS_DOMAIN_ID=}"' in runner
+
+
+def test_qwen_vl_server_runner_has_bounded_jetson_memory_defaults():
+    runner = (ROOT / "scripts" / "run-qwen-vl-server").read_text()
+    assert 'CONTEXT="${QWEN_VL_CONTEXT:-1536}"' in runner
+    assert 'BATCH="${QWEN_VL_BATCH:-512}"' in runner
+    assert 'UBATCH="${QWEN_VL_UBATCH:-512}"' in runner
+    assert 'KV_TYPE="${QWEN_VL_KV_TYPE:-q8_0}"' in runner
+    assert "--cache-ram 0" in runner
+    assert "--no-cache-prompt" in runner
+    assert "--no-cache-idle-slots" in runner
+    assert "--ctx-checkpoints 0" in runner
+    assert "-np 1" in runner
+    assert "/home/nvidia" not in runner

@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage:
+  scripts/run-qwen-vl-server MODEL.gguf MMPROJ.gguf
+
+Environment overrides:
+  LLAMA_SERVER_BIN       llama-server executable (default: search PATH)
+  QWEN_VL_MODEL_FILE     model path when positional path is omitted
+  QWEN_VL_MMPROJ_FILE    projector path when positional path is omitted
+  QWEN_VL_ALIAS          served model name (default: qwen3-vl-4b-q4)
+  QWEN_VL_HOST           listen address (default: 127.0.0.1)
+  QWEN_VL_PORT           listen port (default: 8080)
+  QWEN_VL_CONTEXT        context tokens (default: 1536)
+  QWEN_VL_BATCH          logical batch size (default: 512)
+  QWEN_VL_UBATCH         physical micro-batch size (default: 512)
+  QWEN_VL_IMAGE_TOKENS   fixed image token budget (default: 512)
+  QWEN_VL_KV_TYPE        K/V cache type (default: q8_0)
+  QWEN_VL_GPU_LAYERS     GPU layers (default: 99)
+
+The defaults target one robot Agent on a 16 GB Jetson. Prompt caching is
+disabled deliberately so memory cannot grow with the number of requests.
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    usage
+    exit 0
+fi
+
+MODEL_FILE="${1:-${QWEN_VL_MODEL_FILE:-}}"
+MMPROJ_FILE="${2:-${QWEN_VL_MMPROJ_FILE:-}}"
+if [[ -z "$MODEL_FILE" || -z "$MMPROJ_FILE" ]]; then
+    usage >&2
+    exit 2
+fi
+if [[ ! -f "$MODEL_FILE" ]]; then
+    echo "[FAIL] Model not found: $MODEL_FILE" >&2
+    exit 1
+fi
+if [[ ! -f "$MMPROJ_FILE" ]]; then
+    echo "[FAIL] Multimodal projector not found: $MMPROJ_FILE" >&2
+    exit 1
+fi
+
+SERVER_BIN="${LLAMA_SERVER_BIN:-$(command -v llama-server || true)}"
+if [[ -z "$SERVER_BIN" || ! -x "$SERVER_BIN" ]]; then
+    echo "[FAIL] llama-server not found; set LLAMA_SERVER_BIN." >&2
+    exit 1
+fi
+
+ALIAS="${QWEN_VL_ALIAS:-qwen3-vl-4b-q4}"
+HOST="${QWEN_VL_HOST:-127.0.0.1}"
+PORT="${QWEN_VL_PORT:-8080}"
+CONTEXT="${QWEN_VL_CONTEXT:-1536}"
+BATCH="${QWEN_VL_BATCH:-512}"
+UBATCH="${QWEN_VL_UBATCH:-512}"
+IMAGE_TOKENS="${QWEN_VL_IMAGE_TOKENS:-512}"
+KV_TYPE="${QWEN_VL_KV_TYPE:-q8_0}"
+GPU_LAYERS="${QWEN_VL_GPU_LAYERS:-99}"
+
+exec "$SERVER_BIN" \
+    -m "$MODEL_FILE" \
+    --mmproj "$MMPROJ_FILE" \
+    --alias "$ALIAS" \
+    --host "$HOST" \
+    --port "$PORT" \
+    -c "$CONTEXT" \
+    -n 128 \
+    -ngl "$GPU_LAYERS" \
+    -np 1 \
+    -b "$BATCH" \
+    -ub "$UBATCH" \
+    -ctk "$KV_TYPE" \
+    -ctv "$KV_TYPE" \
+    --image-min-tokens "$IMAGE_TOKENS" \
+    --image-max-tokens "$IMAGE_TOKENS" \
+    --cache-ram 0 \
+    --no-cache-prompt \
+    --no-cache-idle-slots \
+    --ctx-checkpoints 0 \
+    --flash-attn on \
+    --reasoning off \
+    --no-webui
