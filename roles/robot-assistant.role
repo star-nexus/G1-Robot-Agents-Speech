@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "robot-assistant",
+  "description": "General concise offline robot assistant",
+  "system_prompt": "你是运行在机器人本地的智能助手。优先使用自然、简洁的中文回答，通常控制在一到三句话。用户输入来自语音识别，可能含有同音字或少量错字；请结合上下文理解。严格遵守用户最新指定的语言和回答长度。不要重复最近回答中的固定句式。如果关键信息不确定，请简短确认，不要编造。只有收到摄像头画面时才能描述当前环境。不要展示思考过程。",
+  "conversation": {
+    "history_turns": 6,
+    "queue_size": 4,
+    "num_predict": 96
+  },
+  "sampling": {
+    "text": {
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "top_k": 40,
+      "presence_penalty": 1.0,
+      "frequency_penalty": 0.2,
+      "repeat_penalty": 1.05,
+      "repeat_last_n": 256
+    },
+    "vision": {
+      "temperature": 0.7,
+      "top_p": 0.8,
+      "top_k": 20,
+      "presence_penalty": 0.8,
+      "frequency_penalty": 0.1,
+      "repeat_penalty": 1.03,
+      "repeat_last_n": 256
+    }
+  }
+}

@@ -32,6 +32,15 @@ class FakeResponse:
         return iter(self._lines)
 
 
+class FakeJsonResponse(FakeResponse):
+    def __init__(self, payload):
+        super().__init__([])
+        self._payload = json.dumps(payload).encode()
+
+    def read(self):
+        return self._payload
+
+
 def test_conversation_keeps_only_configured_number_of_turns():
     conversation = MODULE.Conversation("system", history_turns=2)
     for index in range(3):
@@ -44,6 +53,15 @@ def test_conversation_keeps_only_configured_number_of_turns():
         {"role": "user", "content": "user-2"},
         {"role": "assistant", "content": "assistant-2"},
     ]
+
+
+def test_conversation_rejects_internal_see_marker():
+    conversation = MODULE.Conversation("system", history_turns=2)
+
+    with pytest.raises(ValueError, match="must never enter conversation history"):
+        conversation.commit("门关了吗？", "普通回答。[SEE]")
+
+    assert conversation.messages == [{"role": "system", "content": "system"}]
 
 
 def test_normalize_phrase_removes_asr_punctuation():
@@ -115,7 +133,7 @@ def test_llamacpp_sse_stream_accumulates_content_and_metrics(monkeypatch):
         model="qwen3",
         timeout=1.0,
         num_predict=32,
-        temperature=0.6,
+        temperature=None,
     )
     emitted = []
     result = client.chat([{"role": "user", "content": "你好"}], emitted.append)
@@ -127,8 +145,281 @@ def test_llamacpp_sse_stream_accumulates_content_and_metrics(monkeypatch):
     assert result.tokens_per_second == 8.5
 
 
+def test_llamacpp_see_probe_reuses_normal_text_answer(monkeypatch):
+    captured = {}
+    chunks = [
+        {"choices": [{"delta": {"content": "I am"}}]},
+        {"choices": [{"delta": {"content": " Qwen."}}]},
+        {
+            "choices": [],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 4},
+            "timings": {"predicted_per_second": 12.0},
+        },
+    ]
+    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
+    lines.append(b"data: [DONE]\n")
+
+    def fake_urlopen(request, **_kwargs):
+        captured["body"] = json.loads(request.data)
+        return FakeResponse(lines)
+
+    monkeypatch.setattr(MODULE, "urlopen", fake_urlopen)
+    client = MODULE.LlamaCppChatClient(
+        base_url="http://localhost:8080",
+        model="qwen3-vl",
+        timeout=1.0,
+        num_predict=32,
+        temperature=None,
+    )
+    emitted = []
+
+    probe = client.chat_or_request_vision(
+        [
+            {"role": "system", "content": "You are a robot."},
+            {"role": "user", "content": "Who are you?"},
+        ],
+        emitted.append,
+    )
+
+    assert not probe.requires_vision
+    assert probe.response is not None
+    assert probe.response.content == "I am Qwen."
+    assert emitted == ["I am", " Qwen."]
+    assert "[SEE]" in captured["body"]["messages"][0]["content"]
+    assert captured["body"]["temperature"] == 1.0
+    assert captured["body"]["top_p"] == 1.0
+    assert captured["body"]["top_k"] == 40
+    assert captured["body"]["repeat_penalty"] == 1.0
+    assert captured["body"]["presence_penalty"] == 2.0
+    assert captured["body"]["frequency_penalty"] == 0.0
+    assert captured["body"]["repeat_last_n"] == 64
+
+
+def test_llamacpp_see_probe_intercepts_split_marker(monkeypatch):
+    chunks = [
+        {"choices": [{"delta": {"content": " ["}}]},
+        {"choices": [{"delta": {"content": "SEE"}}]},
+        {"choices": [{"delta": {"content": "]\n"}}]},
+        {"choices": [{"delta": {"content": "should not be read"}}]},
+    ]
+    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
+    monkeypatch.setattr(
+        MODULE,
+        "urlopen",
+        lambda *_args, **_kwargs: FakeResponse(lines),
+    )
+    client = MODULE.LlamaCppChatClient(
+        base_url="http://localhost:8080",
+        model="qwen3-vl",
+        timeout=1.0,
+        num_predict=32,
+        temperature=0.6,
+    )
+    emitted = []
+
+    probe = client.chat_or_request_vision(
+        [{"role": "user", "content": "Is the door closed?"}],
+        emitted.append,
+    )
+
+    assert probe.requires_vision
+    assert probe.response is None
+    assert emitted == []
+
+
+def test_llamacpp_see_probe_discards_split_trailing_marker(monkeypatch):
+    chunks = [
+        {"choices": [{"delta": {"content": "雪宝来自冰雪奇缘。"}}]},
+        {"choices": [{"delta": {"content": "[S"}}]},
+        {"choices": [{"delta": {"content": "EE]"}}]},
+        {
+            "choices": [],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 12},
+            "timings": {"predicted_per_second": 12.0},
+        },
+    ]
+    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
+    lines.append(b"data: [DONE]\n")
+    monkeypatch.setattr(
+        MODULE,
+        "urlopen",
+        lambda *_args, **_kwargs: FakeResponse(lines),
+    )
+    client = MODULE.LlamaCppChatClient(
+        base_url="http://localhost:8080",
+        model="qwen3-vl",
+        timeout=1.0,
+        num_predict=32,
+        temperature=0.6,
+    )
+    emitted = []
+
+    probe = client.chat_or_request_vision(
+        [{"role": "user", "content": "雪宝是谁？"}],
+        emitted.append,
+    )
+
+    assert not probe.requires_vision
+    assert probe.response is not None
+    assert probe.response.content == "雪宝来自冰雪奇缘。"
+    assert emitted == ["雪宝来自冰雪奇缘。"]
+
+
+def test_llamacpp_final_answer_discards_split_see_marker(monkeypatch):
+    captured = {}
+    chunks = [
+        {"choices": [{"delta": {"content": "画面里有一个雪人"}}]},
+        {"choices": [{"delta": {"content": "[SE"}}]},
+        {"choices": [{"delta": {"content": "E]"}}]},
+        {
+            "choices": [],
+            "usage": {"prompt_tokens": 600, "completion_tokens": 12},
+            "timings": {"predicted_per_second": 12.0},
+        },
+    ]
+    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
+    lines.append(b"data: [DONE]\n")
+    def fake_urlopen(request, **_kwargs):
+        captured["body"] = json.loads(request.data)
+        return FakeResponse(lines)
+
+    monkeypatch.setattr(MODULE, "urlopen", fake_urlopen)
+    client = MODULE.LlamaCppChatClient(
+        base_url="http://localhost:8080",
+        model="qwen3-vl",
+        timeout=1.0,
+        num_predict=32,
+        temperature=None,
+    )
+    emitted = []
+
+    result = client.chat(
+        [{"role": "user", "content": "画面里有什么？"}],
+        emitted.append,
+        discard_see_markers=True,
+        use_vision_sampling=True,
+    )
+
+    assert result.content == "画面里有一个雪人"
+    assert emitted == ["画面里有一个雪人"]
+    assert captured["body"]["temperature"] == 0.7
+    assert captured["body"]["top_p"] == 0.8
+    assert captured["body"]["top_k"] == 20
+    assert captured["body"]["repeat_penalty"] == 1.0
+    assert captured["body"]["presence_penalty"] == 1.5
+    assert captured["body"]["frequency_penalty"] == 0.0
+    assert captured["body"]["repeat_last_n"] == 64
+
+
 def test_llamacpp_is_the_default_provider():
     assert MODULE.build_parser().parse_args([]).provider == "llama"
+
+
+def test_snowball_role_sets_prompt_conversation_and_sampling_defaults():
+    args = MODULE.build_parser().parse_args(["--role", "snowball"])
+    role = MODULE.load_role_profile(args.role)
+    MODULE.apply_role_defaults(args, role)
+    text, vision = MODULE.resolve_sampling_configs(args, role)
+
+    assert role.path == ROOT / "roles" / "snowball.role"
+    assert args.history_turns == 4
+    assert args.queue_size == 4
+    assert args.num_predict == 48
+    assert "《冰雪奇缘》中的雪宝" in args.system
+    assert text.repeat_penalty == 1.15
+    assert text.presence_penalty == 1.1
+    assert text.frequency_penalty == 1.2
+    assert text.repeat_last_n == 256
+    assert vision.temperature == 0.7
+    assert vision.repeat_penalty == 1.05
+
+
+def test_cli_sampling_and_conversation_options_override_role():
+    args = MODULE.build_parser().parse_args(
+        [
+            "--role",
+            "snowball",
+            "--history-turns",
+            "2",
+            "--num-predict",
+            "32",
+            "--repeat-penalty",
+            "1.1",
+            "--frequency-penalty",
+            "0.4",
+        ]
+    )
+    role = MODULE.load_role_profile(args.role)
+    MODULE.apply_role_defaults(args, role)
+    text, vision = MODULE.resolve_sampling_configs(args, role)
+
+    assert args.history_turns == 2
+    assert args.num_predict == 32
+    assert text.repeat_penalty == vision.repeat_penalty == 1.1
+    assert text.frequency_penalty == vision.frequency_penalty == 0.4
+
+
+def test_role_rejects_unknown_request_fields(tmp_path):
+    role_path = tmp_path / "unsafe.role"
+    role_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "name": "unsafe",
+                "sampling": {"text": {"messages": []}},
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="unknown role.sampling.text field"):
+        MODULE.load_role_profile(str(role_path))
+
+
+def test_list_roles_does_not_connect_to_model(capsys):
+    assert MODULE.main(["--list-roles"]) == 0
+    output = capsys.readouterr().out
+    assert "snowball" in output
+    assert "robot-assistant" in output
+
+
+def test_llamacpp_vision_classifier_uses_single_grammar_label(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, **_kwargs):
+        captured["body"] = json.loads(request.data)
+        return FakeJsonResponse(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "T"
+                        }
+                    }
+                ]
+            }
+        )
+
+    monkeypatch.setattr(MODULE, "urlopen", fake_urlopen)
+    client = MODULE.LlamaCppChatClient(
+        base_url="http://localhost:8080",
+        model="qwen3-vl",
+        timeout=1.0,
+        num_predict=32,
+        temperature=0.6,
+    )
+
+    route, reason = client.classify_vision_need(
+        "你叫什么名字？",
+        [{"role": "assistant", "content": "画面里有一件衣服。"}],
+        True,
+    )
+
+    assert (route, reason) == ("TEXT", "Qwen semantic route label T")
+    assert captured["body"]["stream"] is False
+    assert captured["body"]["temperature"] == 0
+    assert captured["body"]["max_tokens"] == 2
+    assert captured["body"]["grammar"] == 'root ::= "V" | "T" | "U"'
+    assert "只做分类，不回答用户" in captured["body"]["messages"][0]["content"]
 
 
 def test_mjpeg_parser_handles_split_and_consecutive_frames():
@@ -189,4 +480,18 @@ def test_camera_rejects_ollama_provider():
     )
 
     with pytest.raises(ValueError, match="requires --provider llama"):
+        MODULE.validate_args(args)
+
+
+def test_vision_strategy_defaults_to_see_and_keeps_legacy_auto_alias():
+    parser = MODULE.build_parser()
+    assert MODULE.resolve_vision_strategy(
+        parser.parse_args(["--camera", "/dev/video0"])
+    ) == "see"
+    assert MODULE.resolve_vision_strategy(
+        parser.parse_args(["--camera", "/dev/video0", "--vision-mode", "auto"])
+    ) == "qwen"
+    args = parser.parse_args(["--vision-strategy", "always"])
+
+    with pytest.raises(ValueError, match="always vision strategy requires --camera"):
         MODULE.validate_args(args)
