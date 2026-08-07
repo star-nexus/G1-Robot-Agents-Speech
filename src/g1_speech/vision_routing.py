@@ -51,15 +51,6 @@ ResponseT = TypeVar("ResponseT")
 
 
 @dataclass(frozen=True)
-class SeeProbeResult(Generic[ResponseT]):
-    """Result of a text generation that can request vision with ``[SEE]``."""
-
-    requires_vision: bool
-    decision_latency_ms: float
-    response: ResponseT | None = None
-
-
-@dataclass(frozen=True)
 class PreparedVisionTurn(Generic[ResponseT]):
     """A route decision, optionally with an already generated text answer."""
 
@@ -243,18 +234,18 @@ class RoutedVisionStrategy(Generic[ResponseT]):
         self._router.reset()
 
 
-SeeProbe = Callable[
-    [list[dict[str, Any]], Callable[[str], None]], SeeProbeResult[ResponseT]
-]
-
-
 class SeeVisionStrategy(Generic[ResponseT]):
-    """Let normal generation answer directly or emit ``[SEE]`` for a frame."""
+    """Use an independent classifier session to select ``[SEE]`` or text."""
 
     name = "see"
 
-    def __init__(self, probe: SeeProbe[ResponseT]) -> None:
-        self._probe = probe
+    def __init__(
+        self,
+        classifier: Classifier,
+        reset_classifier: Callable[[], None] | None = None,
+    ) -> None:
+        self._classifier = classifier
+        self._reset_classifier = reset_classifier
         self._last_used_vision = False
 
     @property
@@ -268,54 +259,36 @@ class SeeVisionStrategy(Generic[ResponseT]):
         text_request: list[dict[str, Any]],
         on_content: Callable[[str], None],
     ) -> PreparedVisionTurn[ResponseT]:
-        del recent_messages
+        del text_request, on_content
         started = time.monotonic()
-        trigger = match_visual_trigger(user_text)
-        if trigger is not None:
-            return PreparedVisionTurn(
-                VisionRouteDecision(
-                    requested_route=VISION,
-                    effective_route=VISION,
-                    source=trigger.source,
-                    reason=f"matched {trigger.text!r}",
-                    latency_ms=(time.monotonic() - started) * 1000,
-                    explicit_trigger=trigger.text,
-                )
-            )
         try:
-            probe = self._probe(text_request, on_content)
+            requested, reason = self._classifier(
+                user_text,
+                recent_messages,
+                self._last_used_vision,
+            )
+            requested = requested.strip().upper()
+            if requested not in {VISION, TEXT}:
+                raise ValueError(f"invalid [SEE] classifier route: {requested!r}")
         except Exception as exc:  # noqa: BLE001
             return PreparedVisionTurn(
                 VisionRouteDecision(
                     requested_route=UNCERTAIN,
                     effective_route=VISION,
-                    source="see_fallback",
-                    reason="[SEE] probe failed; fail-safe camera attachment",
+                    source="see_classifier_fallback",
+                    reason="[SEE] classifier failed; fail-safe camera attachment",
                     latency_ms=(time.monotonic() - started) * 1000,
                     classifier_error=f"{type(exc).__name__}: {exc}",
                 )
             )
-        if probe.requires_vision:
-            return PreparedVisionTurn(
-                VisionRouteDecision(
-                    requested_route=VISION,
-                    effective_route=VISION,
-                    source="see_marker",
-                    reason="Qwen emitted [SEE]",
-                    latency_ms=probe.decision_latency_ms,
-                )
-            )
-        if probe.response is None:
-            raise RuntimeError("[SEE] text path returned no response")
         return PreparedVisionTurn(
             VisionRouteDecision(
-                requested_route=TEXT,
-                effective_route=TEXT,
-                source="see_direct_answer",
-                reason="Qwen answered without [SEE]",
-                latency_ms=probe.decision_latency_ms,
-            ),
-            direct_response=probe.response,
+                requested_route=requested,
+                effective_route=requested,
+                source="see_classifier",
+                reason=reason,
+                latency_ms=(time.monotonic() - started) * 1000,
+            )
         )
 
     def observe(self, decision: VisionRouteDecision) -> None:
@@ -323,6 +296,8 @@ class SeeVisionStrategy(Generic[ResponseT]):
 
     def reset(self) -> None:
         self._last_used_vision = False
+        if self._reset_classifier is not None:
+            self._reset_classifier()
 
 
 def default_router_log_path() -> Path:

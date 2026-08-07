@@ -4,7 +4,6 @@ import json
 import stat
 
 from g1_speech.vision_routing import (
-    SeeProbeResult,
     SeeVisionStrategy,
     TEXT,
     UNCERTAIN,
@@ -91,45 +90,61 @@ def test_router_passes_recent_context_and_visual_state_to_classifier():
     assert received == [("挂衣架有吗？", history, True)]
 
 
-def test_see_strategy_reuses_direct_text_response():
-    response = object()
-    strategy = SeeVisionStrategy(
-        lambda _messages, _emit: SeeProbeResult(
-            requires_vision=False,
-            decision_latency_ms=12.0,
-            response=response,
-        )
-    )
+def test_see_strategy_uses_classifier_instead_of_main_generation():
+    received = []
+
+    def classify(text, messages, last_used_vision):
+        received.append((text, messages, last_used_vision))
+        return TEXT, "independent classifier emitted [TEXT]"
+
+    strategy = SeeVisionStrategy(classify)
+    emitted = []
+    main_history = [{"role": "assistant", "content": "main answer"}]
 
     prepared = strategy.prepare(
         "Who are you?",
-        [],
+        main_history,
         [{"role": "user", "content": "Who are you?"}],
-        lambda _text: None,
+        emitted.append,
     )
 
     assert prepared.decision.effective_route == TEXT
-    assert prepared.decision.source == "see_direct_answer"
-    assert prepared.direct_response is response
+    assert prepared.decision.source == "see_classifier"
+    assert prepared.direct_response is None
+    assert emitted == []
+    assert received == [("Who are you?", main_history, False)]
 
 
-def test_see_strategy_marker_and_failure_route_to_vision():
+def test_see_strategy_classifier_and_failure_route_to_vision():
     marker = SeeVisionStrategy(
-        lambda _messages, _emit: SeeProbeResult(
-            requires_vision=True,
-            decision_latency_ms=15.0,
-        )
+        lambda *_args: (VISION, "independent classifier emitted [SEE]")
     ).prepare("门关了吗？", [], [], lambda _text: None)
 
-    def fail(_messages, _emit):
+    def fail(*_args):
         raise RuntimeError("server unavailable")
 
     fallback = SeeVisionStrategy(fail).prepare("门关了吗？", [], [], lambda _text: None)
 
     assert marker.decision.attach_image
-    assert marker.decision.source == "see_marker"
+    assert marker.decision.source == "see_classifier"
     assert fallback.decision.attach_image
-    assert fallback.decision.source == "see_fallback"
+    assert fallback.decision.source == "see_classifier_fallback"
+
+
+def test_see_strategy_reset_clears_classifier_session():
+    reset_calls = []
+    strategy = SeeVisionStrategy(
+        lambda *_args: (VISION, "[SEE]"),
+        lambda: reset_calls.append(True),
+    )
+    strategy.observe(
+        strategy.prepare("看画面", [], [], lambda _text: None).decision
+    )
+
+    strategy.reset()
+
+    assert not strategy.last_used_vision
+    assert reset_calls == [True]
 
 
 def test_recorder_writes_private_jsonl(tmp_path):

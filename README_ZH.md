@@ -117,10 +117,10 @@ llama-server -m /path/to/Qwen3-8B-Q5_K_M.gguf --alias qwen3-8b-q5 \
 scripts/run-qwen-voice-chat --model qwen3-8b-q5
 ```
 
-如果 llama.cpp 中运行的是视觉语言模型，可指定 V4L2 摄像头。默认 `see` 策略让 Qwen
-在第一次正常生成中直接回答纯文本问题；需要观察当前环境时，Qwen 会输出内部标记
-`[SEE]`，程序拦截并隐藏标记，附加最新画面后再生成多模态回答。明确视觉请求会跳过
-探测，直接附图：
+如果 llama.cpp 中运行的是视觉语言模型，可指定 V4L2 摄像头。默认 `see` 策略会在
+主回答之前运行一个独立分类 session：它使用专用 system prompt，保留四轮路由历史，
+但不会读取或修改角色对话。分类器只输出 `[SEE]` 或 `[TEXT]`；只有 `[SEE]` 才附加
+当前画面，之后再由主对话 session 生成给用户的回答：
 
 ```bash
 # 适用于 16 GB Jetson 的 Qwen3-VL 内存安全配置。仅当 llama-server
@@ -171,14 +171,15 @@ scripts/run-qwen-voice-chat \
 
 | 策略 | 行为 |
 |---|---|
-| `see` | 复用第一次 Qwen 生成为回答；输出 `[SEE]` 时才附图 |
+| `see` | 主回答前运行独立的四轮 `[SEE]`/`[TEXT]` 分类 session |
 | `qwen` | 保留此前独立调用 Qwen 输出 `T`/`V`/`U` 后再回答的方案 |
 | `always` | 每句话都附图 |
 | `off` | 不启动也不使用摄像头 |
 
 通过 `--vision-strategy see|qwen|always|off` 选择。摄像头只在内存中保留最新 JPEG；
-纯文本路径不会做 Base64 或视觉编码。该功能需要 FFmpeg，可用
-`v4l2-ctl --list-devices` 查找设备。
+纯文本路径不会做 Base64 或视觉编码。可用 `--vision-router-history-turns` 调整独立
+分类 session 的历史长度，默认四轮。该功能需要 FFmpeg，可用 `v4l2-ctl --list-devices`
+查找设备。
 
 交互记录默认关闭。需要做受控策略对比时，可指定
 `--vision-log /path/to/results.jsonl`。权限为 `0600` 的 JSONL 会记录策略、路由与耗时、

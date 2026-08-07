@@ -145,23 +145,14 @@ def test_llamacpp_sse_stream_accumulates_content_and_metrics(monkeypatch):
     assert result.tokens_per_second == 8.5
 
 
-def test_llamacpp_see_probe_reuses_normal_text_answer(monkeypatch):
+def test_llamacpp_see_classifier_uses_dedicated_prompt_and_grammar(monkeypatch):
     captured = {}
-    chunks = [
-        {"choices": [{"delta": {"content": "I am"}}]},
-        {"choices": [{"delta": {"content": " Qwen."}}]},
-        {
-            "choices": [],
-            "usage": {"prompt_tokens": 20, "completion_tokens": 4},
-            "timings": {"predicted_per_second": 12.0},
-        },
-    ]
-    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
-    lines.append(b"data: [DONE]\n")
 
     def fake_urlopen(request, **_kwargs):
         captured["body"] = json.loads(request.data)
-        return FakeResponse(lines)
+        return FakeJsonResponse(
+            {"choices": [{"message": {"content": "[SEE]"}}]}
+        )
 
     monkeypatch.setattr(MODULE, "urlopen", fake_urlopen)
     client = MODULE.LlamaCppChatClient(
@@ -171,98 +162,57 @@ def test_llamacpp_see_probe_reuses_normal_text_answer(monkeypatch):
         num_predict=32,
         temperature=None,
     )
-    emitted = []
-
-    probe = client.chat_or_request_vision(
-        [
-            {"role": "system", "content": "You are a robot."},
-            {"role": "user", "content": "Who are you?"},
-        ],
-        emitted.append,
-    )
-
-    assert not probe.requires_vision
-    assert probe.response is not None
-    assert probe.response.content == "I am Qwen."
-    assert emitted == ["I am", " Qwen."]
-    assert "[SEE]" in captured["body"]["messages"][0]["content"]
-    assert captured["body"]["temperature"] == 1.0
-    assert captured["body"]["top_p"] == 1.0
-    assert captured["body"]["top_k"] == 40
-    assert captured["body"]["repeat_penalty"] == 1.0
-    assert captured["body"]["presence_penalty"] == 2.0
-    assert captured["body"]["frequency_penalty"] == 0.0
-    assert captured["body"]["repeat_last_n"] == 64
-
-
-def test_llamacpp_see_probe_intercepts_split_marker(monkeypatch):
-    chunks = [
-        {"choices": [{"delta": {"content": " ["}}]},
-        {"choices": [{"delta": {"content": "SEE"}}]},
-        {"choices": [{"delta": {"content": "]\n"}}]},
-        {"choices": [{"delta": {"content": "should not be read"}}]},
+    messages = [
+        {"role": "system", "content": MODULE.SEE_CLASSIFIER_SYSTEM_PROMPT},
+        {"role": "user", "content": '{"CURRENT": "Is the door closed?"}'},
     ]
-    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
-    monkeypatch.setattr(
-        MODULE,
-        "urlopen",
-        lambda *_args, **_kwargs: FakeResponse(lines),
-    )
-    client = MODULE.LlamaCppChatClient(
-        base_url="http://localhost:8080",
-        model="qwen3-vl",
-        timeout=1.0,
-        num_predict=32,
-        temperature=0.6,
-    )
-    emitted = []
 
-    probe = client.chat_or_request_vision(
-        [{"role": "user", "content": "Is the door closed?"}],
-        emitted.append,
-    )
+    route, reason = client.classify_see_marker(messages)
 
-    assert probe.requires_vision
-    assert probe.response is None
-    assert emitted == []
+    assert route == "VISION"
+    assert "[SEE]" in reason
+    assert captured["body"]["messages"] == messages
+    assert captured["body"]["stream"] is False
+    assert captured["body"]["max_tokens"] == 8
+    assert captured["body"]["temperature"] == 0
+    assert captured["body"]["grammar"] == 'root ::= "[SEE]" | "[TEXT]"'
 
 
-def test_llamacpp_see_probe_discards_split_trailing_marker(monkeypatch):
-    chunks = [
-        {"choices": [{"delta": {"content": "雪宝来自冰雪奇缘。"}}]},
-        {"choices": [{"delta": {"content": "[S"}}]},
-        {"choices": [{"delta": {"content": "EE]"}}]},
-        {
-            "choices": [],
-            "usage": {"prompt_tokens": 20, "completion_tokens": 12},
-            "timings": {"predicted_per_second": 12.0},
-        },
+def test_see_classifier_session_is_independent_and_keeps_four_turns():
+    requests = []
+
+    class FakeClient:
+        def classify_see_marker(self, messages):
+            requests.append(messages)
+            return ("VISION", "[SEE]") if len(requests) % 2 else ("TEXT", "[TEXT]")
+
+    session = MODULE.SeeClassifierSession(FakeClient(), history_turns=4)
+    main_history = [
+        {"role": "assistant", "content": "main persona answer must stay isolated"}
     ]
-    lines = [f"data: {json.dumps(chunk)}\n".encode() for chunk in chunks]
-    lines.append(b"data: [DONE]\n")
-    monkeypatch.setattr(
-        MODULE,
-        "urlopen",
-        lambda *_args, **_kwargs: FakeResponse(lines),
-    )
-    client = MODULE.LlamaCppChatClient(
-        base_url="http://localhost:8080",
-        model="qwen3-vl",
-        timeout=1.0,
-        num_predict=32,
-        temperature=0.6,
-    )
-    emitted = []
+    for index in range(6):
+        session.classify(f"prompt-{index}", main_history, index % 2 == 1)
 
-    probe = client.chat_or_request_vision(
-        [{"role": "user", "content": "雪宝是谁？"}],
-        emitted.append,
+    assert len(session.messages) == 1 + 2 * 4
+    assert len(requests[-1]) == 1 + 2 * 4 + 1
+    flattened = json.dumps(requests[-1], ensure_ascii=False)
+    assert "main persona answer" not in flattened
+    assert "prompt-0" not in flattened
+    assert "prompt-1" in flattened
+    assert requests[-1][0] == {
+        "role": "system",
+        "content": MODULE.SEE_CLASSIFIER_SYSTEM_PROMPT,
+    }
+    assert all(
+        message["content"] in {"[SEE]", "[TEXT]"}
+        for message in session.messages
+        if message["role"] == "assistant"
     )
 
-    assert not probe.requires_vision
-    assert probe.response is not None
-    assert probe.response.content == "雪宝来自冰雪奇缘。"
-    assert emitted == ["雪宝来自冰雪奇缘。"]
+    session.reset()
+    assert session.messages == [
+        {"role": "system", "content": MODULE.SEE_CLASSIFIER_SYSTEM_PROMPT}
+    ]
 
 
 def test_llamacpp_final_answer_discards_split_see_marker(monkeypatch):
@@ -485,9 +435,9 @@ def test_camera_rejects_ollama_provider():
 
 def test_vision_strategy_defaults_to_see_and_keeps_legacy_auto_alias():
     parser = MODULE.build_parser()
-    assert MODULE.resolve_vision_strategy(
-        parser.parse_args(["--camera", "/dev/video0"])
-    ) == "see"
+    default_args = parser.parse_args(["--camera", "/dev/video0"])
+    assert MODULE.resolve_vision_strategy(default_args) == "see"
+    assert default_args.vision_router_history_turns == 4
     assert MODULE.resolve_vision_strategy(
         parser.parse_args(["--camera", "/dev/video0", "--vision-mode", "auto"])
     ) == "qwen"

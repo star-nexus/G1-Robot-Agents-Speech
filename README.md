@@ -121,11 +121,11 @@ scripts/run-qwen-voice-chat --model qwen3-8b-q5
 ```
 
 For a vision-language model served by llama.cpp, attach a V4L2 camera. The
-default `see` strategy lets Qwen answer text-only questions in its first normal
-generation. When the current camera view is required, Qwen emits an internal
-`[SEE]` marker; the marker is hidden, the latest frame is attached, and the
-multimodal answer is generated. Explicit visual requests bypass the probe and
-attach a frame immediately:
+default `see` strategy runs an independent classifier session before the main
+answer. It has its own system prompt and keeps four routing turns, but never
+reads or modifies the role conversation. The classifier emits only `[SEE]` or
+`[TEXT]`; a frame is attached only for `[SEE]`, then the main conversation
+generates the user-facing answer:
 
 ```bash
 # 16 GB Jetson memory-safe Qwen3-VL server profile. Set LLAMA_SERVER_BIN
@@ -183,15 +183,16 @@ conversation, or transport code:
 
 | Strategy | Behavior |
 |---|---|
-| `see` | Reuse the first Qwen generation as the answer, or intercept `[SEE]` and attach a frame |
+| `see` | Use an independent four-turn `[SEE]`/`[TEXT]` classifier session before the main answer |
 | `qwen` | Run the earlier separate `T`/`V`/`U` Qwen classification request before answering |
 | `always` | Attach a frame to every utterance |
 | `off` | Never start or use the camera |
 
 Select one with `--vision-strategy see|qwen|always|off`. The camera keeps only
 its newest JPEG in memory; text-routed questions never Base64-encode or evaluate
-that frame. FFmpeg is required. Use `v4l2-ctl --list-devices` to find the capture
-device.
+that frame. Adjust the isolated classifier history with
+`--vision-router-history-turns`; the default is four turns. FFmpeg is required.
+Use `v4l2-ctl --list-devices` to find the capture device.
 
 Interaction recording is off by default. For controlled strategy comparisons,
 pass `--vision-log /path/to/results.jsonl`. The private `0600` JSONL records the
