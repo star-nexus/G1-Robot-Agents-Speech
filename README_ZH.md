@@ -110,27 +110,79 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 # 通过 GGML_CUDA=ON 编译的独立 llama-server。
 llama-server -m /path/to/Qwen3-8B-Q5_K_M.gguf --alias qwen3-8b-q5 \
   --host 127.0.0.1 --port 8080 -c 4096 -ngl all -np 1 \
+  --cache-ram 0 --no-cache-prompt --no-cache-idle-slots \
   --flash-attn on --reasoning off --no-webui
 
 # 自动跟随当前启用的 DDS 或 ROS 2 语音服务
 scripts/run-qwen-voice-chat --model qwen3-8b-q5
 ```
 
-如果 llama.cpp 中运行的是视觉语言模型，指定 V4L2 摄像头后，每条识别到的语音
-都会和摄像头最新画面一起交给模型：
+如果 llama.cpp 中运行的是视觉语言模型，可指定 V4L2 摄像头。默认 `see` 策略让 Qwen
+在第一次正常生成中直接回答纯文本问题；需要观察当前环境时，Qwen 会输出内部标记
+`[SEE]`，程序拦截并隐藏标记，附加最新画面后再生成多模态回答。明确视觉请求会跳过
+探测，直接附图：
 
 ```bash
+# 适用于 16 GB Jetson 的 Qwen3-VL 内存安全配置。仅当 llama-server
+# 不在 PATH 中时才需要设置 LLAMA_SERVER_BIN。
+LLAMA_SERVER_BIN=/path/to/llama-server \
+scripts/run-qwen-vl-server \
+  /path/to/Qwen3VL-4B-Instruct-Q4_K_M.gguf \
+  /path/to/mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf
+
 scripts/run-qwen-voice-chat \
-  --model qwen3-vl-2b-q4 \
+  --model qwen3-vl-4b-q4 \
+  --role robot-assistant \
   --camera /dev/video0 \
   --camera-width 1280 \
   --camera-height 720 \
-  --camera-fps 5
+  --camera-fps 5 \
+  --vision-strategy see
 ```
 
-摄像头会持续采集，但每句话只发送一张新鲜 JPEG，不会在内存里堆积视频，也不会让
-ROS 2/DDS 回调线程搬运视频流。该功能需要 FFmpeg；可用
-`v4l2-ctl --list-devices` 查找采集设备。不传 `--camera` 时仍是纯文本对话。
+对 Qwen3-VL，客户端会自动使用模型卡推荐的采样配置：纯文本请求使用
+`temperature=1.0`、`top_p=1.0`、`top_k=40`、`presence_penalty=2.0`；
+带图请求使用 `temperature=0.7`、`top_p=0.8`、`top_k=20`、
+`presence_penalty=1.5`。两者的 `repeat_penalty` 均为 `1.0`。
+`--temperature` 仅用于明确覆盖默认温度。
+服务启动脚本还会限制为单 slot、使用 1536 token 上下文和 Q8 KV cache，并关闭
+llama.cpp 默认上限 8 GiB 的全局 prompt cache。这组有界默认值用于保证 16 GB
+统一内存 Jetson 的长期运行稳定性；可通过 `scripts/run-qwen-vl-server --help`
+查看环境变量覆盖项。
+
+角色配置可以在不重新编译、也不重启模型服务的情况下切换应用场景。带版本号的 JSON
+`.role` 文件集中保存 system prompt、有界对话设置以及独立的文本/视觉采样参数：
+
+```bash
+scripts/run-qwen-voice-chat --list-roles
+
+scripts/run-qwen-voice-chat \
+  --model qwen3-vl-4b-q4 \
+  --role snowball \
+  --camera /dev/video0 \
+  --vision-strategy see
+```
+
+也可以通过 `--role /path/to/custom.role` 加载外部角色。显式命令行参数优先于角色
+配置，角色配置优先于内置默认值。角色文件只能设置经过校验的 prompt、对话和采样
+字段，不能注入 `model`、`messages`、`stream` 等协议核心字段。
+
+视觉策略已经与 ASR、摄像头、消息队列、对话历史和通信传输解耦，可以直接切换：
+
+| 策略 | 行为 |
+|---|---|
+| `see` | 复用第一次 Qwen 生成为回答；输出 `[SEE]` 时才附图 |
+| `qwen` | 保留此前独立调用 Qwen 输出 `T`/`V`/`U` 后再回答的方案 |
+| `always` | 每句话都附图 |
+| `off` | 不启动也不使用摄像头 |
+
+通过 `--vision-strategy see|qwen|always|off` 选择。摄像头只在内存中保留最新 JPEG；
+纯文本路径不会做 Base64 或视觉编码。该功能需要 FFmpeg，可用
+`v4l2-ctl --list-devices` 查找设备。
+
+交互记录默认关闭。需要做受控策略对比时，可指定
+`--vision-log /path/to/results.jsonl`。权限为 `0600` 的 JSONL 会记录策略、路由与耗时、
+是否附图、端到端回答指标和纠错信号，但不会保存图片。
 
 在 Jetson 上应确认服务启动日志显示 `CUDA0`；Vulkan 版本也能运行，但在已测
 Orin NX 上速度较慢。Ollama 仍作为可选后端保留：

@@ -113,29 +113,90 @@ use TTS. A llama.cpp OpenAI-compatible server is the default backend:
 # or launch a standalone llama-server built with GGML_CUDA=ON on Jetson.
 llama-server -m /path/to/Qwen3-8B-Q5_K_M.gguf --alias qwen3-8b-q5 \
   --host 127.0.0.1 --port 8080 -c 4096 -ngl all -np 1 \
+  --cache-ram 0 --no-cache-prompt --no-cache-idle-slots \
   --flash-attn on --reasoning off --no-webui
 
 # Follow the active DDS or ROS 2 speech service automatically
 scripts/run-qwen-voice-chat --model qwen3-8b-q5
 ```
 
-For a vision-language model served by llama.cpp, attach a V4L2 camera and the
-latest frame will accompany every recognized utterance:
+For a vision-language model served by llama.cpp, attach a V4L2 camera. The
+default `see` strategy lets Qwen answer text-only questions in its first normal
+generation. When the current camera view is required, Qwen emits an internal
+`[SEE]` marker; the marker is hidden, the latest frame is attached, and the
+multimodal answer is generated. Explicit visual requests bypass the probe and
+attach a frame immediately:
 
 ```bash
+# 16 GB Jetson memory-safe Qwen3-VL server profile. Set LLAMA_SERVER_BIN
+# only when llama-server is not available on PATH.
+LLAMA_SERVER_BIN=/path/to/llama-server \
+scripts/run-qwen-vl-server \
+  /path/to/Qwen3VL-4B-Instruct-Q4_K_M.gguf \
+  /path/to/mmproj-Qwen3VL-4B-Instruct-Q8_0.gguf
+
 scripts/run-qwen-voice-chat \
-  --model qwen3-vl-2b-q4 \
+  --model qwen3-vl-4b-q4 \
+  --role robot-assistant \
   --camera /dev/video0 \
   --camera-width 1280 \
   --camera-height 720 \
-  --camera-fps 5
+  --camera-fps 5 \
+  --vision-strategy see
 ```
 
-The camera runs continuously, but only one fresh JPEG is sent per utterance;
-raw video is never queued in memory. This keeps the interaction current without
-making the ROS 2/DDS callback or inference queue carry a video stream. FFmpeg is
-required. Use `v4l2-ctl --list-devices` to find the capture device, and omit
-`--camera` for text-only conversation.
+For Qwen3-VL, the client automatically uses the model-card sampling profiles:
+text requests use `temperature=1.0`, `top_p=1.0`, `top_k=40`,
+`presence_penalty=2.0`; requests carrying an image use `temperature=0.7`,
+`top_p=0.8`, `top_k=20`, `presence_penalty=1.5`. Both use
+`repeat_penalty=1.0`. `--temperature` is available only as an explicit override.
+The server launcher also limits the service to one slot, uses a 1,536-token
+context and Q8 KV cache, and disables llama.cpp's default 8 GiB global prompt
+cache. These bounded defaults are intentional for long-running use on a 16 GB
+unified-memory Jetson; environment overrides are listed by
+`scripts/run-qwen-vl-server --help`.
+
+Role profiles make application scenes switchable without rebuilding or
+restarting the model server. A versioned JSON `.role` file contains the system
+prompt, bounded conversation settings, and separate text/vision sampling
+fields. Bundled profiles can be inspected and selected by name:
+
+```bash
+scripts/run-qwen-voice-chat --list-roles
+
+scripts/run-qwen-voice-chat \
+  --model qwen3-vl-4b-q4 \
+  --role snowball \
+  --camera /dev/video0 \
+  --vision-strategy see
+```
+
+Pass a file path to load an external profile, for example
+`--role /path/to/custom.role`. Explicit command-line generation options take
+precedence over the selected role, while the role takes precedence over
+built-in defaults. Role files can only set validated prompt, conversation, and
+sampling fields; protocol fields such as `model`, `messages`, and `stream`
+cannot be injected.
+
+Vision policies are interchangeable without changing the ASR, camera, queue,
+conversation, or transport code:
+
+| Strategy | Behavior |
+|---|---|
+| `see` | Reuse the first Qwen generation as the answer, or intercept `[SEE]` and attach a frame |
+| `qwen` | Run the earlier separate `T`/`V`/`U` Qwen classification request before answering |
+| `always` | Attach a frame to every utterance |
+| `off` | Never start or use the camera |
+
+Select one with `--vision-strategy see|qwen|always|off`. The camera keeps only
+its newest JPEG in memory; text-routed questions never Base64-encode or evaluate
+that frame. FFmpeg is required. Use `v4l2-ctl --list-devices` to find the capture
+device.
+
+Interaction recording is off by default. For controlled strategy comparisons,
+pass `--vision-log /path/to/results.jsonl`. The private `0600` JSONL records the
+selected strategy, route and latency, frame use, end-to-end response metrics,
+and correction signals, but never stores images.
 
 On Jetson, confirm that the server startup log reports `CUDA0`; a Vulkan build
 works but is slower on the tested Orin NX. Ollama remains available as an
