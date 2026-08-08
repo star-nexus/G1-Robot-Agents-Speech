@@ -132,3 +132,7 @@ class SenseVoiceEngine:
             inference_ms=inference_ms,
             engine=self.name,
         )
+
+    def close(self) -> None:
+        with self._lock:
+            self._recognizer = None

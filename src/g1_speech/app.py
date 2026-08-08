@@ -7,9 +7,9 @@ from dataclasses import asdict
 from typing import Any
 
 from .audio import SoundDeviceSource
+from .asr import create_asr_engine
 from .config import ServiceConfig
 from .contracts import SpeechTransport
-from .engine import SenseVoiceEngine
 from .gate import PlaybackGate
 from .pipeline import SpeechPipeline
 from .vad import SileroVadSegmenter
@@ -38,15 +38,7 @@ class SpeechService:
             settings=config.vad,
             sample_rate=config.audio.sample_rate,
         )
-        engine = SenseVoiceEngine(
-            model_dir=config.sensevoice.model_dir,
-            model_file=config.sensevoice.model_file,
-            device=config.sensevoice.device,
-            sample_rate=config.audio.sample_rate,
-            language=config.sensevoice.language,
-            use_itn=config.sensevoice.use_itn,
-            num_threads=config.sensevoice.num_threads,
-        )
+        engine = create_asr_engine(config)
         self.transport = transport or create_transport(
             config,
             self.gate,
@@ -65,9 +57,11 @@ class SpeechService:
             utterance_queue_capacity=config.utterance_queue_capacity,
         )
         self._started = False
+        self._prepared = False
 
     def prepare(self) -> None:
         self.pipeline.prepare()
+        self._prepared = True
 
     def start(self) -> None:
         if self._started:
@@ -79,6 +73,7 @@ class SpeechService:
             self.transport.stop()
             raise
         self._started = True
+        self._prepared = True
 
     def stop(self) -> None:
         if not self._started:
@@ -86,9 +81,14 @@ class SpeechService:
         self.pipeline.close()
         self.transport.stop()
         self._started = False
+        self._prepared = False
 
     def close(self) -> None:
-        self.stop()
+        if self._started:
+            self.stop()
+        elif self._prepared:
+            self.pipeline.close()
+            self._prepared = False
         self.transport.close()
 
     def metrics(self) -> dict[str, Any]:

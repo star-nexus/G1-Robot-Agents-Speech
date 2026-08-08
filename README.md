@@ -2,14 +2,17 @@
 
 English | [简体中文](README_ZH.md)
 
-Offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
+Pluggable offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
 Give robots fast, private speech input for responsive, real-time interaction with people—without relying on the cloud.
 
-**Tested on [Unitree G1](https://www.unitree.com/mobile/g1/) and
-[Galbot G1](https://www.galbot.com/g1). Benchmarked on NVIDIA Jetson Orin NX.**
-It also runs on other Jetson-powered robots and Linux edge computers such as NVIDIA DGX Spark.
+The project has no robot-vendor SDK dependency. It integrates through standard audio devices,
+DDS, or ROS 2. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
+computers, NVIDIA DGX Spark, and general Linux edge systems are also supported targets.
+`G1` is retained only as the existing project and protocol namespace; it does not bind the
+service to any robot brand with that name.
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
+- **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
@@ -19,8 +22,6 @@ It also runs on other Jetson-powered robots and Linux edge computers such as NVI
 
 | Platform | Compute | Available backends | Validation |
 |---|---|---|---|
-| Unitree G1 | Jetson Orin NX test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
-| Galbot G1 | Jetson Orin test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
 | Jetson Orin NX edge systems | Jetson Linux | CPU INT8 / CUDA FP32 | ✅ Benchmark platform |
 | NVIDIA DGX Spark | ARM64 Linux | CPU INT8 | ✅ Original deployment |
 | Other Jetson/Linux robots | Jetson or Linux edge computer | CPU INT8; CUDA FP32 on Jetson | Compatibility target |
@@ -255,7 +256,7 @@ See [ROS 2 setup and lifecycle details](ros2/README.md).
 Microphone
   → 16 kHz mono audio
   → Silero VAD
-  → SenseVoice-Small
+  → selected ASR adapter (SenseVoice / Qwen3-ASR / external plugin)
   → DDS or ROS 2 transport
   → Robot / Agent / application
 

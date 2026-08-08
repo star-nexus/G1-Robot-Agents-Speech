@@ -52,6 +52,12 @@ def test_ros2_runner_discovers_environment_instead_of_hardcoding_distribution():
     assert "ROS2_WORKSPACE_SETUP" in environment
 
 
+def test_runner_can_switch_asr_configuration_without_changing_systemd_units():
+    runner = (ROOT / "scripts" / "run-speech-service").read_text()
+    assert "SPEECH_CONFIG_CPU" in runner
+    assert "SPEECH_CONFIG_GPU" in runner
+
+
 def test_ros2_systemd_installation_preserves_the_selected_domain():
     installer = (ROOT / "scripts" / "install-speech-services.sh").read_text()
     runner = (ROOT / "scripts" / "run-speech-service").read_text()

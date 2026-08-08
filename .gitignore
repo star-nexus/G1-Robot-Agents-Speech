@@ -3,7 +3,11 @@
 models/
 config.json
 config.gpu.json
+config.*.local.json
 deploy.env
+acceptance/data/
+acceptance/results/
+acceptance/*.local.jsonl
 .deps/
 build/
 .build/

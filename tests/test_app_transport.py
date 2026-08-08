@@ -44,7 +44,7 @@ class Pipeline:
 def test_service_owns_transport_lifecycle_and_generic_metrics(monkeypatch):
     monkeypatch.setattr(app, "SoundDeviceSource", lambda **kwargs: object())
     monkeypatch.setattr(app, "SileroVadSegmenter", lambda **kwargs: object())
-    monkeypatch.setattr(app, "SenseVoiceEngine", lambda **kwargs: object())
+    monkeypatch.setattr(app, "create_asr_engine", lambda config: object())
     monkeypatch.setattr(app, "SpeechPipeline", Pipeline)
     transport = Transport()
 
@@ -66,3 +66,17 @@ def test_service_owns_transport_lifecycle_and_generic_metrics(monkeypatch):
         "transport.stop",
         "transport.close",
     ]
+
+
+def test_close_releases_engine_after_prepare_without_start(monkeypatch):
+    monkeypatch.setattr(app, "SoundDeviceSource", lambda **kwargs: object())
+    monkeypatch.setattr(app, "SileroVadSegmenter", lambda **kwargs: object())
+    monkeypatch.setattr(app, "create_asr_engine", lambda config: object())
+    monkeypatch.setattr(app, "SpeechPipeline", Pipeline)
+    transport = Transport()
+    service = app.SpeechService(ServiceConfig(), transport=transport)
+
+    service.prepare()
+    service.close()
+
+    assert service.pipeline.calls == ["pipeline.prepare", "pipeline.close"]

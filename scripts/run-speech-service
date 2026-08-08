@@ -15,17 +15,21 @@ fi
 case "$BACKEND" in
     cpu)
         EXECUTABLE="$ROOT/.venv/bin/g1-speech"
-        CONFIG="$ROOT/config.json"
+        CONFIG="${SPEECH_CONFIG_CPU:-$ROOT/config.json}"
         ;;
     gpu)
         EXECUTABLE="$ROOT/.venv-gpu/bin/g1-speech"
-        CONFIG="$ROOT/config.gpu.json"
+        CONFIG="${SPEECH_CONFIG_GPU:-$ROOT/config.gpu.json}"
         ;;
     *)
         echo "[FAIL] Backend must be cpu or gpu." >&2
         exit 2
         ;;
 esac
+
+if [[ "$CONFIG" != /* ]]; then
+    CONFIG="$ROOT/$CONFIG"
+fi
 
 case "$TRANSPORT" in
     dds) ;;

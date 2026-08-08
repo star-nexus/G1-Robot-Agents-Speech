@@ -2,14 +2,16 @@
 
 [English](README.md) | 简体中文
 
-面向机器人 Agent 的离线语音识别服务，针对 NVIDIA Jetson 优化。
+面向机器人 Agent 的可插拔离线语音识别服务，针对 NVIDIA Jetson 优化。
 为机器人提供快速、私密的语音输入，支持与人实时互动，无需依赖云端。
 
-**已在[宇树 G1](https://www.unitree.com/operate/g1/) 和
-[银河通用 G1](https://www.galbot.com/g1) 上验证，并在 NVIDIA Jetson Orin NX 上完成性能测试。**
-同样适用于采用 Jetson 的其他机器人，以及 NVIDIA DGX Spark 等 Linux 边缘计算设备。
+项目不依赖任何机器人厂商 SDK，通过标准音频设备、DDS 或 ROS 2 接入机器人系统。
+当前主要性能验证平台为 NVIDIA Jetson Orin NX，同样适用于其他 Jetson 机器人计算平台、
+NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
+仓库中的 `G1` 仅作为现有项目和协议命名空间，不表示绑定任何同名机器人品牌。
 
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
+- **ASR 模型可插拔**：内置 SenseVoice 与 Qwen3-ASR，切换模型不影响 VAD、DDS/ROS 2 或 Agent
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
 - **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
@@ -19,8 +21,6 @@
 
 | 平台 | 计算设备 | 可用后端 | 验证状态 |
 |---|---|---|---|
-| 宇树 G1 | Jetson Orin NX 测试配置 | CPU INT8 / CUDA FP32 | ✅ 已验证 |
-| 银河通用 G1 | Jetson Orin 测试配置 | CPU INT8 / CUDA FP32 | ✅ 已验证 |
 | Jetson Orin NX 边缘计算设备 | Jetson Linux | CPU INT8 / CUDA FP32 | ✅ 性能测试平台 |
 | NVIDIA DGX Spark | ARM64 Linux | CPU INT8 | ✅ 最初部署平台 |
 | 其他 Jetson/Linux 机器人 | Jetson 或 Linux 边缘计算设备 | CPU INT8；Jetson CUDA FP32 | 兼容目标 |
@@ -99,6 +99,76 @@ Agent 退出时调用 `subscriber.close()`。回调运行在独立订阅线程�
 ```bash
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
+
+### 切换 SenseVoice / Qwen3-ASR
+
+流水线只依赖稳定的 `AsrEngine` 契约，具体模型由 `asr.backend` 选择：
+
+| `asr.backend` | 推理实现 | 模型配置段 |
+|---|---|---|
+| `sensevoice` | sherpa-onnx | `sensevoice` |
+| `qwen3_asr` | Transformers 5.13 原生 Qwen3-ASR | `qwen3_asr` |
+
+从版本库中的 `config.qwen3-asr.example.json` 复制一份本机配置并修改 `model_dir`。
+配置文件以 `.local.json` 结尾时会被 Git 忽略，不会把本机绝对路径提交到仓库。
+然后给 Jetson GPU 环境补齐运行时；脚本保留 NVIDIA PyTorch，并把 NumPy 固定在与其
+ABI 兼容的 1.x：
+
+```bash
+bash scripts/setup-qwen3-asr.sh
+
+cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+# 编辑 config.qwen3-asr.local.json 中的 model_dir
+
+.venv-gpu/bin/g1-speech doctor \
+  --config config.qwen3-asr.local.json --load-model --skip-audio
+
+.venv-gpu/bin/g1-speech transcribe \
+  --config config.qwen3-asr.local.json \
+  models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
+```
+
+前台试运行 DDS 或 ROS 2：
+
+```bash
+.venv-gpu/bin/g1-speech serve --config config.qwen3-asr.local.json
+.venv-gpu/bin/g1-speech serve \
+  --config config.qwen3-asr.local.json --transport ros2
+```
+
+长期运行时，只需在 `deploy.env` 选择 GPU 服务使用的配置并重启；topic、消息结构和
+订阅端完全不变：
+
+```bash
+SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
+sudo g1-speech-service gpu
+```
+
+`qwen3_asr.language` 设为 `null` 可自动识别语言，设为 `zh` 可强制中文。
+`qwen3_asr.prompt` 可提供机器人和场景专有词，例如
+`"词汇：实验室名称、机器人型号、开放世界自主交互。"`。
+JetPack 自带 PyTorch 的 SDPA 尚不支持 Qwen3 使用的 GQA 参数，因此本机配置使用
+`attention_implementation: "eager"`；以后升级到支持 `enable_gqa` 的 PyTorch 后可再测试 `sdpa`。
+
+公平比较速度和准确率时，应使用同一批真实机器人录音及人工标注。JSONL 每行包含
+`audio`、`text` 和可选 `language`；仓库示例只用于冒烟测试，不代表真实准确率：
+
+```bash
+PYTHONPATH=src .venv-gpu/bin/python acceptance/compare_asr.py \
+  --config sensevoice=config.gpu.json \
+  --config qwen-0.6b=config.qwen3-asr-0.6b.local.json \
+  --config qwen-1.7b=config.qwen3-asr-1.7b.local.json \
+  --manifest acceptance/asr_manifest.example.jsonl \
+  --warmup 2 --runs 5
+```
+
+输出包含加载耗时、均值/中位数/P95、RTF、语料级 CER 和逐条转写。程序串行加载并卸载
+模型，避免 Orin NX 同时驻留多套权重。生产选型建议至少录制 100 条，覆盖远近场、噪声、
+口音、打断和专有词；先以 CER 为质量门槛，再在合格模型中选 P95 延迟最低者。
+
+以后接其他模型时，可在独立 Python 包中注册 `g1_speech.asr_backends` entry point，
+也可把 `asr.backend` 写成 `your_module:create_engine`。工厂接收 `ServiceConfig`，返回实现
+`load / transcribe / close` 的引擎即可；采集、VAD、生命周期和传输代码无需修改。
 
 ### 本地 Qwen 语音对话
 
@@ -238,7 +308,7 @@ ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent` 和
 Microphone
   → 16 kHz mono audio
   → Silero VAD
-  → SenseVoice-Small
+  → selected ASR adapter (SenseVoice / Qwen3-ASR / external plugin)
   → DDS or ROS 2 transport
   → Robot / Agent / application
 
