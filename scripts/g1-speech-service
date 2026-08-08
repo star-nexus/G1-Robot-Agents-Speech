@@ -59,12 +59,21 @@ unit_label() {
     esac
 }
 
-active_unit() {
+unit_is_selected() {
+    local unit="$1" state
+    state="$(unit_state "$unit")"
+    case "$state" in
+        active|activating|reloading|deactivating) return 0 ;;
+    esac
+    systemctl is-enabled --quiet "$unit" 2>/dev/null
+}
+
+selected_unit() {
     local unit found=""
     for unit in "${ALL_UNITS[@]}"; do
-        if [[ "$(unit_state "$unit")" == "active" ]]; then
+        if unit_is_selected "$unit"; then
             if [[ -n "$found" ]]; then
-                echo "[FAIL] Multiple speech services are active." >&2
+                echo "[FAIL] Multiple speech services are selected." >&2
                 return 1
             fi
             found="$unit"
@@ -142,15 +151,20 @@ show_microphone() {
 }
 
 show_status() {
-    local unit selected
+    local unit selected state
     printf '%-12s %s\n' "CPU + DDS:" "$(unit_state "$CPU_DDS_UNIT")"
     printf '%-12s %s\n' "GPU + DDS:" "$(unit_state "$GPU_DDS_UNIT")"
     printf '%-12s %s\n' "CPU + ROS 2:" "$(unit_state "$CPU_ROS2_UNIT")"
     printf '%-12s %s\n' "GPU + ROS 2:" "$(unit_state "$GPU_ROS2_UNIT")"
-    if unit="$(active_unit 2>/dev/null)"; then
+    if unit="$(selected_unit 2>/dev/null)"; then
         selected="$(unit_label "$unit")"
         echo "Selected: $selected"
-        show_microphone "$unit"
+        state="$(unit_state "$unit")"
+        if [[ "$state" == "active" ]]; then
+            show_microphone "$unit"
+        else
+            echo "Health: $state (run: g1-speech-service logs)"
+        fi
     else
         echo "Selected: stopped"
     fi
@@ -187,12 +201,17 @@ case "$command" in
         ;;
     restart)
         require_root
-        if unit="$(active_unit)"; then
+        if unit="$(selected_unit)"; then
             systemctl restart "$unit"
-            systemctl is-active --quiet "$unit"
-            echo "[PASS] Restarted: $(unit_label "$unit")"
+            state="$(unit_state "$unit")"
+            if [[ "$state" == "active" ]]; then
+                echo "[PASS] Restarted: $(unit_label "$unit")"
+            else
+                echo "[WARN] Restart requested: $(unit_label "$unit") (state: $state)" >&2
+                echo "       Inspect: g1-speech-service logs" >&2
+            fi
         else
-            echo "[FAIL] Exactly one speech service must be active." >&2
+            echo "[FAIL] Exactly one speech service must be selected." >&2
             exit 1
         fi
         ;;
@@ -202,8 +221,8 @@ case "$command" in
     logs)
         if [[ -n "${2:-}" ]]; then
             unit="$(resolve_unit "$2" "${3:-dds}")"
-        elif ! unit="$(active_unit)"; then
-            echo "[FAIL] No speech service is active; specify cpu|gpu and optionally dds|ros2." >&2
+        elif ! unit="$(selected_unit)"; then
+            echo "[FAIL] No speech service is selected; specify cpu|gpu and optionally dds|ros2." >&2
             exit 1
         fi
         show_microphone "$unit"

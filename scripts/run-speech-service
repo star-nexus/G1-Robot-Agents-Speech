@@ -12,6 +12,12 @@ if [[ -f "$ROOT/deploy.env" ]]; then
     set +a
 fi
 
+if [[ -n "${CYCLONEDDS_HOME:-}" && ! -f "$CYCLONEDDS_HOME/lib/libddsc.so" ]]; then
+    echo "[FAIL] CycloneDDS runtime is missing: $CYCLONEDDS_HOME/lib/libddsc.so" >&2
+    echo "       Repair with: bash $ROOT/scripts/install-cyclonedds.sh $ROOT/.venv-gpu/bin/python" >&2
+    exit 1
+fi
+
 case "$BACKEND" in
     cpu)
         EXECUTABLE="$ROOT/.venv/bin/g1-speech"
