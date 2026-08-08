@@ -65,6 +65,62 @@ def _model_name(model_dir: str | os.PathLike) -> str:
     return name if name.startswith("qwen3_asr") else "qwen3_asr"
 
 
+def _sdpa_supports_enable_gqa(torch_module: Any) -> bool:
+    try:
+        implementation = torch_module.nn.functional.scaled_dot_product_attention
+    except AttributeError:
+        return True
+    return "enable_gqa" in (implementation.__doc__ or "")
+
+
+def _register_sdpa_compatibility(transformers_module: Any, torch_module: Any) -> str:
+    """Register SDPA with explicit KV expansion for PyTorch builds without enable_gqa."""
+    interface_name = "g1_sdpa_compat"
+    interfaces = transformers_module.modeling_utils.ALL_ATTENTION_FUNCTIONS
+    if interface_name in interfaces:
+        return interface_name
+
+    def repeat_kv(hidden_states, repetitions: int):
+        if repetitions == 1:
+            return hidden_states
+        batch, heads, length, head_dim = hidden_states.shape
+        expanded = hidden_states[:, :, None, :, :].expand(
+            batch, heads, repetitions, length, head_dim
+        )
+        return expanded.reshape(batch, heads * repetitions, length, head_dim)
+
+    def sdpa_compatibility_forward(
+        module,
+        query,
+        key,
+        value,
+        attention_mask,
+        dropout: float = 0.0,
+        scaling: float | None = None,
+        is_causal: bool | None = None,
+        **_kwargs,
+    ):
+        groups = getattr(module, "num_key_value_groups", 1)
+        if groups > 1:
+            key = repeat_kv(key, groups)
+            value = repeat_kv(value, groups)
+        is_causal = is_causal if is_causal is not None else getattr(module, "is_causal", True)
+        is_causal = query.shape[2] > 1 and attention_mask is None and is_causal
+        output = torch_module.nn.functional.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=attention_mask,
+            dropout_p=dropout,
+            scale=scaling,
+            is_causal=is_causal,
+        )
+        return output.transpose(1, 2).contiguous(), None
+
+    interfaces.register(interface_name, sdpa_compatibility_forward)
+    return interface_name
+
+
 class Qwen3AsrEngine:
     def __init__(
         self,
@@ -95,6 +151,7 @@ class Qwen3AsrEngine:
         self._model = None
         self._device = None
         self._dtype = None
+        self._effective_attention_implementation = None
         self._lock = threading.Lock()
 
     def load(self) -> None:
@@ -116,11 +173,13 @@ class Qwen3AsrEngine:
             ensure_torch_numpy_compatible(self._torch)
             self._device = self._resolve_device()
             self._dtype = self._resolve_dtype()
+            self._effective_attention_implementation = self._resolve_attention_implementation()
             logger.info(
-                "Loading Qwen3-ASR: model=%s device=%s dtype=%s",
+                "Loading Qwen3-ASR: model=%s device=%s dtype=%s attention=%s",
                 model_dir,
                 self._device,
                 self._dtype,
+                self._effective_attention_implementation or "auto",
             )
             processor = self._transformers.AutoProcessor.from_pretrained(
                 str(model_dir), local_files_only=True
@@ -130,8 +189,8 @@ class Qwen3AsrEngine:
                 "dtype": self._dtype,
                 "device_map": "cuda:0" if self._device.type == "cuda" else "cpu",
             }
-            if self._attention_implementation:
-                model_kwargs["attn_implementation"] = self._attention_implementation
+            if self._effective_attention_implementation:
+                model_kwargs["attn_implementation"] = self._effective_attention_implementation
             model = self._transformers.AutoModelForMultimodalLM.from_pretrained(
                 str(model_dir), **model_kwargs
             )
@@ -139,6 +198,17 @@ class Qwen3AsrEngine:
             self._processor = processor
             self._model = model
             logger.info("Qwen3-ASR loaded")
+
+    def _resolve_attention_implementation(self) -> str | None:
+        requested = self._attention_implementation
+        if requested != "sdpa" or _sdpa_supports_enable_gqa(self._torch):
+            return requested
+        effective = _register_sdpa_compatibility(self._transformers, self._torch)
+        logger.info(
+            "PyTorch SDPA lacks enable_gqa; using explicit KV expansion via %s",
+            effective,
+        )
+        return effective
 
     def _resolve_device(self):
         if self._device_setting == "cuda":
@@ -182,6 +252,8 @@ class Qwen3AsrEngine:
             generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
             parsed = self._processor.decode(generated_ids, return_format="parsed")[0]
         inference_ms = (time.perf_counter() - started) * 1000
+        audio_seconds = samples.size / self._sample_rate
+        rtf = inference_ms / 1000 / audio_seconds if audio_seconds else float("inf")
         if isinstance(parsed, dict):
             text = str(parsed.get("transcription", "")).strip()
             detected = str(parsed.get("language", "")).strip()
@@ -189,7 +261,13 @@ class Qwen3AsrEngine:
             text = str(parsed).strip()
             detected = ""
         language = self._language or _LANGUAGE_CODES.get(detected.lower(), detected or "unknown")
-        logger.info("Qwen3-ASR recognition %.1fms: %r", inference_ms, text)
+        logger.info(
+            "Qwen3-ASR recognition %.1fms audio=%.2fs RTF=%.4f: %r",
+            inference_ms,
+            audio_seconds,
+            rtf,
+            text,
+        )
         return RecognitionResult(
             text=text,
             language=language,

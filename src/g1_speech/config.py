@@ -56,7 +56,7 @@ class Qwen3AsrConfig:
     language: str | None = "zh"
     prompt: str | None = None
     max_new_tokens: int = 256
-    attention_implementation: str | None = "eager"
+    attention_implementation: str | None = "sdpa"
 
 
 @dataclass(frozen=True)

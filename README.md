@@ -16,7 +16,7 @@ service to any robot brand with that name.
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
-- **High performance**: 0.01–0.2 s recognition latency with high accuracy
+- **Measured performance**: backend-specific latency and RTF benchmarks on Jetson Orin NX
 
 ## Verified Platforms
 
@@ -36,6 +36,16 @@ Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample
 |---|---|---:|---:|---:|---:|
 | CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
 | GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
+
+Qwen3-ASR-0.6B, BF16, the same audio, 3 warm-ups and 10 measured runs:
+
+| Attention | Mean latency | Median | P95 | RTF |
+|---|---:|---:|---:|---:|
+| eager | 1365.9 ms | 1365.1 ms | 1374.3 ms | 0.2443 |
+| SDPA | 1219.7 ms | 1219.6 ms | 1223.5 ms | 0.2181 |
+
+These are single-request Transformers adapter measurements, not directly comparable to
+high-concurrency vLLM throughput on server GPUs.
 
 ## Quick Start
 
@@ -102,6 +112,30 @@ You can also inspect recognition results without writing Agent code:
 ```bash
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
+
+### Select SenseVoice or Qwen3-ASR
+
+The pipeline depends only on the `AsrEngine` contract. Prepare a host-local Qwen config,
+validate the CUDA load, and select it for the existing GPU service:
+
+```bash
+bash scripts/setup-qwen3-asr.sh
+cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+# Edit model_dir first.
+.venv-gpu/bin/g1-speech doctor \
+  --config config.qwen3-asr.local.json --load-model --skip-audio
+
+# deploy.env
+ASR_BACKEND="qwen3_asr"
+SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
+sudo g1-speech-service gpu dds
+```
+
+SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
+the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
+Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
+Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
+for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
 
 ### ROS 2
 

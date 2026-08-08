@@ -9,6 +9,6 @@
     "language": "zh",
     "prompt": null,
     "max_new_tokens": 256,
-    "attention_implementation": "eager"
+    "attention_implementation": "sdpa"
   }
 }

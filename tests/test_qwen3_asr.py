@@ -8,7 +8,11 @@ import numpy as np
 import pytest
 
 from g1_speech.contracts import Utterance
-from g1_speech.qwen3_asr import Qwen3AsrEngine, validate_qwen3_asr_model_dir
+from g1_speech.qwen3_asr import (
+    Qwen3AsrEngine,
+    _sdpa_supports_enable_gqa,
+    validate_qwen3_asr_model_dir,
+)
 
 
 def _model_dir(tmp_path: Path) -> Path:
@@ -66,7 +70,8 @@ class Torch:
     def inference_mode():
         return nullcontext()
 
-def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_path):
+def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_path, caplog):
+    caplog.set_level("INFO", logger="g1_speech.qwen3_asr")
     processor = Processor()
     model = Model()
     model_options = {}
@@ -85,6 +90,7 @@ def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_p
         dtype="bfloat16",
         language="zh",
         prompt="Vocabulary: robot model R1",
+        attention_implementation="eager",
         torch_module=Torch,
         transformers_module=transformers,
     )
@@ -100,7 +106,29 @@ def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_p
     assert processor.request["language"] == "zh"
     assert model_options["device_map"] == "cuda:0"
     assert model_options["dtype"] == "bfloat16"
+    assert model_options["attn_implementation"] == "eager"
     assert model.training is False
+    assert "audio=1.00s RTF=" in caplog.text
+
+
+def test_sdpa_gqa_capability_detection_uses_runtime_documentation():
+    legacy = SimpleNamespace(
+        nn=SimpleNamespace(
+            functional=SimpleNamespace(
+                scaled_dot_product_attention=SimpleNamespace(__doc__="scale=None")
+            )
+        )
+    )
+    current = SimpleNamespace(
+        nn=SimpleNamespace(
+            functional=SimpleNamespace(
+                scaled_dot_product_attention=SimpleNamespace(__doc__="enable_gqa=False")
+            )
+        )
+    )
+
+    assert not _sdpa_supports_enable_gqa(legacy)
+    assert _sdpa_supports_enable_gqa(current)
 
 
 def test_qwen3_model_validation_reports_missing_artifacts(tmp_path):

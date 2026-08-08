@@ -52,6 +52,16 @@ def main() -> int:
         payload = {
             "backend": config.asr.backend,
             "engine": results[0].engine,
+            "attention": (
+                config.qwen3_asr.attention_implementation
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else None
+            ),
+            "dtype": (
+                config.qwen3_asr.dtype
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else None
+            ),
             "text": results[0].text,
             "runs": args.runs,
             "audio_ms": round(audio_ms, 1),

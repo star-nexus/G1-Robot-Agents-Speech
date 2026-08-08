@@ -97,6 +97,16 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
             "label": label,
             "backend": config.asr.backend,
             "engine": transcripts and result.engine,
+            "attention": (
+                config.qwen3_asr.attention_implementation
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else None
+            ),
+            "dtype": (
+                config.qwen3_asr.dtype
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else None
+            ),
             "cases": len(cases),
             "runs_per_case": runs,
             "load_ms": round(load_ms, 1),

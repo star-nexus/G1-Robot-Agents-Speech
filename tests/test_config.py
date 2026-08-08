@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from g1_speech.config import default_config_dict, load_config, write_config
+from g1_speech.config import ServiceConfig, default_config_dict, load_config, write_config
 
 
 def test_config_example_matches_canonical_defaults():
@@ -86,6 +86,10 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
     assert config.asr.backend == "qwen3_asr"
     assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
     assert config.qwen3_asr.dtype == "bfloat16"
+
+
+def test_qwen3_asr_defaults_to_sdpa_attention():
+    assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
 
 
 def test_unknown_config_key_is_rejected(tmp_path):
