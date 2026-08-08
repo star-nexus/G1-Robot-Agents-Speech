@@ -30,22 +30,26 @@ Validation refers to configurations tested by this project; vendor hardware conf
 
 ## Performance
 
-Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample, with 3 warm-up runs and 30 measured runs:
+Measured on a Jetson Orin NX in `MAXN_SUPER` mode (dynamic clocks, not locked), using
+the same 5.592-second Chinese WAV, 3 warm-ups, and 10 measured runs:
 
-| Backend | Model | Mean latency | Median | P95 | RTF |
-|---|---|---:|---:|---:|---:|
-| CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
-| GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
+| Model | Device | Precision | Attention | Mean | Median | P95 | RTF |
+|---|---|---|---|---:|---:|---:|---:|
+| SenseVoice-Small | CPU | INT8 | N/A | 205.9 ms | 206.0 ms | 206.4 ms | **0.0368** |
+| SenseVoice-Small | GPU | FP32 | N/A | 77.1 ms | 78.0 ms | 97.7 ms | **0.0138** |
+| Qwen3-ASR-0.6B | CPU | FP32 | eager | 8489.4 ms | 8469.6 ms | 9537.6 ms | 1.5181 |
+| Qwen3-ASR-0.6B | CPU | FP32 | SDPA | 17045.2 ms | 16967.9 ms | 19567.6 ms | 3.0481 |
+| Qwen3-ASR-0.6B | CPU | — | FA2 | unsupported (CUDA only) | — | — | — |
+| Qwen3-ASR-0.6B | GPU | BF16 | eager | 1378.2 ms | 1375.9 ms | 1391.5 ms | 0.2465 |
+| Qwen3-ASR-0.6B | GPU | BF16 | SDPA | **1235.7 ms** | 1234.8 ms | 1241.7 ms | **0.2210** |
+| Qwen3-ASR-0.6B | GPU | BF16 | FA2 | 1493.4 ms | 1494.3 ms | 1500.2 ms | 0.2671 |
 
-Qwen3-ASR-0.6B, BF16, the same audio, 3 warm-ups and 10 measured runs:
-
-| Attention | Mean latency | Median | P95 | RTF |
-|---|---:|---:|---:|---:|
-| eager | 1365.9 ms | 1365.1 ms | 1374.3 ms | 0.2443 |
-| SDPA | 1219.7 ms | 1219.6 ms | 1223.5 ms | 0.2181 |
-
-These are single-request Transformers adapter measurements, not directly comparable to
-high-concurrency vLLM throughput on server GPUs.
+Attention selection does not apply to SenseVoice's ONNX graph. On this Orin and
+single-request workload, GPU SDPA is 10.3% faster than eager; FA2 is 20.9% slower
+than SDPA. CPU SDPA is also slower because the installed Jetson PyTorch lacks native
+GQA and the compatibility path explicitly expands KV heads. These are end-to-end
+Transformers adapter measurements, not server-GPU vLLM throughput or an accuracy
+benchmark.
 
 ## Quick Start
 
@@ -134,6 +138,24 @@ sudo g1-speech-service gpu dds
 SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
 the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
 Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
+FlashAttention 2 is an optional CUDA-only backend. Build its Jetson extension once,
+then select it in the same local JSON configuration:
+
+```bash
+bash scripts/setup-flash-attention-2.sh
+.venv-gpu/bin/g1-speech config init \
+  --output config.qwen3-asr-fa2.local.json \
+  --base config.qwen3-asr.local.json \
+  --set qwen3_asr.attention_implementation=flash_attention_2
+```
+
+FA2 requires CUDA and FP16/BF16. Both released Qwen3-ASR models use head-dim 64
+for the audio tower and 128 for the text decoder; the setup script builds an auditable
+Qwen-only wheel with native Orin SM 8.7 inference kernels for just those dimensions
+(no training/backward path). It limits Ninja to one job by
+default to avoid memory pressure; override `MAX_JOBS` only when the device has enough
+free RAM. Use an upstream full wheel if another model needs other dimensions or GPU
+architectures.
 Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
 for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
 

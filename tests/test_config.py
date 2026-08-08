@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from g1_speech.config import ServiceConfig, default_config_dict, load_config, write_config
+from g1_speech.config import (
+    Qwen3AsrConfig,
+    ServiceConfig,
+    default_config_dict,
+    load_config,
+    write_config,
+)
 
 
 def test_config_example_matches_canonical_defaults():
@@ -90,6 +96,14 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
 
 def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
+
+
+def test_qwen3_asr_rejects_unknown_attention_backend():
+    config = ServiceConfig(
+        qwen3_asr=Qwen3AsrConfig(attention_implementation="magic")
+    )
+    with pytest.raises(ValueError, match="attention_implementation"):
+        config.validate()
 
 
 def test_unknown_config_key_is_rejected(tmp_path):

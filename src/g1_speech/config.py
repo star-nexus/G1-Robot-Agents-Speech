@@ -136,6 +136,17 @@ class ServiceConfig:
             raise ValueError(
                 "qwen3_asr.dtype must be auto, float32, float16, or bfloat16"
             )
+        if self.qwen3_asr.attention_implementation not in {
+            None,
+            "eager",
+            "sdpa",
+            "fa2",
+            "flash_attention_2",
+        }:
+            raise ValueError(
+                "qwen3_asr.attention_implementation must be eager, sdpa, "
+                "fa2, flash_attention_2, or null"
+            )
         if self.qwen3_asr.max_new_tokens < 1:
             raise ValueError("qwen3_asr.max_new_tokens must be greater than zero")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:

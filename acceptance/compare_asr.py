@@ -97,6 +97,11 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
             "label": label,
             "backend": config.asr.backend,
             "engine": transcripts and result.engine,
+            "device": (
+                config.qwen3_asr.device
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else config.sensevoice.device
+            ),
             "attention": (
                 config.qwen3_asr.attention_implementation
                 if config.asr.backend in {"qwen3_asr", "qwen3-asr"}

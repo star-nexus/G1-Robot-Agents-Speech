@@ -90,7 +90,7 @@ def asr_diagnostic_checks(config: ServiceConfig) -> list[tuple[str, Callable[[],
             ("sherpa_onnx", lambda: _module_path("sherpa_onnx")),
         ]
     if backend in {"qwen3_asr", "qwen3-asr"}:
-        return [
+        checks = [
             (
                 "Qwen3-ASR model files",
                 lambda: validate_qwen3_asr_model_dir(config.qwen3_asr.model_dir),
@@ -98,6 +98,12 @@ def asr_diagnostic_checks(config: ServiceConfig) -> list[tuple[str, Callable[[],
             ("torch", lambda: _module_path("torch")),
             ("transformers", _qwen_module_path),
         ]
+        if config.qwen3_asr.attention_implementation in {
+            "fa2",
+            "flash_attention_2",
+        }:
+            checks.append(("flash_attn", lambda: _module_path("flash_attn")))
+        return checks
     return [("ASR adapter", lambda: resolve_asr_factory(config.asr.backend))]
 
 

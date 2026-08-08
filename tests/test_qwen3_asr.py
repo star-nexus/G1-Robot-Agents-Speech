@@ -11,6 +11,7 @@ from g1_speech.contracts import Utterance
 from g1_speech.qwen3_asr import (
     Qwen3AsrEngine,
     _sdpa_supports_enable_gqa,
+    validate_flash_attention_2_environment,
     validate_qwen3_asr_model_dir,
 )
 
@@ -56,7 +57,11 @@ class Torch:
     float32 = "float32"
     float16 = "float16"
     bfloat16 = "bfloat16"
-    cuda = SimpleNamespace(is_available=lambda: True, empty_cache=lambda: None)
+    cuda = SimpleNamespace(
+        is_available=lambda: True,
+        empty_cache=lambda: None,
+        get_device_capability=lambda device: (8, 7),
+    )
 
     @staticmethod
     def device(name):
@@ -135,3 +140,51 @@ def test_qwen3_model_validation_reports_missing_artifacts(tmp_path):
     (tmp_path / "config.json").write_text("{}", encoding="utf-8")
     with pytest.raises(FileNotFoundError, match="model.safetensors"):
         validate_qwen3_asr_model_dir(tmp_path)
+
+
+def test_fa2_alias_is_normalized_and_passed_to_transformers(tmp_path, monkeypatch):
+    processor = Processor()
+    model = Model()
+    model_options = {}
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model_options.update(kwargs) or model
+        ),
+    )
+    real_import = __import__
+
+    def import_module(name):
+        if name == "flash_attn":
+            return SimpleNamespace(__version__="2.test")
+        if name == "flash_attn.flash_attn_interface":
+            return SimpleNamespace()
+        return real_import(name)
+
+    monkeypatch.setattr("g1_speech.qwen3_asr.importlib.import_module", import_module)
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        device="cuda",
+        dtype="bfloat16",
+        attention_implementation="fa2",
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    engine.load()
+
+    assert model_options["attn_implementation"] == "flash_attention_2"
+
+
+def test_fa2_rejects_cpu_before_importing_extension():
+    with pytest.raises(RuntimeError, match="device=cuda"):
+        validate_flash_attention_2_environment(
+            Torch, SimpleNamespace(type="cpu"), Torch.bfloat16
+        )
+
+
+def test_fa2_rejects_float32():
+    with pytest.raises(RuntimeError, match="float16 or bfloat16"):
+        validate_flash_attention_2_environment(
+            Torch, SimpleNamespace(type="cuda"), Torch.float32
+        )

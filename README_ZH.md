@@ -29,23 +29,24 @@ NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
 
 ## 性能
 
-Jetson ORIN NX，同一段 5.592 秒中文音频，预热 3 次、运行 30 次：
+Jetson Orin NX，`MAXN_SUPER` 电源模式（动态频率、未锁频），同一段 5.592 秒中文 WAV，
+预热 3 次、正式运行 10 次：
 
-| 后端 | 模型 | 平均耗时 | 中位数 | P95 | RTF |
-|---|---|---:|---:|---:|---:|
-| CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
-| GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
+| 模型 | 设备 | 精度 | Attention | 平均耗时 | 中位数 | P95 | RTF |
+|---|---|---|---|---:|---:|---:|---:|
+| SenseVoice-Small | CPU | INT8 | 不适用 | 205.9 ms | 206.0 ms | 206.4 ms | **0.0368** |
+| SenseVoice-Small | GPU | FP32 | 不适用 | 77.1 ms | 78.0 ms | 97.7 ms | **0.0138** |
+| Qwen3-ASR-0.6B | CPU | FP32 | eager | 8489.4 ms | 8469.6 ms | 9537.6 ms | 1.5181 |
+| Qwen3-ASR-0.6B | CPU | FP32 | SDPA | 17045.2 ms | 16967.9 ms | 19567.6 ms | 3.0481 |
+| Qwen3-ASR-0.6B | CPU | — | FA2 | 不支持（仅 CUDA） | — | — | — |
+| Qwen3-ASR-0.6B | GPU | BF16 | eager | 1378.2 ms | 1375.9 ms | 1391.5 ms | 0.2465 |
+| Qwen3-ASR-0.6B | GPU | BF16 | SDPA | **1235.7 ms** | 1234.8 ms | 1241.7 ms | **0.2210** |
+| Qwen3-ASR-0.6B | GPU | BF16 | FA2 | 1493.4 ms | 1494.3 ms | 1500.2 ms | 0.2671 |
 
-Qwen3-ASR-0.6B 使用同一音频、BF16、预热 3 次并运行 10 次。SDPA 兼容路径相对 eager
-保持转写一致，平均延迟降低 10.7%：
-
-| Attention | dtype | 平均耗时 | 中位数 | P95 | RTF |
-|---|---|---:|---:|---:|---:|
-| eager | BF16 | 1365.9 ms | 1365.1 ms | 1374.3 ms | 0.2443 |
-| SDPA | BF16 | 1219.7 ms | 1219.6 ms | 1223.5 ms | 0.2181 |
-
-这里测量的是 Transformers、单请求、端到端 adapter 延迟，不能与服务器 GPU 上 vLLM
-高并发吞吐数字直接比较。
+SenseVoice 使用 ONNX 图，不存在 eager/SDPA/FA2 选择。在这台 Orin 的单请求场景中，
+GPU SDPA 比 eager 快 10.3%；FA2 反而比 SDPA 慢 20.9%。CPU SDPA 更慢，是因为当前
+Jetson PyTorch 缺少原生 GQA，兼容路径需要显式展开 KV heads。这里测量的是端到端
+Transformers adapter 延迟，不是服务器 GPU 上的 vLLM 吞吐，也不是准确率基准。
 
 ## 快速接入
 
@@ -135,6 +136,22 @@ sudo g1-speech-service gpu dds
 默认 `attention_implementation` 为 `sdpa`。新 PyTorch 使用原生 GQA；Jetson 当前的
 NVIDIA PyTorch 2.5 缺少 `enable_gqa` 参数，adapter 会自动展开 KV heads 后进入 SDPA，
 无需修改 Transformers。需要排障或复现旧基线时可显式设为 `eager`。
+
+FlashAttention 2 是可选的 CUDA 后端。先在 Jetson 上编译一次扩展，再生成独立的本机配置：
+
+```bash
+bash scripts/setup-flash-attention-2.sh
+.venv-gpu/bin/g1-speech config init \
+  --output config.qwen3-asr-fa2.local.json \
+  --base config.qwen3-asr.local.json \
+  --set qwen3_asr.attention_implementation=flash_attention_2
+```
+
+FA2 只支持 CUDA FP16/BF16。已发布的两种 Qwen3-ASR 都在音频塔使用 head-dim 64、
+文本解码器使用 128；安装脚本会构建一个可审计的 Qwen 专用 wheel，只保留这两种维度
+的 Orin SM 8.7 推理内核（不包含训练反向路径），并把 Ninja 限制为单任务，避免
+16 GB 设备在编译期间内存不足。其他模型若需
+不同维度或 GPU 架构，应改用上游完整 wheel。
 
 每次识别日志都会报告音频时长和 RTF。固定 WAV 的可复现基准命令：
 

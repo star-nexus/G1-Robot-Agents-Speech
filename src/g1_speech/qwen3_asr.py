@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import importlib
 import logging
 import os
 import threading
@@ -71,6 +72,35 @@ def _sdpa_supports_enable_gqa(torch_module: Any) -> bool:
     except AttributeError:
         return True
     return "enable_gqa" in (implementation.__doc__ or "")
+
+
+def validate_flash_attention_2_environment(
+    torch_module: Any,
+    device: Any,
+    dtype: Any,
+) -> str:
+    """Validate the constraints that FA2 cannot safely infer or repair for us."""
+    if device.type != "cuda":
+        raise RuntimeError("FlashAttention 2 requires qwen3_asr.device=cuda")
+    if dtype not in {torch_module.float16, torch_module.bfloat16}:
+        raise RuntimeError(
+            "FlashAttention 2 requires qwen3_asr.dtype=float16 or bfloat16"
+        )
+    capability = torch_module.cuda.get_device_capability(device)
+    if capability < (8, 0):
+        raise RuntimeError(
+            "FlashAttention 2 requires an Ampere-or-newer NVIDIA GPU; "
+            f"detected compute capability {capability[0]}.{capability[1]}"
+        )
+    try:
+        module = importlib.import_module("flash_attn")
+        importlib.import_module("flash_attn.flash_attn_interface")
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(
+            "FlashAttention 2 is selected but flash-attn cannot be imported. "
+            "On Jetson, run scripts/setup-flash-attention-2.sh in this repository."
+        ) from exc
+    return str(getattr(module, "__version__", "installed"))
 
 
 def _register_sdpa_compatibility(transformers_module: Any, torch_module: Any) -> str:
@@ -201,6 +231,14 @@ class Qwen3AsrEngine:
 
     def _resolve_attention_implementation(self) -> str | None:
         requested = self._attention_implementation
+        if requested == "fa2":
+            requested = "flash_attention_2"
+        if requested == "flash_attention_2":
+            version = validate_flash_attention_2_environment(
+                self._torch, self._device, self._dtype
+            )
+            logger.info("Using FlashAttention 2: flash-attn=%s", version)
+            return requested
         if requested != "sdpa" or _sdpa_supports_enable_gqa(self._torch):
             return requested
         effective = _register_sdpa_compatibility(self._transformers, self._torch)
@@ -240,6 +278,7 @@ class Qwen3AsrEngine:
             request["language"] = self._language
         if self._prompt:
             request["prompt"] = self._prompt
+        self._synchronize_device()
         started = time.perf_counter()
         with self._lock, self._torch.inference_mode():
             inputs = self._processor.apply_transcription_request(**request)
@@ -251,6 +290,7 @@ class Qwen3AsrEngine:
             )
             generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
             parsed = self._processor.decode(generated_ids, return_format="parsed")[0]
+            self._synchronize_device()
         inference_ms = (time.perf_counter() - started) * 1000
         audio_seconds = samples.size / self._sample_rate
         rtf = inference_ms / 1000 / audio_seconds if audio_seconds else float("inf")
@@ -274,6 +314,10 @@ class Qwen3AsrEngine:
             inference_ms=inference_ms,
             engine=self.name,
         )
+
+    def _synchronize_device(self) -> None:
+        if self._device.type == "cuda" and hasattr(self._torch.cuda, "synchronize"):
+            self._torch.cuda.synchronize(self._device)
 
     def close(self) -> None:
         with self._lock:

@@ -52,6 +52,11 @@ def main() -> int:
         payload = {
             "backend": config.asr.backend,
             "engine": results[0].engine,
+            "device": (
+                config.qwen3_asr.device
+                if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
+                else config.sensevoice.device
+            ),
             "attention": (
                 config.qwen3_asr.attention_implementation
                 if config.asr.backend in {"qwen3_asr", "qwen3-asr"}
