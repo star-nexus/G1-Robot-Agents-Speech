@@ -56,6 +56,7 @@ def test_paths_are_relative_to_config_file(tmp_path):
                     "model_dir": "assets/sensevoice",
                     "model_file": "assets/sensevoice/model.onnx",
                 },
+                "qwen3_asr": {"model_dir": "assets/qwen3-asr"},
             }
         ),
         encoding="utf-8",
@@ -68,6 +69,23 @@ def test_paths_are_relative_to_config_file(tmp_path):
     assert config.sensevoice.model_file == str(
         (tmp_path / "assets/sensevoice/model.onnx").resolve()
     )
+    assert config.qwen3_asr.model_dir == str((tmp_path / "assets/qwen3-asr").resolve())
+
+
+def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
+    path = write_config(
+        tmp_path / "config.json",
+        environment={
+            "ASR_BACKEND": "qwen3_asr",
+            "QWEN3_ASR_MODEL_DIR": "/models/qwen3-asr",
+            "QWEN3_ASR_DTYPE": "bfloat16",
+        },
+    )
+
+    config = load_config(path)
+    assert config.asr.backend == "qwen3_asr"
+    assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
+    assert config.qwen3_asr.dtype == "bfloat16"
 
 
 def test_unknown_config_key_is_rejected(tmp_path):

@@ -1,4 +1,4 @@
-"""Bounded three-stage speech pipeline: capture -> VAD -> SenseVoice -> sink."""
+"""Bounded three-stage speech pipeline: capture -> VAD -> ASR -> sink."""
 
 from __future__ import annotations
 
@@ -101,6 +101,9 @@ class SpeechPipeline:
                 logger.warning("Thread %s did not stop within %.1fs", thread.name, join_timeout)
         self._threads.clear()
         self._segmenter.reset()
+        close_engine = getattr(self._engine, "close", None)
+        if close_engine is not None:
+            close_engine()
         self._sink.close()
         self._started = False
         logger.info("Speech pipeline stopped")
@@ -191,7 +194,7 @@ class SpeechPipeline:
                 result = self._engine.transcribe(utterance)
             except Exception:  # noqa: BLE001
                 self._increment("recognition_errors")
-                logger.exception("SenseVoice recognition failed")
+                logger.exception("ASR recognition failed")
                 continue
             if not result.text:
                 self._increment("recognitions_empty")

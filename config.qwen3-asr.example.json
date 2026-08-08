@@ -1,0 +1,14 @@
+{
+  "asr": {
+    "backend": "qwen3_asr"
+  },
+  "qwen3_asr": {
+    "model_dir": "/path/to/Qwen3-ASR-0.6B-hf",
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "language": "zh",
+    "prompt": null,
+    "max_new_tokens": 256,
+    "attention_implementation": "eager"
+  }
+}
