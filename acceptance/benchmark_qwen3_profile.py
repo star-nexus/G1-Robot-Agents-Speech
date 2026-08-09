@@ -33,6 +33,11 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--long-runs", type=int, help="Runs for the longest case")
     parser.add_argument("--record-ranges", action="store_true")
+    parser.add_argument(
+        "--cuda-profiler-range",
+        action="store_true",
+        help="Bracket measured requests with cudaProfilerStart/Stop for Nsight capture",
+    )
     parser.add_argument("--output-prefix", required=True)
     parser.add_argument("--title", default="Qwen3-ASR profiling benchmark")
     args = parser.parse_args()
@@ -54,6 +59,8 @@ def main() -> int:
     sys.excepthook = save_failure
     if args.warmup < 0 or args.runs < 1:
         raise ValueError("warmup must be >= 0 and runs must be >= 1")
+    if args.cuda_profiler_range and len(args.audio) != 1:
+        raise ValueError("--cuda-profiler-range requires exactly one --audio")
 
     config = load_config(args.config)
     engine = create_asr_engine(config)
@@ -99,12 +106,22 @@ def main() -> int:
             )
             measurements = []
             texts = []
-            for _ in range(run_count):
-                result, profile = engine.transcribe_profiled(
-                    utterance, record_ranges=args.record_ranges
-                )
-                measurements.append(profile.as_dict())
-                texts.append(result.text)
+            profiler_started = False
+            try:
+                if args.cuda_profiler_range:
+                    import torch
+
+                    torch.cuda.cudart().cudaProfilerStart()
+                    profiler_started = True
+                for _ in range(run_count):
+                    result, profile = engine.transcribe_profiled(
+                        utterance, record_ranges=args.record_ranges
+                    )
+                    measurements.append(profile.as_dict())
+                    texts.append(result.text)
+            finally:
+                if profiler_started:
+                    torch.cuda.cudart().cudaProfilerStop()
             if len(set(texts)) != 1:
                 raise RuntimeError(f"non-deterministic transcription in {name}: {texts}")
             output_cases.append(
@@ -142,6 +159,7 @@ def main() -> int:
             "compile": config.qwen3_asr.compile,
             "compile_mode": config.qwen3_asr.compile_mode,
             "cache_implementation": config.qwen3_asr.cache_implementation,
+            "quantization": config.qwen3_asr.quantization,
             "max_new_tokens": config.qwen3_asr.max_new_tokens,
         },
         "load_ms": load_ms,

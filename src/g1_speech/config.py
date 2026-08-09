@@ -60,6 +60,7 @@ class Qwen3AsrConfig:
     compile: bool = False
     compile_mode: str = "reduce-overhead"
     cache_implementation: str | None = None
+    quantization: str | None = None
 
 
 @dataclass(frozen=True)
@@ -154,6 +155,8 @@ class ServiceConfig:
             raise ValueError("qwen3_asr.max_new_tokens must be greater than zero")
         if not self.qwen3_asr.compile_mode.strip():
             raise ValueError("qwen3_asr.compile_mode must not be empty")
+        if self.qwen3_asr.quantization not in {None, "bnb_nf4"}:
+            raise ValueError("qwen3_asr.quantization must be bnb_nf4 or null")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
             raise ValueError("vad.max_speech_seconds must exceed min_speech_seconds")
         if self.vad.buffer_seconds <= 0:
@@ -314,6 +317,11 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "QWEN3_ASR_ATTENTION": (
         "qwen3_asr",
         "attention_implementation",
+        _parse_optional_string,
+    ),
+    "QWEN3_ASR_QUANTIZATION": (
+        "qwen3_asr",
+        "quantization",
         _parse_optional_string,
     ),
     "SPEECH_TRANSPORT": ("transport", "backend", str),

@@ -121,6 +121,46 @@ def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_p
     assert "audio=1.00s RTF=" in caplog.text
 
 
+def test_bnb_nf4_quantizes_only_the_language_decoder(tmp_path):
+    processor = Processor()
+    model = Model()
+    model_options = {}
+
+    class QuantizationConfig:
+        def __init__(self, **kwargs):
+            self.options = kwargs
+
+    def load_model(*args, **kwargs):
+        model_options.update(kwargs)
+        return model
+
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(from_pretrained=load_model),
+        BitsAndBytesConfig=QuantizationConfig,
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        device="cuda",
+        dtype="float16",
+        quantization="bnb_nf4",
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    engine.load()
+
+    options = model_options["quantization_config"].options
+    assert options["load_in_4bit"] is True
+    assert options["bnb_4bit_compute_dtype"] == "float16"
+    assert options["bnb_4bit_quant_type"] == "nf4"
+    assert options["llm_int8_skip_modules"] == [
+        "model.audio_tower",
+        "model.multi_modal_projector",
+        "lm_head",
+    ]
+
+
 def test_profiled_transcription_keeps_result_api_and_reports_all_stages(tmp_path):
     processor = Processor()
     model = Model()
@@ -166,13 +206,23 @@ def test_torch_compile_is_an_explicit_load_option(tmp_path):
     processor = Processor()
     model = Model()
     compiled = SimpleNamespace(model=None, mode=None)
+    events = []
 
     class CompileTorch(Torch):
+        compiler = SimpleNamespace(
+            cudagraph_mark_step_begin=lambda: events.append("step")
+        )
+
         @staticmethod
         def compile(selected_model, *, mode):
             compiled.model = selected_model
             compiled.mode = mode
-            return selected_model
+
+            def compiled_forward(**inputs):
+                events.append("forward")
+                return selected_model(**inputs)
+
+            return compiled_forward
 
     transformers = SimpleNamespace(
         AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
@@ -189,9 +239,42 @@ def test_torch_compile_is_an_explicit_load_option(tmp_path):
     )
 
     engine.load()
+    assert engine._model.forward(value=1) == {"value": 1}
 
     assert compiled.model.__self__ is model
     assert compiled.mode == "reduce-overhead"
+    assert events == ["step", "forward"]
+
+
+def test_torch_compile_prefers_autoregressive_language_model(tmp_path):
+    processor = Processor()
+    decoder = Model()
+    outer = Model()
+    outer.model = SimpleNamespace(language_model=decoder)
+    compiled = SimpleNamespace(model=None)
+
+    class CompileTorch(Torch):
+        @staticmethod
+        def compile(selected_model, *, mode):
+            compiled.model = selected_model
+            return selected_model
+
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: outer
+        ),
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        compile_model=True,
+        torch_module=CompileTorch,
+        transformers_module=transformers,
+    )
+
+    engine.load()
+
+    assert compiled.model.__self__ is decoder
 
 
 def test_sdpa_gqa_capability_detection_uses_runtime_documentation():

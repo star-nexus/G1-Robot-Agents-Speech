@@ -17,6 +17,11 @@ batch-1 autoregressive decode 的 launch/memory-bound 特征一致。
 cache 都在首个请求失败，因为现有 Jetson PyTorch 没有可工作的 Triton；没有安装通用
 aarch64 wheel，也没有掩盖失败。
 
+> 后续隔离的 Jetson-native PyTorch 2.9.1 / Triton 3.5.1 实验已解除这个环境限制。
+> Transformers static-cache compiled decode 达到 451.6 ms；手工
+> `reduce-overhead` 仍因 cache/output alias 失败。稳定 PyTorch 2.5 baseline 未被替换。
+> 详见[后续 runtime 优化实测](qwen3_asr_orin_nx_runtime_optimizations.md)。
+
 ## 1. 5.592 秒请求中，时间花在哪里
 
 测试条件：Qwen3-ASR-0.6B、GPU、BF16、SDPA、warm-up 3、正式 10 次。每个 CUDA

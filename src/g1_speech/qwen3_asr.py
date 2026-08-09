@@ -10,6 +10,7 @@ import threading
 import time
 from contextlib import ExitStack, nullcontext
 from dataclasses import asdict, dataclass
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
@@ -186,6 +187,7 @@ class Qwen3AsrEngine:
         compile_model: bool = False,
         compile_mode: str = "reduce-overhead",
         cache_implementation: str | None = None,
+        quantization: str | None = None,
         torch_module: Any | None = None,
         transformers_module: Any | None = None,
     ) -> None:
@@ -201,6 +203,7 @@ class Qwen3AsrEngine:
         self._compile_model = compile_model
         self._compile_mode = compile_mode
         self._cache_implementation = cache_implementation
+        self._quantization = quantization
         self._torch = torch_module
         self._transformers = transformers_module
         self._processor = None
@@ -247,19 +250,68 @@ class Qwen3AsrEngine:
             }
             if self._effective_attention_implementation:
                 model_kwargs["attn_implementation"] = self._effective_attention_implementation
+            if self._quantization == "bnb_nf4":
+                if self._device.type != "cuda" or self._dtype != self._torch.float16:
+                    raise ValueError("bnb_nf4 requires CUDA with float16 compute")
+                # Keep the acoustic frontend and multimodal projection in FP16.
+                # Only the repeated language decoder uses W4A16; this avoids
+                # introducing an uncontrolled acoustic-accuracy change.
+                model_kwargs["quantization_config"] = self._transformers.BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=self._torch.float16,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=False,
+                    llm_int8_skip_modules=[
+                        "model.audio_tower",
+                        "model.multi_modal_projector",
+                        "lm_head",
+                    ],
+                )
             model = self._transformers.AutoModelForMultimodalLM.from_pretrained(
                 str(model_dir), **model_kwargs
             )
             model.eval()
             if self._compile_model:
+                compile_target = getattr(
+                    getattr(model, "model", None), "language_model", None
+                )
+                if compile_target is None:
+                    compile_target = model
+                    compile_scope = "model"
+                else:
+                    compile_scope = "language_model"
                 logger.info(
-                    "Compiling Qwen3-ASR forward(mode=%s)", self._compile_mode
+                    "Compiling Qwen3-ASR %s forward(mode=%s)",
+                    compile_scope,
+                    self._compile_mode,
                 )
-                # Compiling the module wrapper is ineffective for generate(): the
-                # proxied bound generate method can keep calling the original forward.
-                model.forward = self._torch.compile(
-                    model.forward, mode=self._compile_mode
+                # Compile the autoregressive decoder when the model exposes it.
+                # Compiling the full multimodal forward mixes data-dependent audio
+                # control flow with decode and creates graph breaks between CUDA
+                # Graph partitions.  The decoder is the repeated, latency-dominant
+                # portion and has stable per-token execution.
+                compiled_forward = self._torch.compile(
+                    compile_target.forward, mode=self._compile_mode
                 )
+                mark_step_begin = getattr(
+                    getattr(self._torch, "compiler", None),
+                    "cudagraph_mark_step_begin",
+                    None,
+                )
+                if mark_step_begin is None:
+                    compile_target.forward = compiled_forward
+                else:
+                    # Transformers generate() invokes forward once per token.  In
+                    # reduce-overhead mode PyTorch may reuse CUDA Graph output
+                    # buffers across those invocations, so each call must declare
+                    # a new iteration before the previous output is consumed by
+                    # the next decode step.
+                    @wraps(compiled_forward)
+                    def compiled_forward_with_step(*args, **kwargs):
+                        mark_step_begin()
+                        return compiled_forward(*args, **kwargs)
+
+                    compile_target.forward = compiled_forward_with_step
             self._processor = processor
             self._model = model
             logger.info("Qwen3-ASR loaded")

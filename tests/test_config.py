@@ -102,6 +102,7 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
             "ASR_BACKEND": "qwen3_asr",
             "QWEN3_ASR_MODEL_DIR": "/models/qwen3-asr",
             "QWEN3_ASR_DTYPE": "bfloat16",
+            "QWEN3_ASR_QUANTIZATION": "bnb_nf4",
         },
     )
 
@@ -109,12 +110,14 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
     assert config.asr.backend == "qwen3_asr"
     assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
     assert config.qwen3_asr.dtype == "bfloat16"
+    assert config.qwen3_asr.quantization == "bnb_nf4"
 
 
 def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
     assert ServiceConfig().qwen3_asr.compile is False
     assert ServiceConfig().qwen3_asr.cache_implementation is None
+    assert ServiceConfig().qwen3_asr.quantization is None
 
 
 def test_qwen3_asr_rejects_unknown_attention_backend():
@@ -122,6 +125,12 @@ def test_qwen3_asr_rejects_unknown_attention_backend():
         qwen3_asr=Qwen3AsrConfig(attention_implementation="magic")
     )
     with pytest.raises(ValueError, match="attention_implementation"):
+        config.validate()
+
+
+def test_qwen3_asr_rejects_unknown_quantization():
+    config = ServiceConfig(qwen3_asr=Qwen3AsrConfig(quantization="awq-ish"))
+    with pytest.raises(ValueError, match="quantization"):
         config.validate()
 
 

@@ -1,0 +1,37 @@
+Native vLLM 0.14.0 SM87 runtime boundary, 2026-08-10
+
+The isolated aarch64/CUDA 12.6 wheel built and imported successfully.  The
+Qwen3-ASR backend resolved Qwen3ASRForConditionalGeneration, selected FP16,
+initialized the single-rank engine, selected TORCH_SDPA for the audio encoder,
+and reached model weight loading.  It did not complete an end-to-end request.
+
+Configurations attempted:
+
+1. V1 engine subprocess, gpu_memory_utilization=0.5, max_model_len=2048
+2. V1 engine subprocess, gpu_memory_utilization=0.2, max_model_len=2048
+3. VLLM_ENABLE_V1_MULTIPROCESSING=0, utilization=0.2, max_model_len=2048
+4. VLLM_ENABLE_V1_MULTIPROCESSING=0, utilization=0.1,
+   max_model_len=1024, max_new_tokens=64, enforce_eager=true
+
+All four runs were terminated by the Linux OOM killer during model loading.
+The final run printed:
+
+  Starting to load model .../Qwen3-ASR-0.6B-hf-vllm
+  Using backend TORCH_SDPA for vit attention
+  Using TORCH_SDPA for MMEncoderAttention
+  Cudagraph is disabled under eager mode
+
+The corresponding kernel evidence was:
+
+  Aug 10 05:03:46 ... invoked oom-killer
+  Aug 10 05:03:46 Out of memory: Killed process 101802 (python)
+  total-vm:22955336kB
+
+Earlier attempts killed VLLM::EngineCor processes with total-vm between
+22,971,464 kB and 23,024,308 kB.  Before the final attempt, the host reported
+about 11 GiB available RAM.  Robot and desktop services were not stopped.
+
+Interpretation: native JP6/SM87 build feasibility is proven, but neither vLLM
+eager latency nor CUDA Graph latency is measured.  This is a pending memory
+optimization/deployment experiment, not evidence that vLLM or CUDA Graphs lack
+performance benefit.

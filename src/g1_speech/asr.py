@@ -43,6 +43,7 @@ def _qwen3_asr(config: ServiceConfig) -> AsrEngine:
         compile_model=settings.compile,
         compile_mode=settings.compile_mode,
         cache_implementation=settings.cache_implementation,
+        quantization=settings.quantization,
     )
 
 
@@ -106,6 +107,8 @@ def asr_diagnostic_checks(config: ServiceConfig) -> list[tuple[str, Callable[[],
             "flash_attention_2",
         }:
             checks.append(("flash_attn", lambda: _module_path("flash_attn")))
+        if config.qwen3_asr.quantization == "bnb_nf4":
+            checks.append(("bitsandbytes", lambda: _module_path("bitsandbytes")))
         return checks
     return [("ASR adapter", lambda: resolve_asr_factory(config.asr.backend))]
 

@@ -41,7 +41,8 @@
     "attention_implementation": "sdpa",
     "compile": false,
     "compile_mode": "reduce-overhead",
-    "cache_implementation": null
+    "cache_implementation": null,
+    "quantization": null
   },
   "transport": {
     "backend": "dds"

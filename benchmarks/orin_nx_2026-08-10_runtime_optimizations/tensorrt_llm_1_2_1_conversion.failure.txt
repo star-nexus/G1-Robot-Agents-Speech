@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/__init__.py", line 107, in <module>
+    import tensorrt_llm._torch.models as torch_models
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/_torch/__init__.py", line 1, in <module>
+    from .llm import LLM
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/_torch/llm.py", line 1, in <module>
+    from tensorrt_llm.llmapi.llm import _TorchLLM
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/llmapi/__init__.py", line 1, in <module>
+    from .._torch.async_llm import AsyncLLM
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/_torch/async_llm.py", line 3, in <module>
+    from ..llmapi.llm import LLM
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/llmapi/llm.py", line 17, in <module>
+    from tensorrt_llm._utils import mpi_disabled
+  File "<isolated-build>/sources/TensorRT-LLM-1.2.1/tensorrt_llm/_utils.py", line 36, in <module>
+    import nvtx
+ModuleNotFoundError: No module named 'nvtx'
