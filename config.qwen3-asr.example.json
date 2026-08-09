@@ -9,6 +9,9 @@
     "language": "zh",
     "prompt": null,
     "max_new_tokens": 256,
-    "attention_implementation": "sdpa"
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "cache_implementation": null
   }
 }

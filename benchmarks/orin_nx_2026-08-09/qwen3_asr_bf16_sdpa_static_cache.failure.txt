@@ -1,0 +1,162 @@
+Traceback (most recent call last):
+  File "<repo>/acceptance/benchmark_qwen3_profile.py", line 150, in <module>
+    raise SystemExit(main())
+  File "<repo>/acceptance/benchmark_qwen3_profile.py", line 86, in main
+    warmup_result, warmup_profile = engine.transcribe_profiled(utterance)
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 314, in transcribe_profiled
+    result, profile = self._transcribe(
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 365, in _transcribe
+    output_ids = self._run_stage(
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 444, in _run_stage
+    value = operation()
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 367, in <lambda>
+    lambda: self._model.generate(**inputs, **generation_options),
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "<repo>/.venv-gpu/lib/python3.10/site-packages/transformers/generation/utils.py", line 2645, in generate
+    result = decoding_method(
+  File "<repo>/.venv-gpu/lib/python3.10/site-packages/transformers/generation/utils.py", line 2859, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/eval_frame.py", line 434, in _fn
+    return fn(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1714, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1725, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "<repo>/.venv-gpu/lib/python3.10/site-packages/transformers/utils/generic.py", line 911, in wrapper
+    output = func(self, *args, **kwargs)
+  File "<repo>/.venv-gpu/lib/python3.10/site-packages/transformers/models/qwen3_asr/modeling_qwen3_asr.py", line 649, in forward
+    outputs = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1714, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1725, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "<repo>/.venv-gpu/lib/python3.10/site-packages/transformers/utils/generic.py", line 911, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 1121, in __call__
+    return self._torchdynamo_orig_callable(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 948, in __call__
+    result = self._inner_convert(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 472, in __call__
+    return _compile(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_utils_internal.py", line 85, in wrapper_function
+    return StrobelightCompileTimeProfiler.profile_compile_time(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_strobelight/compile_time_profiler.py", line 129, in profile_compile_time
+    return func(*args, **kwargs)
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 817, in _compile
+    guarded_code = compile_inner(code, one_graph, hooks, transform)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 636, in compile_inner
+    out_code = transform_code_object(code, transform)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/bytecode_transformation.py", line 1270, in transform_code_object
+    transformations(instructions, code_options)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 178, in _fn
+    return fn(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/convert_frame.py", line 582, in transform
+    tracer.run()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/symbolic_convert.py", line 2476, in run
+    super().run()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/symbolic_convert.py", line 904, in run
+    while self.step():
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/symbolic_convert.py", line 816, in step
+    self.dispatch_table[inst.opcode](self, inst)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/symbolic_convert.py", line 508, in wrapper
+    return handle_graph_break(self, inst, speculation.reason)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/symbolic_convert.py", line 577, in handle_graph_break
+    self.output.compile_subgraph(self, reason=reason)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/output_graph.py", line 1127, in compile_subgraph
+    self.compile_and_call_fx_graph(tx, pass2.graph_output_vars(), root)
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/output_graph.py", line 1324, in compile_and_call_fx_graph
+    compiled_fn = self.call_user_compiler(gm)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/output_graph.py", line 1415, in call_user_compiler
+    raise BackendCompilerFailed(self.compiler_fn, e).with_traceback(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/output_graph.py", line 1396, in call_user_compiler
+    compiled_fn = compiler_fn(gm, self.example_inputs())
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/repro/after_dynamo.py", line 129, in __call__
+    compiled_gm = compiler_fn(gm, example_inputs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/__init__.py", line 2178, in __call__
+    return compile_fx(model_, inputs_, config_patches=self.config)
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 1298, in compile_fx
+    return compile_fx(
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 1550, in compile_fx
+    return aot_autograd(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/backends/common.py", line 69, in __call__
+    cg = aot_module_simplified(gm, example_inputs, **self.kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_functorch/aot_autograd.py", line 990, in aot_module_simplified
+    compiled_fn = dispatch_and_compile()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_functorch/aot_autograd.py", line 979, in dispatch_and_compile
+    compiled_fn, _ = create_aot_dispatcher_function(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_functorch/aot_autograd.py", line 708, in create_aot_dispatcher_function
+    compiled_fn, fw_metadata = compiler_fn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/_functorch/_aot_autograd/jit_compile_runtime_wrappers.py", line 175, in aot_dispatch_base
+    compiled_fw = compiler(fw_module, updated_flat_args)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 1455, in fw_compiler_base
+    return inner_compile(
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/repro/after_aot.py", line 84, in debug_wrapper
+    inner_compiled_fn = compiler_fn(gm, example_inputs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/debug.py", line 304, in inner
+    return fn(*args, **kwargs)
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 433, in wrapper
+    return fn(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 546, in compile_fx_inner
+    compiled_graph = fx_codegen_and_compile(
+  File "/usr/lib/python3.10/contextlib.py", line 79, in inner
+    return func(*args, **kwds)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/compile_fx.py", line 868, in fx_codegen_and_compile
+    compiled_fn = graph.compile_to_fn()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/graph.py", line 1751, in compile_to_fn
+    return self.compile_to_module().call
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/graph.py", line 1679, in compile_to_module
+    self.codegen_with_cpp_wrapper() if self.cpp_wrapper else self.codegen()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/graph.py", line 1630, in codegen
+    self.scheduler = Scheduler(self.buffers)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_dynamo/utils.py", line 233, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 1381, in __init__
+    self.nodes = [self.create_scheduler_node(n) for n in nodes]
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 1381, in <listcomp>
+    self.nodes = [self.create_scheduler_node(n) for n in nodes]
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 1477, in create_scheduler_node
+    return SchedulerNode(self, node)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 746, in __init__
+    self._compute_attrs()
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 757, in _compute_attrs
+    group_fn = self.scheduler.get_backend(self.node.get_device()).group_fn
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 2641, in get_backend
+    self.backends[device] = self.create_backend(device)
+  File "/usr/local/lib/python3.10/dist-packages/torch/_inductor/scheduler.py", line 2633, in create_backend
+    raise RuntimeError(
+torch._dynamo.exc.BackendCompilerFailed: backend='inductor' raised:
+RuntimeError: Cannot find a working triton installation. More information on installing Triton can be found at https://github.com/openai/triton
+
+Set TORCH_LOGS="+dynamo" and TORCHDYNAMO_VERBOSE=1 for more information
+
+
+You can suppress this exception and fall back to eager by setting:
+    import torch._dynamo
+    torch._dynamo.config.suppress_errors = True

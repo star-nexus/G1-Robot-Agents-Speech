@@ -52,6 +52,23 @@ def test_write_config_derives_gpu_config_without_copying_defaults(tmp_path):
     assert gpu.vad == cpu.vad
 
 
+def test_write_config_upgrades_an_older_base_with_new_default_fields(tmp_path):
+    base = tmp_path / "old.json"
+    base.write_text(
+        json.dumps({"qwen3_asr": {"model_dir": "/models/qwen3-asr"}}),
+        encoding="utf-8",
+    )
+
+    output = write_config(
+        tmp_path / "new.json",
+        base=base,
+        overrides=("qwen3_asr.compile=true",),
+    )
+
+    assert load_config(output).qwen3_asr.compile is True
+    assert load_config(output).qwen3_asr.attention_implementation == "sdpa"
+
+
 def test_paths_are_relative_to_config_file(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(
@@ -96,6 +113,8 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
 
 def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
+    assert ServiceConfig().qwen3_asr.compile is False
+    assert ServiceConfig().qwen3_asr.cache_implementation is None
 
 
 def test_qwen3_asr_rejects_unknown_attention_backend():

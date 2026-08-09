@@ -44,11 +44,16 @@ class Processor:
 class Model:
     def __init__(self):
         self.training = True
+        self.inputs = None
 
     def eval(self):
         self.training = False
 
+    def forward(self, **inputs):
+        return inputs
+
     def generate(self, **inputs):
+        self.inputs = inputs
         assert inputs["do_sample"] is False
         return np.zeros((1, 4), dtype=np.int64)
 
@@ -114,6 +119,79 @@ def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_p
     assert model_options["attn_implementation"] == "eager"
     assert model.training is False
     assert "audio=1.00s RTF=" in caplog.text
+
+
+def test_profiled_transcription_keeps_result_api_and_reports_all_stages(tmp_path):
+    processor = Processor()
+    model = Model()
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model
+        ),
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        device="cuda",
+        dtype="bfloat16",
+        cache_implementation="static",
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    result, profile = engine.transcribe_profiled(
+        Utterance(np.zeros(16000, dtype=np.float32), 16000, 0, 0)
+    )
+
+    assert result.text == "你好，机器人。"
+    assert result.inference_ms == profile.total_ms
+    assert profile.audio_seconds == 1.0
+    assert profile.generated_tokens == 2
+    assert profile.rtf == profile.total_ms / 1000
+    assert set(profile.as_dict()) == {
+        "audio_seconds",
+        "processor_ms",
+        "h2d_ms",
+        "generate_ms",
+        "decode_ms",
+        "total_ms",
+        "generated_tokens",
+        "generated_tokens_per_second",
+        "rtf",
+    }
+    assert model.inputs["cache_implementation"] == "static"
+
+
+def test_torch_compile_is_an_explicit_load_option(tmp_path):
+    processor = Processor()
+    model = Model()
+    compiled = SimpleNamespace(model=None, mode=None)
+
+    class CompileTorch(Torch):
+        @staticmethod
+        def compile(selected_model, *, mode):
+            compiled.model = selected_model
+            compiled.mode = mode
+            return selected_model
+
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model
+        ),
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        compile_model=True,
+        compile_mode="reduce-overhead",
+        torch_module=CompileTorch,
+        transformers_module=transformers,
+    )
+
+    engine.load()
+
+    assert compiled.model.__self__ is model
+    assert compiled.mode == "reduce-overhead"
 
 
 def test_sdpa_gqa_capability_detection_uses_runtime_documentation():

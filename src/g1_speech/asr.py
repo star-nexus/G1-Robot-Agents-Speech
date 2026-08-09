@@ -40,6 +40,9 @@ def _qwen3_asr(config: ServiceConfig) -> AsrEngine:
         prompt=settings.prompt,
         max_new_tokens=settings.max_new_tokens,
         attention_implementation=settings.attention_implementation,
+        compile_model=settings.compile,
+        compile_mode=settings.compile_mode,
+        cache_implementation=settings.cache_implementation,
     )
 
 

@@ -51,6 +51,33 @@ GQA and the compatibility path explicitly expands KV heads. These are end-to-end
 Transformers adapter measurements, not server-GPU vLLM throughput or an accuracy
 benchmark.
 
+### Why is Qwen3-ASR slower on Jetson Orin NX?
+
+The latency gap should not be attributed primarily to the attention backend.
+Qwen3-ASR is a large audio-language model that combines an audio encoder with an
+autoregressive Qwen3 decoder. On Jetson Orin NX, single-request decoding is dominated
+by repeated decoder execution, GEMM work, memory traffic, and kernel-launch overhead
+rather than attention alone.
+
+Our measurements support this interpretation. Switching from eager attention to SDPA
+reduces Qwen3-ASR-0.6B latency by 10.3%, while FlashAttention 2 is 20.9% slower than
+SDPA on the same short, batch-1 workload. A synchronized stage breakdown attributes
+98.8% of the 1.28-second request to `generate()`. Nsight Systems records about 26,000
+CUDA kernel launches in one 15-token request: GEMM kernels account for about 65% of
+GPU kernel time, while attention kernels account for about 2.3%.
+
+The official efficiency results are not directly comparable. They use approximately
+two-minute audio, vLLM 0.14.0, CUDA Graphs, BF16, and server-oriented batch or
+asynchronous serving. This project measures a 5.592-second utterance through native
+Transformers `generate()` at batch 1. Consequently, GPU SDPA remains the preferred
+BF16 backend on this Orin; FP16 provides a further measured 4.9% latency reduction,
+while `torch.compile` and static-cache generation are currently blocked by the absence
+of a working Jetson Triton build.
+
+See the [full Orin NX latency report](docs/qwen3_asr_orin_nx_latency.md), the
+[raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), and the
+[JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md).
+
 ## Quick Start
 
 ### Start the Speech Service

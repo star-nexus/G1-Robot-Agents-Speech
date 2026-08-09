@@ -3,7 +3,7 @@
 from .asr import create_asr_engine
 from .contracts import AudioChunk, RecognitionResult, SpeechEvent, Utterance
 from .engine import SenseVoiceEngine
-from .qwen3_asr import Qwen3AsrEngine
+from .qwen3_asr import Qwen3AsrEngine, Qwen3AsrProfile
 from .gate import PlaybackGate
 from .pipeline import SpeechPipeline
 
@@ -13,6 +13,7 @@ __all__ = [
     "PlaybackGate",
     "RecognitionResult",
     "Qwen3AsrEngine",
+    "Qwen3AsrProfile",
     "SenseVoiceEngine",
     "SpeechEvent",
     "SpeechPipeline",

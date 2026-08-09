@@ -38,3 +38,4 @@ def test_host_local_and_benchmark_artifacts_are_ignored():
     assert "acceptance/data/" in ignore
     assert "acceptance/results/" in ignore
     assert "acceptance/*.local.jsonl" in ignore
+    assert "/tests/test_audio_*" in ignore

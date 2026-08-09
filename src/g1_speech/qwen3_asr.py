@@ -8,6 +8,8 @@ import logging
 import os
 import threading
 import time
+from contextlib import ExitStack, nullcontext
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,24 @@ _LANGUAGE_CODES = {
     "portuguese": "pt",
     "russian": "ru",
 }
+
+
+@dataclass(frozen=True)
+class Qwen3AsrProfile:
+    """Per-request diagnostic timings; intentionally separate from RecognitionResult."""
+
+    audio_seconds: float
+    processor_ms: float
+    h2d_ms: float
+    generate_ms: float
+    decode_ms: float
+    total_ms: float
+    generated_tokens: int
+    generated_tokens_per_second: float
+    rtf: float
+
+    def as_dict(self) -> dict[str, float | int]:
+        return asdict(self)
 
 
 def validate_qwen3_asr_model_dir(model_dir: str | os.PathLike) -> Path:
@@ -163,6 +183,9 @@ class Qwen3AsrEngine:
         prompt: str | None = None,
         max_new_tokens: int = 256,
         attention_implementation: str | None = None,
+        compile_model: bool = False,
+        compile_mode: str = "reduce-overhead",
+        cache_implementation: str | None = None,
         torch_module: Any | None = None,
         transformers_module: Any | None = None,
     ) -> None:
@@ -175,6 +198,9 @@ class Qwen3AsrEngine:
         self._prompt = prompt
         self._max_new_tokens = max_new_tokens
         self._attention_implementation = attention_implementation
+        self._compile_model = compile_model
+        self._compile_mode = compile_mode
+        self._cache_implementation = cache_implementation
         self._torch = torch_module
         self._transformers = transformers_module
         self._processor = None
@@ -225,6 +251,15 @@ class Qwen3AsrEngine:
                 str(model_dir), **model_kwargs
             )
             model.eval()
+            if self._compile_model:
+                logger.info(
+                    "Compiling Qwen3-ASR forward(mode=%s)", self._compile_mode
+                )
+                # Compiling the module wrapper is ineffective for generate(): the
+                # proxied bound generate method can keep calling the original forward.
+                model.forward = self._torch.compile(
+                    model.forward, mode=self._compile_mode
+                )
             self._processor = processor
             self._model = model
             logger.info("Qwen3-ASR loaded")
@@ -266,6 +301,31 @@ class Qwen3AsrEngine:
         return getattr(self._torch, self._dtype_setting)
 
     def transcribe(self, utterance: Utterance) -> RecognitionResult:
+        result, _profile = self._transcribe(utterance, collect_profile=False)
+        return result
+
+    def transcribe_profiled(
+        self,
+        utterance: Utterance,
+        *,
+        record_ranges: bool = False,
+    ) -> tuple[RecognitionResult, Qwen3AsrProfile]:
+        """Transcribe with synchronized stage timings for benchmarks and profilers."""
+        result, profile = self._transcribe(
+            utterance,
+            collect_profile=True,
+            record_ranges=record_ranges,
+        )
+        assert profile is not None
+        return result, profile
+
+    def _transcribe(
+        self,
+        utterance: Utterance,
+        *,
+        collect_profile: bool,
+        record_ranges: bool = False,
+    ) -> tuple[RecognitionResult, Qwen3AsrProfile | None]:
         if utterance.sample_rate != self._sample_rate:
             raise ValueError(
                 f"Audio sample rate {utterance.sample_rate} does not match model rate "
@@ -280,17 +340,54 @@ class Qwen3AsrEngine:
             request["prompt"] = self._prompt
         self._synchronize_device()
         started = time.perf_counter()
-        with self._lock, self._torch.inference_mode():
-            inputs = self._processor.apply_transcription_request(**request)
-            inputs = inputs.to(self._device, self._dtype)
-            output_ids = self._model.generate(
-                **inputs,
-                max_new_tokens=self._max_new_tokens,
-                do_sample=False,
+        timings: dict[str, float] = {}
+        with (
+            self._range("qwen3_asr_total", record_ranges),
+            self._lock,
+            self._torch.inference_mode(),
+        ):
+            inputs = self._run_stage(
+                "processor",
+                lambda: self._processor.apply_transcription_request(**request),
+                timings,
+                collect_profile,
+                record_ranges,
             )
-            generated_ids = output_ids[:, inputs["input_ids"].shape[1] :]
-            parsed = self._processor.decode(generated_ids, return_format="parsed")[0]
-            self._synchronize_device()
+            inputs = self._run_stage(
+                "h2d",
+                lambda: inputs.to(self._device, self._dtype),
+                timings,
+                collect_profile,
+                record_ranges,
+            )
+            generation_options: dict[str, Any] = {
+                "max_new_tokens": self._max_new_tokens,
+                "do_sample": False,
+            }
+            if self._cache_implementation:
+                generation_options["cache_implementation"] = self._cache_implementation
+            output_ids = self._run_stage(
+                "generate",
+                lambda: self._model.generate(**inputs, **generation_options),
+                timings,
+                collect_profile,
+                record_ranges,
+            )
+            input_tokens = inputs["input_ids"].shape[1]
+
+            def decode_output():
+                generated = output_ids[:, input_tokens:]
+                decoded = self._processor.decode(generated, return_format="parsed")[0]
+                return generated, decoded
+
+            generated_ids, parsed = self._run_stage(
+                "decode",
+                decode_output,
+                timings,
+                collect_profile,
+                record_ranges,
+            )
+        self._synchronize_device()
         inference_ms = (time.perf_counter() - started) * 1000
         audio_seconds = samples.size / self._sample_rate
         rtf = inference_ms / 1000 / audio_seconds if audio_seconds else float("inf")
@@ -308,12 +405,63 @@ class Qwen3AsrEngine:
             rtf,
             text,
         )
-        return RecognitionResult(
+        result = RecognitionResult(
             text=text,
             language=language,
             inference_ms=inference_ms,
             engine=self.name,
         )
+        profile = None
+        if collect_profile:
+            generated_tokens = int(generated_ids.shape[-1])
+            generate_ms = timings["generate"]
+            profile = Qwen3AsrProfile(
+                audio_seconds=audio_seconds,
+                processor_ms=timings["processor"],
+                h2d_ms=timings["h2d"],
+                generate_ms=generate_ms,
+                decode_ms=timings["decode"],
+                total_ms=inference_ms,
+                generated_tokens=generated_tokens,
+                generated_tokens_per_second=(
+                    generated_tokens / (generate_ms / 1000) if generate_ms else float("inf")
+                ),
+                rtf=rtf,
+            )
+        return result, profile
+
+    def _run_stage(
+        self,
+        name: str,
+        operation,
+        timings: dict[str, float],
+        collect_profile: bool,
+        record_ranges: bool,
+    ):
+        context = self._range(name, record_ranges)
+        if not collect_profile:
+            with context:
+                return operation()
+        self._synchronize_device()
+        started = time.perf_counter()
+        with context:
+            value = operation()
+        self._synchronize_device()
+        timings[name] = (time.perf_counter() - started) * 1000
+        return value
+
+    def _range(self, name: str, enabled: bool):
+        if not enabled:
+            return nullcontext()
+        stack = ExitStack()
+        profiler = getattr(self._torch, "profiler", None)
+        if profiler is not None and hasattr(profiler, "record_function"):
+            stack.enter_context(profiler.record_function(name))
+        cuda = getattr(self._torch, "cuda", None)
+        nvtx = getattr(cuda, "nvtx", None)
+        if self._device.type == "cuda" and nvtx is not None and hasattr(nvtx, "range"):
+            stack.enter_context(nvtx.range(name))
+        return stack
 
     def _synchronize_device(self) -> None:
         if self._device.type == "cuda" and hasattr(self._torch.cuda, "synchronize"):

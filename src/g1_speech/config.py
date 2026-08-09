@@ -57,6 +57,9 @@ class Qwen3AsrConfig:
     prompt: str | None = None
     max_new_tokens: int = 256
     attention_implementation: str | None = "sdpa"
+    compile: bool = False
+    compile_mode: str = "reduce-overhead"
+    cache_implementation: str | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +152,8 @@ class ServiceConfig:
             )
         if self.qwen3_asr.max_new_tokens < 1:
             raise ValueError("qwen3_asr.max_new_tokens must be greater than zero")
+        if not self.qwen3_asr.compile_mode.strip():
+            raise ValueError("qwen3_asr.compile_mode must not be empty")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
             raise ValueError("vad.max_speech_seconds must exceed min_speech_seconds")
         if self.vad.buffer_seconds <= 0:
@@ -193,7 +198,9 @@ def write_config(
     defaults = default_config_dict()
     for section, value in defaults.items():
         if isinstance(value, dict):
-            raw.setdefault(section, deepcopy(value))
+            target_section = raw.setdefault(section, {})
+            for field_name, default_value in value.items():
+                target_section.setdefault(field_name, deepcopy(default_value))
     if environment is not None:
         _apply_environment_overrides(raw, environment)
     for assignment in overrides:

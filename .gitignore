@@ -9,6 +9,7 @@ acceptance/data/
 acceptance/results/
 acceptance/*.local.jsonl
 /tests/test_audio.*
+/tests/test_audio_*
 .deps/
 build/
 .build/
