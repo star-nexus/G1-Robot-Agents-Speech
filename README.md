@@ -42,6 +42,7 @@ the same 5.592-second Chinese WAV, 3 warm-ups, and 10 measured runs:
 | Qwen3-ASR-0.6B | CPU | — | FA2 | unsupported (CUDA only) | — | — | — |
 | Qwen3-ASR-0.6B | GPU | BF16 | eager | 1378.2 ms | 1375.9 ms | 1391.5 ms | 0.2465 |
 | Qwen3-ASR-0.6B | GPU | BF16 | SDPA | **1235.7 ms** | 1234.8 ms | 1241.7 ms | **0.2210** |
+| Qwen3-ASR-0.6B | GPU | FP16 | SDPA | **1218.3 ms** | 1216.0 ms | 1244.7 ms | **0.2179** |
 | Qwen3-ASR-0.6B | GPU | BF16 | FA2 | 1493.4 ms | 1494.3 ms | 1500.2 ms | 0.2671 |
 
 Attention selection does not apply to SenseVoice's ONNX graph. On this Orin and
@@ -69,13 +70,17 @@ GPU kernel time, while attention kernels account for about 2.3%.
 The official efficiency results are not directly comparable. They use approximately
 two-minute audio, vLLM 0.14.0, CUDA Graphs, BF16, and server-oriented batch or
 asynchronous serving. This project measures a 5.592-second utterance through native
-Transformers `generate()` at batch 1. Consequently, GPU SDPA remains the preferred
-BF16 backend on this Orin; FP16 provides a further measured 4.9% latency reduction,
-while `torch.compile` and static-cache generation are currently blocked by the absence
-of a working Jetson Triton build.
+Transformers `generate()` at batch 1. Consequently, GPU SDPA + FP16 is the sealed
+Orin NX baseline. A 10-utterance, 50.188-second labeled check found identical
+punctuation-insensitive content CER for BF16 and FP16 (6.22%), 10/10 matching content
+transcripts, deterministic output over three runs per utterance, and 100% language
+identification. FP16 also provides a measured 4.9% fixed-sample latency reduction.
+`torch.compile` and static-cache generation remain blocked by the absence of a working
+Jetson Triton build.
 
 See the [full Orin NX latency report](docs/qwen3_asr_orin_nx_latency.md), the
-[raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), and the
+[raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), the
+[sealed FP16 baseline](benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md), and the
 [JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md).
 
 ## Quick Start
@@ -164,6 +169,8 @@ sudo g1-speech-service gpu dds
 
 SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
 the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
+The Qwen example selects FP16 because it passed the Orin NX CER gate; BF16 remains
+the conservative fallback for other CUDA platforms until measured there.
 Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
 FlashAttention 2 is an optional CUDA-only backend. Build its Jetson extension once,
 then select it in the same local JSON configuration:

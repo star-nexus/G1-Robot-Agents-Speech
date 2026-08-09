@@ -41,6 +41,7 @@ Jetson Orin NX，`MAXN_SUPER` 电源模式（动态频率、未锁频），同�
 | Qwen3-ASR-0.6B | CPU | — | FA2 | 不支持（仅 CUDA） | — | — | — |
 | Qwen3-ASR-0.6B | GPU | BF16 | eager | 1378.2 ms | 1375.9 ms | 1391.5 ms | 0.2465 |
 | Qwen3-ASR-0.6B | GPU | BF16 | SDPA | **1235.7 ms** | 1234.8 ms | 1241.7 ms | **0.2210** |
+| Qwen3-ASR-0.6B | GPU | FP16 | SDPA | **1218.3 ms** | 1216.0 ms | 1244.7 ms | **0.2179** |
 | Qwen3-ASR-0.6B | GPU | BF16 | FA2 | 1493.4 ms | 1494.3 ms | 1500.2 ms | 0.2671 |
 
 SenseVoice 使用 ONNX 图，不存在 eager/SDPA/FA2 选择。在这台 Orin 的单请求场景中，
@@ -132,6 +133,10 @@ ASR_BACKEND="qwen3_asr"
 SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
 sudo g1-speech-service gpu dds
 ```
+
+示例配置在 Orin NX 上采用已封存的 `SDPA + FP16` baseline：10 条、50.188 秒带标注
+语料中，FP16 与 BF16 的忽略标点内容 CER 均为 6.22%，10/10 内容转写一致，且每条
+重复三次均确定。其他 CUDA 平台仍应先测量，再决定是否从 BF16 切换。
 
 默认 `attention_implementation` 为 `sdpa`。新 PyTorch 使用原生 GQA；Jetson 当前的
 NVIDIA PyTorch 2.5 缺少 `enable_gqa` 参数，adapter 会自动展开 KV heads 后进入 SDPA，

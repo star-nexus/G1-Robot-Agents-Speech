@@ -11,6 +11,20 @@ def normalize_characters(text: str) -> list[str]:
     return [character for character in normalized if not character.isspace()]
 
 
+def normalize_content_characters(text: str) -> list[str]:
+    """Normalize CER content while excluding Unicode punctuation.
+
+    The strict character metric intentionally retains punctuation. ASR precision
+    comparisons also need a content-only view so optional punctuation does not
+    look like an acoustic or lexical regression.
+    """
+    return [
+        character
+        for character in normalize_characters(text)
+        if not unicodedata.category(character).startswith("P")
+    ]
+
+
 def normalize_words(text: str) -> list[str]:
     return unicodedata.normalize("NFKC", text).casefold().split()
 

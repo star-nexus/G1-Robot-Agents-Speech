@@ -13,7 +13,11 @@ from g1_speech.asr import create_asr_engine
 from g1_speech.cli import _read_wav
 from g1_speech.config import load_config
 from g1_speech.contracts import Utterance
-from g1_speech.evaluation import edit_distance, normalize_characters
+from g1_speech.evaluation import (
+    edit_distance,
+    normalize_characters,
+    normalize_content_characters,
+)
 
 
 @dataclass(frozen=True)
@@ -63,6 +67,8 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
     audio_ms_total = 0.0
     reference_characters: list[str] = []
     hypothesis_characters: list[str] = []
+    content_reference_characters: list[str] = []
+    content_hypothesis_characters: list[str] = []
     transcripts = []
     try:
         started = time.perf_counter()
@@ -80,10 +86,18 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
                     engine.transcribe(utterance)
             results = [engine.transcribe(utterance) for _ in range(runs)]
             result = results[0]
+            text_variants = sorted({item.text for item in results})
+            language_variants = sorted({item.language for item in results})
             times.extend(item.inference_ms for item in results)
             audio_ms_total += utterance.duration_ms * runs
             reference_characters.extend(normalize_characters(case.text))
             hypothesis_characters.extend(normalize_characters(result.text))
+            content_reference_characters.extend(
+                normalize_content_characters(case.text)
+            )
+            content_hypothesis_characters.extend(
+                normalize_content_characters(result.text)
+            )
             transcripts.append(
                 {
                     "audio": str(case.audio),
@@ -91,8 +105,22 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
                     "expected_language": case.language,
                     "text": result.text,
                     "language": result.language,
+                    "deterministic": len(text_variants) == 1
+                    and len(language_variants) == 1,
+                    "text_variants": text_variants,
+                    "language_variants": language_variants,
                 }
             )
+        strict_edits = edit_distance(reference_characters, hypothesis_characters)
+        content_edits = edit_distance(
+            content_reference_characters,
+            content_hypothesis_characters,
+        )
+        language_matches = sum(
+            item["expected_language"] is None
+            or item["expected_language"] == item["language"]
+            for item in transcripts
+        )
         return {
             "label": label,
             "backend": config.asr.backend,
@@ -119,11 +147,19 @@ def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, run
             "median_ms": round(statistics.median(times), 1),
             "p95_ms": round(percentile(times, 0.95), 1),
             "rtf": round(sum(times) / audio_ms_total, 4),
-            "cer": round(
-                edit_distance(reference_characters, hypothesis_characters)
-                / len(reference_characters),
-                4,
+            "cer": round(strict_edits / len(reference_characters), 4),
+            "cer_edits": strict_edits,
+            "reference_characters": len(reference_characters),
+            "content_cer": (
+                round(content_edits / len(content_reference_characters), 4)
+                if content_reference_characters
+                else None
             ),
+            "content_cer_edits": content_edits,
+            "content_reference_characters": len(content_reference_characters),
+            "deterministic": all(item["deterministic"] for item in transcripts),
+            "language_matches": language_matches,
+            "language_accuracy": round(language_matches / len(transcripts), 4),
             "transcripts": transcripts,
         }
     finally:

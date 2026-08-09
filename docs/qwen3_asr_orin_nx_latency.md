@@ -85,8 +85,13 @@ processor+H2D+decode 只有约 14.8 ms。
 `Cannot find a working triton installation`。失败 trace 已原样保存；没有启用
 `suppress_errors` 伪装成成功，也没有安装会替换 Jetson PyTorch 的 wheel。
 
-FP16 与 BF16 识别文本均为“開放時間：早上九點至下午五點。”。这里只验证该固定样本
-没有语义异常；FP16 是否能成为部署默认值仍需在带标注语料上做 CER/稳定性验收。
+后续 10 条、50.188 秒的带标注语料验收覆盖普通话、英语和粤语。忽略 Unicode 标点的
+内容 CER 在 BF16 与 FP16 下均为 **6.22%（13/209）**；10/10 条内容转写一致，语言
+识别 10/10 正确，每条重复三次均确定。严格 CER 分别为 14.22% 和 13.27%，差异来自
+BF16 多输出两个逗号，不是词汇回退。因此 **GPU + SDPA + FP16 正式封存为 Orin NX
+稳定 baseline**。社区仓库只保留聚合指标、判定门槛和模型/运行时指纹；探索性语料、
+参考文本和逐条输出因不适合作为社区 benchmark 而不入库。见
+[`orin_nx_2026-08-10_fp16_baseline`](../benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md)。
 
 ## 4. Profiler 确认 GEMM 和 launch 主导
 
@@ -145,7 +150,8 @@ SenseVoice 是专用 ASR ONNX 路径，本项目 GPU FP32 RTF 0.0138，仍是机
 建议：
 
 1. 低延迟机器人交互继续优先 SenseVoice；需要 Qwen3-ASR 鲁棒性/语言知识时才切换。
-2. Qwen3-ASR 当前使用 SDPA；若固定语料验证通过，可采用 FP16 获得约 4.9% 小收益。
+2. Qwen3-ASR 在 Orin NX 上采用已通过 CER gate 的 SDPA + FP16 baseline，固定样本延迟
+   比 BF16 低约 4.9%。
 3. 不再投入 FA2 微调。下一轮优化应面向 generation runtime/CUDA Graph/流式首 token。
 4. vLLM 只能在独立 Jetson PyTorch 2.9.1 容器栈中验证，详见
    [`vllm_orin_jp6.md`](vllm_orin_jp6.md)。
@@ -156,10 +162,12 @@ SenseVoice 是专用 ASR ONNX 路径，本项目 GPU FP32 RTF 0.0138，仍是机
 - 动态时钟未锁定；正式分布较紧，但不同独立进程仍有数个百分点漂移。
 - 分段同步会引入少量测量扰动；所有 variant 使用同一口径，比较仍然成立。
 - 120 秒自然音频达到 token 上限，已从完整长音频结论中排除。
-- 未测带标注 CER，FP16 的准确率结论仅限固定文本一致性。
+- CER gate 只有 10 条、50.188 秒，适合验证 FP16 相对 BF16 无回退，不代表生产语料的
+  绝对准确率；普通话、噪声、远场和机器人领域词仍需扩充人工标注集。
 - Torch profiler 的 CUDA activity 权限失败已明确披露；CUDA 结论来自 Nsight CSV。
 - 所有 headline 数字均从保存的 JSON/CSV 重新计算，并检查了单位、RTF 分母、run 数、
-  token cap 和同文本条件。综合评级：**Share with caveats**。
+  token cap 和同文本条件。FP16 相对 BF16 的 baseline 判定为 **Ready to use on this
+  Orin NX stack**；模型总体准确率结论仍为 **Share with caveats**。
 
 完整原始数据、失败 trace、命令和来源说明位于
 [`benchmarks/orin_nx_2026-08-09`](../benchmarks/orin_nx_2026-08-09/README.md)。

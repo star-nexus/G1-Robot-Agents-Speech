@@ -18,7 +18,7 @@ The ASR pipeline was split into processor, host-to-device transfer, model genera
 
 The result is unambiguous: almost all latency is inside `model.generate()`.
 
-Audio preprocessing, CPU-to-GPU transfer, and final token decoding together account for only about **14.8 ms**, so they are not meaningful optimization targets for this workload. :contentReference[oaicite:0]{index=0}
+Audio preprocessing, CPU-to-GPU transfer, and final token decoding together account for only about **14.8 ms**, so they are not meaningful optimization targets for this workload.
 
 ### Nsight Profiling: GEMM and Small-Kernel Dispatch Dominate
 
@@ -38,7 +38,7 @@ The dominant pattern is therefore:
 
 > **large amounts of GEMM work, repeated model-weight/memory traffic, and a very large number of short CUDA kernel launches.**
 
-Attention is only a small part of the total GPU execution time. This is consistent with the backend comparison: SDPA improves over eager attention only modestly, while FlashAttention 2 is slower than SDPA for this batch-1, short-utterance workload. :contentReference[oaicite:1]{index=1}
+Attention is only a small part of the total GPU execution time. This is consistent with the backend comparison: SDPA improves over eager attention only modestly, while FlashAttention 2 is slower than SDPA for this batch-1, short-utterance workload.
 
 ### Autoregressive Generation Is the Main Bottleneck
 
@@ -58,7 +58,7 @@ A linear regression between mean latency and generated token count gives:
 - slope: approximately **83 ms/token**
 - \(R^2 = 0.99991\)
 
-This strongly indicates that latency is dominated by autoregressive generation rather than audio preprocessing or attention alone. :contentReference[oaicite:2]{index=2}
+This strongly indicates that latency is dominated by autoregressive generation rather than audio preprocessing or attention alone.
 
 ### Memory Bandwidth Is Likely an Additional Constraint
 
@@ -72,7 +72,7 @@ The profiler data is also consistent with a memory-traffic bottleneck:
 
 These observations strongly suggest that memory traffic and memory bandwidth contribute materially to the runtime behavior on Orin NX.
 
-However, this has **not** yet been directly confirmed with hardware memory counters such as DRAM throughput, L2 hit rate, or memory-stall metrics. It should therefore be treated as a strong architectural inference rather than a directly measured result. :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4}
+However, this has **not** yet been directly confirmed with hardware memory counters such as DRAM throughput, L2 hit rate, or memory-stall metrics. It should therefore be treated as a strong architectural inference rather than a directly measured result.
 
 ### Conclusion
 
@@ -91,3 +91,19 @@ In the measured 5.592-second workload:
 - Output generation throughput is approximately **12 tokens/s**.
 
 These results indicate that further optimization effort should focus on the **generation runtime and execution scheduling**, rather than on further attention-kernel optimization.
+
+### Sealed Orin NX Baseline
+
+The deployment baseline is now **Qwen3-ASR-0.6B + GPU + SDPA + FP16**. A labeled
+10-utterance, 50.188-second Mandarin/English/Cantonese comparison measured the same
+punctuation-insensitive content CER for BF16 and FP16: **6.22% (13/209)**. All 10
+content transcripts matched between precisions, language identification was 10/10,
+and every utterance was deterministic over three runs. Strict CER was 14.22% for
+BF16 and 13.27% for FP16; the difference was only optional punctuation.
+
+This gate establishes no FP16 regression on the measured corpus, not a general
+production-accuracy claim. The community repository retains only aggregate metrics,
+pass criteria, and model/runtime fingerprints. The exploratory corpus, references,
+and transcript-level output are excluded because they are not suitable as a public
+benchmark. See
+[`benchmarks/orin_nx_2026-08-10_fp16_baseline`](../benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md).

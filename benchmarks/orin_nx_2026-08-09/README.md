@@ -10,7 +10,9 @@ one row per measured request; `*.summary.csv` and `*.md` are exact lookup views.
   compute capability 8.7.
 - Runtime: Jetson-native PyTorch `2.5.0a0+872d972e41.nv24.08` and Transformers 5.13.
 - Model: Qwen3-ASR-0.6B, GPU SDPA, greedy decoding, `max_new_tokens=256`.
-- Baseline precision: BF16; FP16 is tested as a separate variant.
+- Profiling precision: BF16; FP16 is tested as a separate variant. FP16 was later
+  promoted to the stable Orin baseline after the labeled CER gate documented in
+  [`../orin_nx_2026-08-10_fp16_baseline`](../orin_nx_2026-08-10_fp16_baseline/README.md).
 - Warm-up: 3 requests. Formal measurements: 10 requests, except no reduced run
   count was needed for the controlled 8× scan. The provided 120-second M4A uses
   5 formal requests as allowed by the protocol.
