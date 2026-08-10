@@ -190,6 +190,7 @@ class Qwen3AsrEngine:
         startup_warmup_seconds: float = 0.0,
         cache_implementation: str | None = None,
         quantization: str | None = None,
+        log_profile: bool = False,
         torch_module: Any | None = None,
         transformers_module: Any | None = None,
     ) -> None:
@@ -208,6 +209,7 @@ class Qwen3AsrEngine:
         self._startup_warmup_seconds = startup_warmup_seconds
         self._cache_implementation = cache_implementation
         self._quantization = quantization
+        self._log_profile = log_profile
         self._torch = torch_module
         self._transformers = transformers_module
         self._processor = None
@@ -397,7 +399,20 @@ class Qwen3AsrEngine:
         return getattr(self._torch, self._dtype_setting)
 
     def transcribe(self, utterance: Utterance) -> RecognitionResult:
-        result, _profile = self._transcribe(utterance, collect_profile=False)
+        result, profile = self._transcribe(
+            utterance, collect_profile=self._log_profile
+        )
+        if profile is not None:
+            logger.info(
+                "Qwen3-ASR profile tokens=%d generate=%.1fms tokens_per_second=%.2f "
+                "processor=%.1fms h2d=%.1fms decode=%.1fms",
+                profile.generated_tokens,
+                profile.generate_ms,
+                profile.generated_tokens_per_second,
+                profile.processor_ms,
+                profile.h2d_ms,
+                profile.decode_ms,
+            )
         return result
 
     def transcribe_profiled(

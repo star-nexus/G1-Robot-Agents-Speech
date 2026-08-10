@@ -63,6 +63,7 @@ class Qwen3AsrConfig:
     startup_warmup_seconds: float = 0.0
     cache_implementation: str | None = None
     quantization: str | None = None
+    log_profile: bool = False
 
 
 @dataclass(frozen=True)
@@ -130,6 +131,10 @@ class ServiceConfig:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
             raise ValueError("vad.threshold must be between 0 and 1")
+        if self.vad.min_silence_seconds <= 0:
+            raise ValueError("vad.min_silence_seconds must be greater than zero")
+        if self.vad.min_speech_seconds <= 0:
+            raise ValueError("vad.min_speech_seconds must be greater than zero")
         if not 0 <= self.vad.speech_pre_roll_seconds <= 1:
             raise ValueError("vad.speech_pre_roll_seconds must be between 0 and 1")
         if self.sensevoice.device not in {"cpu", "cuda", "auto"}:
@@ -337,6 +342,7 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
         "quantization",
         _parse_optional_string,
     ),
+    "QWEN3_ASR_LOG_PROFILE": ("qwen3_asr", "log_profile", _parse_bool),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
     "ROS2_NODE_NAME": ("ros2", "node_name", str),
     "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),

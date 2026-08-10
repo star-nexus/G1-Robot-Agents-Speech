@@ -6,6 +6,7 @@ import csv
 import json
 import statistics
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -31,24 +32,34 @@ def load_audio(path: str | Path, sample_rate: int = 16000) -> tuple[np.ndarray, 
     source = Path(path)
     if source.suffix.lower() == ".wav":
         return _read_wav(str(source))
-    command = [
-        "ffmpeg",
-        "-v",
-        "error",
-        "-i",
-        str(source),
-        "-f",
-        "f32le",
-        "-acodec",
-        "pcm_f32le",
-        "-ac",
-        "1",
-        "-ar",
-        str(sample_rate),
-        "pipe:1",
-    ]
-    completed = subprocess.run(command, check=True, capture_output=True)
-    samples = np.frombuffer(completed.stdout, dtype="<f4").copy()
+    # Jetson ffmpeg plugins can emit an EGL diagnostic on stdout and corrupt a
+    # pipe:1 PCM stream. A temporary raw file keeps diagnostic text separate.
+    with tempfile.TemporaryDirectory(prefix="g1-speech-audio-") as directory:
+        decoded = Path(directory) / "decoded.f32"
+        command = [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(source),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-ar",
+            str(sample_rate),
+            "-y",
+            str(decoded),
+        ]
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        samples = np.fromfile(decoded, dtype="<f4")
     if not samples.size:
         raise ValueError(f"decoded audio is empty: {source}")
     return samples, sample_rate

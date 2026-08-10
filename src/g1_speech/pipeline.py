@@ -222,6 +222,7 @@ class SpeechPipeline:
             except queue.Empty:
                 continue
             try:
+                recognition_started_ns = time.monotonic_ns()
                 result = self._engine.transcribe(utterance)
             except Exception:  # noqa: BLE001
                 self._increment("recognition_errors")
@@ -230,6 +231,7 @@ class SpeechPipeline:
             if not result.text:
                 self._increment("recognitions_empty")
                 continue
+            recognition_finished_ns = time.monotonic_ns()
             self._sequence += 1
             event = SpeechEvent(
                 event_id=str(uuid.uuid4()),
@@ -243,6 +245,17 @@ class SpeechPipeline:
                 inference_ms=result.inference_ms,
                 engine=result.engine,
                 is_final=True,
+            )
+            vad_ready_ns = utterance.vad_ready_monotonic_ns
+            logger.info(
+                "Speech latency event_id=%s vad_tail=%.1fms asr_queue=%.1fms "
+                "inference=%.1fms speech_end_to_final=%.1fms",
+                event.event_id,
+                max(0, vad_ready_ns - utterance.ended_monotonic_ns) / 1_000_000,
+                max(0, recognition_started_ns - vad_ready_ns) / 1_000_000,
+                result.inference_ms,
+                max(0, recognition_finished_ns - utterance.ended_monotonic_ns)
+                / 1_000_000,
             )
             self._increment("recognitions_succeeded")
             if self._sink.publish(event):

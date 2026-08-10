@@ -106,7 +106,8 @@ def wait_for(predicate, timeout=1.0):
     assert predicate()
 
 
-def test_pipeline_publishes_final_event():
+def test_pipeline_publishes_final_event(caplog):
+    caplog.set_level("INFO", logger="g1_speech.pipeline")
     source = FakeSource()
     sink = CollectingSink()
     pipeline = SpeechPipeline(
@@ -125,6 +126,8 @@ def test_pipeline_publishes_final_event():
     assert event.text == "向前走"
     assert event.is_final
     assert event.sequence == 1
+    assert f"Speech latency event_id={event.event_id}" in caplog.text
+    assert "speech_end_to_final=" in caplog.text
 
 
 def test_pipeline_warms_engine_before_starting_audio_capture():

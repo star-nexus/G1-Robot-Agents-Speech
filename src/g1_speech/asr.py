@@ -46,6 +46,7 @@ def _qwen3_asr(config: ServiceConfig) -> AsrEngine:
         startup_warmup_seconds=settings.startup_warmup_seconds,
         cache_implementation=settings.cache_implementation,
         quantization=settings.quantization,
+        log_profile=settings.log_profile,
     )
 
 

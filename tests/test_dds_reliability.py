@@ -83,7 +83,8 @@ def test_duplicate_event_is_accepted_only_once():
     assert dedupe.accept("different", now=3.0)
 
 
-def test_agent_subscriber_never_forwards_duplicate_to_callback():
+def test_agent_subscriber_never_forwards_duplicate_to_callback(caplog):
+    caplog.set_level("INFO", logger="g1_speech.dds")
     received = []
     subscriber = DdsSpeechSubscriber(received.append)
     message = event_to_message(make_event())
@@ -92,6 +93,8 @@ def test_agent_subscriber_never_forwards_duplicate_to_callback():
 
     assert [event.event_id for event in received] == ["event-1"]
     assert subscriber.duplicates == 1
+    assert "DDS SpeechEvent received: event_id=event-1" in caplog.text
+    assert "created_to_received=" in caplog.text
 
 
 def test_outbox_is_bounded():

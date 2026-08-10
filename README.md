@@ -83,8 +83,9 @@ while decoder-only bitsandbytes NF4 was slower than FP16.
 See the [full Orin NX latency report](docs/qwen3_asr_orin_nx_latency.md), the
 [raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), the
 [sealed FP16 baseline](benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md), and the
-[runtime optimization follow-up](docs/qwen3_asr_orin_nx_runtime_optimizations.md), and
-the [JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md).
+[runtime optimization follow-up](docs/qwen3_asr_orin_nx_runtime_optimizations.md),
+the [JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md), and the
+[end-to-end latency instrumentation and streaming plan](docs/speech_end_to_end_latency.md).
 
 ## Quick Start
 

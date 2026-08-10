@@ -44,7 +44,8 @@
     "compile_dynamic": false,
     "startup_warmup_seconds": 0.0,
     "cache_implementation": null,
-    "quantization": null
+    "quantization": null,
+    "log_profile": false
   },
   "transport": {
     "backend": "dds"

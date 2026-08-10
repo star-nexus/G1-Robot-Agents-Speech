@@ -103,6 +103,7 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
             "QWEN3_ASR_MODEL_DIR": "/models/qwen3-asr",
             "QWEN3_ASR_DTYPE": "bfloat16",
             "QWEN3_ASR_QUANTIZATION": "bnb_nf4",
+            "QWEN3_ASR_LOG_PROFILE": "1",
         },
     )
 
@@ -111,6 +112,7 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
     assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
     assert config.qwen3_asr.dtype == "bfloat16"
     assert config.qwen3_asr.quantization == "bnb_nf4"
+    assert config.qwen3_asr.log_profile is True
 
 
 def test_qwen3_asr_defaults_to_sdpa_attention():
@@ -120,6 +122,7 @@ def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.startup_warmup_seconds == 0.0
     assert ServiceConfig().qwen3_asr.cache_implementation is None
     assert ServiceConfig().qwen3_asr.quantization is None
+    assert ServiceConfig().qwen3_asr.log_profile is False
 
 
 def test_qwen3_asr_rejects_unknown_attention_backend():

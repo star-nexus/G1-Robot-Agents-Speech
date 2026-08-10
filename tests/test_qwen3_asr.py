@@ -202,6 +202,31 @@ def test_profiled_transcription_keeps_result_api_and_reports_all_stages(tmp_path
     assert model.inputs["cache_implementation"] == "static"
 
 
+def test_live_profile_logging_is_opt_in(tmp_path, caplog):
+    caplog.set_level("INFO", logger="g1_speech.qwen3_asr")
+    processor = Processor()
+    model = Model()
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model
+        ),
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        device="cuda",
+        dtype="float16",
+        log_profile=True,
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    engine.transcribe(Utterance(np.zeros(16000, dtype=np.float32), 16000, 0, 0))
+
+    assert "Qwen3-ASR profile tokens=2 generate=" in caplog.text
+    assert "tokens_per_second=" in caplog.text
+
+
 def test_torch_compile_is_an_explicit_load_option(tmp_path):
     processor = Processor()
     model = Model()

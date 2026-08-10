@@ -1,0 +1,18 @@
+{
+  "backend": "qwen3_asr",
+  "text": "还想吃，再来一口。",
+  "audio_duration_ms": 3288,
+  "configured_vad_silence_ms": 200.0,
+  "observed_vad_wait_ms": 226.354215,
+  "asr_queue_ms": 0.100708,
+  "inference_ms": 679.4907150033396,
+  "speech_end_to_final_ms": 906.422265,
+  "rtf": 0.20665776003751204,
+  "processor_ms": 20.45563398860395,
+  "h2d_ms": 3.596778988139704,
+  "generate_ms": 654.2853949940763,
+  "decode_ms": 0.7066830003168434,
+  "generated_tokens": 10,
+  "generated_tokens_per_second": 15.28385025328364,
+  "passed": true
+}
