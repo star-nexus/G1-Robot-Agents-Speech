@@ -20,11 +20,21 @@ fi
 
 case "$BACKEND" in
     cpu)
-        EXECUTABLE="$ROOT/.venv/bin/g1-speech"
+        COMMAND=("$ROOT/.venv/bin/g1-speech")
         CONFIG="${SPEECH_CONFIG_CPU:-$ROOT/config.json}"
         ;;
     gpu)
-        EXECUTABLE="$ROOT/.venv-gpu/bin/g1-speech"
+        if [[ -n "${SPEECH_PYTHON_GPU:-}" ]]; then
+            COMMAND=("$SPEECH_PYTHON_GPU" -m g1_speech.cli)
+            export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+            if [[ -n "${CUDA_HOME:-}" ]]; then
+                CUDA_INCLUDE="$CUDA_HOME/include:$CUDA_HOME/targets/aarch64-linux/include"
+                export CPATH="$CUDA_INCLUDE${CPATH:+:$CPATH}"
+                export CPLUS_INCLUDE_PATH="$CUDA_INCLUDE${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
+            fi
+        else
+            COMMAND=("$ROOT/.venv-gpu/bin/g1-speech")
+        fi
         CONFIG="${SPEECH_CONFIG_GPU:-$ROOT/config.gpu.json}"
         ;;
     *)
@@ -32,6 +42,13 @@ case "$BACKEND" in
         exit 2
         ;;
 esac
+
+if [[ -n "${QWEN3_CUDSS_DIR:-}" ]]; then
+    export LD_LIBRARY_PATH="$QWEN3_CUDSS_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+if [[ -n "${CYCLONEDDS_HOME:-}" ]]; then
+    export LD_LIBRARY_PATH="$CYCLONEDDS_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 
 if [[ "$CONFIG" != /* ]]; then
     CONFIG="$ROOT/$CONFIG"
@@ -54,7 +71,7 @@ case "$TRANSPORT" in
         ;;
 esac
 
-[[ -x "$EXECUTABLE" ]] || { echo "[FAIL] Runtime is missing: $EXECUTABLE" >&2; exit 1; }
+[[ -x "${COMMAND[0]}" ]] || { echo "[FAIL] Runtime is missing: ${COMMAND[0]}" >&2; exit 1; }
 [[ -f "$CONFIG" ]] || { echo "[FAIL] Config is missing: $CONFIG" >&2; exit 1; }
 
-exec "$EXECUTABLE" serve --config "$CONFIG" --transport "$TRANSPORT"
+exec "${COMMAND[@]}" serve --config "$CONFIG" --transport "$TRANSPORT"

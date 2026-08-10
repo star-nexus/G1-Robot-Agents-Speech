@@ -277,6 +277,69 @@ def test_torch_compile_prefers_autoregressive_language_model(tmp_path):
     assert compiled.model.__self__ is decoder
 
 
+def test_dynamic_compile_config_is_forwarded_to_generate(tmp_path):
+    processor = Processor()
+    model = Model()
+
+    class CompileConfig:
+        def __init__(self, **options):
+            self.options = options
+
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model
+        ),
+        CompileConfig=CompileConfig,
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        cache_implementation="static",
+        compile_dynamic=True,
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    engine.transcribe(Utterance(np.zeros(16_000, dtype=np.float32), 16_000, 0, 1))
+
+    compile_config = model.inputs["compile_config"]
+    assert compile_config.options == {"dynamic": True}
+
+
+def test_startup_warmup_is_idempotent_and_forces_decode_tokens(tmp_path):
+    processor = Processor()
+    model = Model()
+    calls = []
+    original_generate = model.generate
+
+    def generate(**inputs):
+        calls.append(inputs)
+        return original_generate(**inputs)
+
+    model.generate = generate
+    transformers = SimpleNamespace(
+        AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: processor),
+        AutoModelForMultimodalLM=SimpleNamespace(
+            from_pretrained=lambda *args, **kwargs: model
+        ),
+    )
+    engine = Qwen3AsrEngine(
+        model_dir=_model_dir(tmp_path),
+        device="cuda",
+        dtype="float16",
+        startup_warmup_seconds=1.25,
+        torch_module=Torch,
+        transformers_module=transformers,
+    )
+
+    engine.warmup()
+    engine.warmup()
+
+    assert len(calls) == 1
+    assert calls[0]["min_new_tokens"] == 8
+    assert processor.request["audio"].shape == (20_000,)
+
+
 def test_sdpa_gqa_capability_detection_uses_runtime_documentation():
     legacy = SimpleNamespace(
         nn=SimpleNamespace(

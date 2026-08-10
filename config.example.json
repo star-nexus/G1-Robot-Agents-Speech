@@ -41,6 +41,8 @@
     "attention_implementation": "sdpa",
     "compile": false,
     "compile_mode": "reduce-overhead",
+    "compile_dynamic": false,
+    "startup_warmup_seconds": 0.0,
     "cache_implementation": null,
     "quantization": null
   },

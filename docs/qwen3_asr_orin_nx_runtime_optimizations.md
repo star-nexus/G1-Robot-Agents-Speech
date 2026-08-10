@@ -52,6 +52,46 @@ eager 本身比它慢约 14.5%，但 static-cache 最优值仍比封存 baseline
 所以 CUDA Graph 建议的方向正确，但集成边界很重要：**static cache + generation-aware
 compiled decode 有效；手工编译整个 Qwen3-ASR forward 无效。**
 
+### 实时可变长度语音的边界
+
+上面的 451.6 ms 是固定 5.592 秒 WAV、固定输出 shape 在充分预热后的结果。实时麦克风
+输入长度不断变化；如果仍使用默认的静态 shape 编译，新的 utterance shape 会触发新的
+Inductor specialization。一次前台实测中，首个 1.16 秒输入因此耗时 81.4 秒，后续输入
+又进入重新编译；同时运行环境没有把 CUDA SDK include 目录传给 Triton，最终以
+`cuda.h: No such file or directory` 失败。这不是 ASR/VAD 停止工作，而是编译路径没有按
+实时 workload 配置。
+
+工程现已提供独立的 `qwen3_asr.compile_dynamic` 开关。配合 static cache 时，它把
+`transformers.CompileConfig(dynamic=True)` 交给 generation runtime，使可变音频长度
+共享动态编译图。以下是同一模型进程、FP16/SDPA、从测试 WAV 截取不同长度输入的受控
+验证；第一次编译不计作稳态性能：
+
+| 顺序 | Audio (s) | Total (ms) | Transcript |
+|---:|---:|---:|---|
+| 1（cold compile） | 1.2 | 135,133.1 | 開放。 |
+| 2 | 2.0 | 505.6 | 開放時間。 |
+| 3 | 3.0 | 2,440.7 | 開放時間：早上九點。 |
+| 4 | 1.6 | 395.7 | 開放時間。 |
+| 5 | 1.2（重复） | 337.2 | 開放。 |
+
+这证明动态 shape 能消除“每种音频长度重新编译一分钟”的故障，但也显示实际延迟仍随
+输出 token 数量变化。实时部署必须满足三个条件：
+
+1. `cache_implementation="static"` 且 `compile_dynamic=true`；
+2. 启动环境把 `$CUDA_HOME/include` 和
+   `$CUDA_HOME/targets/aarch64-linux/include` 加入 `CPATH` / `CPLUS_INCLUDE_PATH`；
+3. 上线前完成一次预热，并把最长约两分钟的首次编译与稳态 latency 分开观察。
+
+实时配置可设置 `startup_warmup_seconds=1.2`。服务会用合成音频强制生成至少 8 个
+token，在打开麦克风之前完成 dynamic generation graph 的冷编译；预热结果不会发布到
+DDS/ROS 2。默认值是 0，因此 SenseVoice 和未选择此功能的 Qwen 部署没有额外启动成本。
+在持久 Inductor cache 已存在的全新进程中，1.2 秒预热实测约 49.9 秒；同一进程随后
+识别 6.08 秒真实语音为 682.7 ms（RTF 0.1123），证明真实输入复用了预热后的动态图。
+
+项目的 systemd GPU runner 在选择隔离 Python 时会自动设置上述源码与 CUDA include
+路径。`g1-speech-service status` 只报告四个 systemd unit；直接运行
+`python -m g1_speech.cli serve` 的前台进程不会显示为 active。
+
 Nsight Systems 对 warm-up 后单次请求的 scoped capture 给出了直接证据：
 
 | CUDA API | PyTorch 2.5 eager baseline | PyTorch 2.9 static cache | 变化 |

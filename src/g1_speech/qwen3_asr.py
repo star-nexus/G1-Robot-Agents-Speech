@@ -186,6 +186,8 @@ class Qwen3AsrEngine:
         attention_implementation: str | None = None,
         compile_model: bool = False,
         compile_mode: str = "reduce-overhead",
+        compile_dynamic: bool = False,
+        startup_warmup_seconds: float = 0.0,
         cache_implementation: str | None = None,
         quantization: str | None = None,
         torch_module: Any | None = None,
@@ -202,16 +204,21 @@ class Qwen3AsrEngine:
         self._attention_implementation = attention_implementation
         self._compile_model = compile_model
         self._compile_mode = compile_mode
+        self._compile_dynamic = compile_dynamic
+        self._startup_warmup_seconds = startup_warmup_seconds
         self._cache_implementation = cache_implementation
         self._quantization = quantization
         self._torch = torch_module
         self._transformers = transformers_module
         self._processor = None
         self._model = None
+        self._generation_compile_config = None
         self._device = None
         self._dtype = None
         self._effective_attention_implementation = None
         self._lock = threading.Lock()
+        self._warmup_lock = threading.Lock()
+        self._warmup_done = False
 
     def load(self) -> None:
         with self._lock:
@@ -271,6 +278,10 @@ class Qwen3AsrEngine:
                 str(model_dir), **model_kwargs
             )
             model.eval()
+            if self._compile_dynamic:
+                self._generation_compile_config = self._transformers.CompileConfig(
+                    dynamic=True
+                )
             if self._compile_model:
                 compile_target = getattr(
                     getattr(model, "model", None), "language_model", None
@@ -315,6 +326,39 @@ class Qwen3AsrEngine:
             self._processor = processor
             self._model = model
             logger.info("Qwen3-ASR loaded")
+
+    def warmup(self) -> None:
+        """Optionally compile generation before live microphone capture starts."""
+        if self._startup_warmup_seconds <= 0:
+            return
+        with self._warmup_lock:
+            if self._warmup_done:
+                return
+            self.load()
+            sample_count = max(
+                1, round(self._startup_warmup_seconds * self._sample_rate)
+            )
+            logger.info(
+                "Warming Qwen3-ASR generation with %.2fs synthetic audio; "
+                "the first compile can take several minutes",
+                self._startup_warmup_seconds,
+            )
+            started = time.perf_counter()
+            self._transcribe(
+                Utterance(
+                    np.zeros(sample_count, dtype=np.float32),
+                    self._sample_rate,
+                    0,
+                    0,
+                ),
+                collect_profile=False,
+                min_new_tokens=8,
+            )
+            self._warmup_done = True
+            logger.info(
+                "Qwen3-ASR startup warm-up complete in %.1fs",
+                time.perf_counter() - started,
+            )
 
     def _resolve_attention_implementation(self) -> str | None:
         requested = self._attention_implementation
@@ -377,6 +421,7 @@ class Qwen3AsrEngine:
         *,
         collect_profile: bool,
         record_ranges: bool = False,
+        min_new_tokens: int | None = None,
     ) -> tuple[RecognitionResult, Qwen3AsrProfile | None]:
         if utterance.sample_rate != self._sample_rate:
             raise ValueError(
@@ -416,8 +461,12 @@ class Qwen3AsrEngine:
                 "max_new_tokens": self._max_new_tokens,
                 "do_sample": False,
             }
+            if min_new_tokens is not None:
+                generation_options["min_new_tokens"] = min_new_tokens
             if self._cache_implementation:
                 generation_options["cache_implementation"] = self._cache_implementation
+            if self._generation_compile_config is not None:
+                generation_options["compile_config"] = self._generation_compile_config
             output_ids = self._run_stage(
                 "generate",
                 lambda: self._model.generate(**inputs, **generation_options),
@@ -524,6 +573,7 @@ class Qwen3AsrEngine:
             model = self._model
             self._model = None
             self._processor = None
+            self._warmup_done = False
         if model is None:
             return
         del model

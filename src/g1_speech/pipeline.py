@@ -68,6 +68,9 @@ class SpeechPipeline:
     def prepare(self) -> None:
         """Load heavyweight inference resources without starting capture."""
         self._engine.load()
+        warmup = getattr(self._engine, "warmup", None)
+        if warmup is not None:
+            warmup()
 
     def start(self) -> None:
         if self._started:

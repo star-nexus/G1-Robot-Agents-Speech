@@ -116,6 +116,8 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
 def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
     assert ServiceConfig().qwen3_asr.compile is False
+    assert ServiceConfig().qwen3_asr.compile_dynamic is False
+    assert ServiceConfig().qwen3_asr.startup_warmup_seconds == 0.0
     assert ServiceConfig().qwen3_asr.cache_implementation is None
     assert ServiceConfig().qwen3_asr.quantization is None
 
@@ -131,6 +133,20 @@ def test_qwen3_asr_rejects_unknown_attention_backend():
 def test_qwen3_asr_rejects_unknown_quantization():
     config = ServiceConfig(qwen3_asr=Qwen3AsrConfig(quantization="awq-ish"))
     with pytest.raises(ValueError, match="quantization"):
+        config.validate()
+
+
+def test_qwen3_asr_dynamic_compile_requires_static_cache():
+    config = ServiceConfig(qwen3_asr=Qwen3AsrConfig(compile_dynamic=True))
+    with pytest.raises(ValueError, match="static cache"):
+        config.validate()
+
+
+def test_qwen3_asr_startup_warmup_is_bounded():
+    config = ServiceConfig(
+        qwen3_asr=Qwen3AsrConfig(startup_warmup_seconds=31.0)
+    )
+    with pytest.raises(ValueError, match="startup_warmup_seconds"):
         config.validate()
 
 

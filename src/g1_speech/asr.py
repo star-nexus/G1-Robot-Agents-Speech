@@ -42,6 +42,8 @@ def _qwen3_asr(config: ServiceConfig) -> AsrEngine:
         attention_implementation=settings.attention_implementation,
         compile_model=settings.compile,
         compile_mode=settings.compile_mode,
+        compile_dynamic=settings.compile_dynamic,
+        startup_warmup_seconds=settings.startup_warmup_seconds,
         cache_implementation=settings.cache_implementation,
         quantization=settings.quantization,
     )

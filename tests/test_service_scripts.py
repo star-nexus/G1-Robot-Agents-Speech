@@ -93,6 +93,10 @@ def test_runner_can_switch_asr_configuration_without_changing_systemd_units():
     runner = (ROOT / "scripts" / "run-speech-service").read_text()
     assert "SPEECH_CONFIG_CPU" in runner
     assert "SPEECH_CONFIG_GPU" in runner
+    assert "SPEECH_PYTHON_GPU" in runner
+    assert 'export PYTHONPATH="$ROOT/src' in runner
+    assert 'export CPATH="$CUDA_INCLUDE' in runner
+    assert "QWEN3_CUDSS_DIR" in runner
     assert 'CYCLONEDDS_HOME/lib/libddsc.so' in runner
     assert "scripts/install-cyclonedds.sh" in runner
 

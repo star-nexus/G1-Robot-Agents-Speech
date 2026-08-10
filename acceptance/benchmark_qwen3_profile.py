@@ -158,6 +158,8 @@ def main() -> int:
             "attention_implementation": config.qwen3_asr.attention_implementation,
             "compile": config.qwen3_asr.compile,
             "compile_mode": config.qwen3_asr.compile_mode,
+            "compile_dynamic": config.qwen3_asr.compile_dynamic,
+            "startup_warmup_seconds": config.qwen3_asr.startup_warmup_seconds,
             "cache_implementation": config.qwen3_asr.cache_implementation,
             "quantization": config.qwen3_asr.quantization,
             "max_new_tokens": config.qwen3_asr.max_new_tokens,

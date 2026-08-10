@@ -59,6 +59,8 @@ class Qwen3AsrConfig:
     attention_implementation: str | None = "sdpa"
     compile: bool = False
     compile_mode: str = "reduce-overhead"
+    compile_dynamic: bool = False
+    startup_warmup_seconds: float = 0.0
     cache_implementation: str | None = None
     quantization: str | None = None
 
@@ -155,6 +157,17 @@ class ServiceConfig:
             raise ValueError("qwen3_asr.max_new_tokens must be greater than zero")
         if not self.qwen3_asr.compile_mode.strip():
             raise ValueError("qwen3_asr.compile_mode must not be empty")
+        if self.qwen3_asr.compile_dynamic and self.qwen3_asr.cache_implementation not in {
+            "static",
+            "offloaded_static",
+        }:
+            raise ValueError(
+                "qwen3_asr.compile_dynamic requires a static cache implementation"
+            )
+        if not 0.0 <= self.qwen3_asr.startup_warmup_seconds <= 30.0:
+            raise ValueError(
+                "qwen3_asr.startup_warmup_seconds must be between 0 and 30"
+            )
         if self.qwen3_asr.quantization not in {None, "bnb_nf4"}:
             raise ValueError("qwen3_asr.quantization must be bnb_nf4 or null")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:

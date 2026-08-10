@@ -56,8 +56,14 @@ class EveryChunkIsUtterance:
 
 
 class FakeEngine:
+    def __init__(self):
+        self.warmups = 0
+
     def load(self):
         pass
+
+    def warmup(self):
+        self.warmups += 1
 
     def transcribe(self, utterance):
         return RecognitionResult("向前走", "zh", 5.0)
@@ -112,6 +118,23 @@ def test_pipeline_publishes_final_event():
     assert event.text == "向前走"
     assert event.is_final
     assert event.sequence == 1
+
+
+def test_pipeline_warms_engine_before_starting_audio_capture():
+    source = FakeSource()
+    engine = FakeEngine()
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=EveryChunkIsUtterance(),
+        engine=engine,
+        sink=CollectingSink(),
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+    )
+
+    pipeline.prepare()
+
+    assert engine.warmups == 1
+    assert source.started is False
 
 
 def test_playback_audio_is_suppressed_not_recognized():
