@@ -63,14 +63,13 @@ class SpeechPipeline:
         self._metrics_lock = threading.Lock()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
+        self._recognition_ready = threading.Event()
+        self._recognition_start_error: Exception | None = None
         self._started = False
 
     def prepare(self) -> None:
         """Load heavyweight inference resources without starting capture."""
         self._engine.load()
-        warmup = getattr(self._engine, "warmup", None)
-        if warmup is not None:
-            warmup()
 
     def start(self) -> None:
         if self._started:
@@ -78,18 +77,37 @@ class SpeechPipeline:
         self._sink.start()
         try:
             self.prepare()
+            self._stop.clear()
+            self._recognition_ready.clear()
+            self._recognition_start_error = None
+            recognition_thread = threading.Thread(
+                target=self._recognition_loop,
+                name="speech-asr",
+                daemon=True,
+            )
+            self._threads = [recognition_thread]
+            recognition_thread.start()
+            self._recognition_ready.wait()
+            if self._recognition_start_error is not None:
+                raise RuntimeError("ASR recognition thread failed to start") from (
+                    self._recognition_start_error
+                )
             self._source.start()
         except Exception:
+            self._stop.set()
             self._source.close()
+            for thread in self._threads:
+                thread.join(timeout=3.0)
+            self._threads.clear()
             self._sink.close()
             raise
-        self._stop.clear()
-        self._threads = [
-            threading.Thread(target=self._segment_loop, name="speech-vad", daemon=True),
-            threading.Thread(target=self._recognition_loop, name="speech-asr", daemon=True),
-        ]
-        for thread in self._threads:
-            thread.start()
+        segment_thread = threading.Thread(
+            target=self._segment_loop,
+            name="speech-vad",
+            daemon=True,
+        )
+        self._threads.insert(0, segment_thread)
+        segment_thread.start()
         self._started = True
         logger.info("Speech pipeline started: session_id=%s", self._session_id)
 
@@ -188,6 +206,16 @@ class SpeechPipeline:
             self._increment("utterances_dropped")
 
     def _recognition_loop(self) -> None:
+        try:
+            warmup = getattr(self._engine, "warmup", None)
+            if warmup is not None:
+                warmup()
+        except Exception as error:  # noqa: BLE001
+            self._recognition_start_error = error
+            logger.exception("ASR startup warm-up failed")
+            self._recognition_ready.set()
+            return
+        self._recognition_ready.set()
         while not self._stop.is_set() or not self._utterances.empty():
             try:
                 utterance = self._utterances.get(timeout=0.2)

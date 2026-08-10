@@ -87,6 +87,9 @@ token，在打开麦克风之前完成 dynamic generation graph 的冷编译；�
 DDS/ROS 2。默认值是 0，因此 SenseVoice 和未选择此功能的 Qwen 部署没有额外启动成本。
 在持久 Inductor cache 已存在的全新进程中，1.2 秒预热实测约 49.9 秒；同一进程随后
 识别 6.08 秒真实语音为 682.7 ms（RTF 0.1123），证明真实输入复用了预热后的动态图。
+预热必须在后续执行 `generate()` 的同一个 `speech-asr` 线程中完成，因为 PyTorch 2.9
+的 CUDA Graph tree manager 保存在 thread-local storage；跨线程预热会在 replay 时触发
+`torch._C._is_key_in_tls("tree_manager_containers")` 断言。
 
 项目的 systemd GPU runner 在选择隔离 Python 时会自动设置上述源码与 CUDA include
 路径。`g1-speech-service status` 只报告四个 systemd unit；直接运行
