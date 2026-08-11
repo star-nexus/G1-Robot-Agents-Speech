@@ -1,0 +1,3 @@
+workload,audio_seconds,generated_tokens,generate_nvtx_ms,total_nvtx_ms,cudaLaunchKernel_count,cudaLaunchKernel_cpu_api_ms,cudaGraphLaunch_count,gpu_kernel_count,gpu_kernel_total_ms,source
+historical_controlled_static_shape,5.592,15,746.221504,779.031296,2832,65.874752,14,2834,170.450912,../orin_nx_2026-08-10_runtime_optimizations/qwen3_fp16_static_cache_nsys_*.csv
+e2e_vad_extracted_dynamic_shape,3.288,10,634.563968,656.107584,2698,66.092000,9,2700,136.265408,e2e_dynamic_nsys_*.csv

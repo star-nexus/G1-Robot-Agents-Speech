@@ -1,0 +1,17 @@
+{
+  "note": "Extracted WAV files were used locally for exact-PCM replay and Nsight, but are intentionally not committed because the source test audio is host-local. The sample counts and hashes make the extraction auditable without publishing audio content.",
+  "controlled_vad_extracted": {
+    "source": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav",
+    "sample_rate": 16000,
+    "sample_count": 78368,
+    "audio_seconds": 4.898,
+    "wav_sha256": "8cbac35ba69b0708f2eb68725fbccbc0daf4edac38121883662d244a360ba741"
+  },
+  "real_vad_extracted": {
+    "source": "tests/test_audio_6s.m4a",
+    "sample_rate": 16000,
+    "sample_count": 52608,
+    "audio_seconds": 3.288,
+    "wav_sha256": "19a2a94d0f0fc85b865a3a145a2a44d755f77fa619aa46b54fcb7292d528b461"
+  }
+}

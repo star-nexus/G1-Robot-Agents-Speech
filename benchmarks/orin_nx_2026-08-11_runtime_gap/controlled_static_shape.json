@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "title": "Contemporary PyTorch 2.9.1 fixed-shape controlled baseline",
+  "generated_at": "2026-08-11T12:58:04.596412+08:00",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "torch_version": "2.9.1",
+  "cuda_version": "12.6",
+  "device_name": "Orin",
+  "config": {
+    "backend": "qwen3_asr",
+    "model": "Qwen3-ASR-0.6B-hf",
+    "device": "cuda",
+    "dtype": "float16",
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "compile_dynamic": false,
+    "startup_warmup_seconds": 0.0,
+    "cache_implementation": "static",
+    "quantization": null,
+    "max_new_tokens": 256
+  },
+  "load_ms": 10652.586253010668,
+  "cases": [
+    {
+      "name": "zh",
+      "audio_seconds": 5.592,
+      "warmup": 3,
+      "runs": 10,
+      "first_request_ms": 50906.36678901501,
+      "warmup_measurements": [
+        {
+          "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+          "text_characters": 15,
+          "audio_seconds": 5.592,
+          "processor_ms": 67.0829699956812,
+          "h2d_ms": 3.5272910026833415,
+          "generate_ms": 50834.57289301441,
+          "decode_ms": 0.828013988211751,
+          "total_ms": 50906.36678901501,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 0.2950747718795385,
+          "rtf": 9.103427537377506
+        },
+        {
+          "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+          "text_characters": 15,
+          "audio_seconds": 5.592,
+          "processor_ms": 29.981696017784998,
+          "h2d_ms": 2.6977099769283086,
+          "generate_ms": 554.0799309965223,
+          "decode_ms": 0.6060909945517778,
+          "total_ms": 587.7441540069412,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 27.07190634575456,
+          "rtf": 0.10510446244759322
+        },
+        {
+          "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+          "text_characters": 15,
+          "audio_seconds": 5.592,
+          "processor_ms": 18.190230999607593,
+          "h2d_ms": 1.2249489955138415,
+          "generate_ms": 476.4061890018638,
+          "decode_ms": 0.5942500138189644,
+          "total_ms": 496.7633369960822,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 31.485737058595006,
+          "rtf": 0.0888346453855655
+        }
+      ],
+      "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+      "text_characters": 15,
+      "summary": {
+        "processor_ms": {
+          "mean": 15.073569701053202,
+          "median": 14.815661503234878,
+          "p95": 19.5547990151681,
+          "min": 10.869113000808284,
+          "max": 19.5547990151681
+        },
+        "h2d_ms": {
+          "mean": 1.4274484012275934,
+          "median": 1.4892570034135133,
+          "p95": 2.0275549904908985,
+          "min": 0.9299039957113564,
+          "max": 2.0275549904908985
+        },
+        "generate_ms": {
+          "mean": 441.68924770492595,
+          "median": 443.32001700240653,
+          "p95": 447.6556910085492,
+          "min": 431.5161260019522,
+          "max": 447.6556910085492
+        },
+        "decode_ms": {
+          "mean": 0.5851588968653232,
+          "median": 0.5811300070490688,
+          "p95": 0.6094830168876797,
+          "min": 0.5723939975723624,
+          "max": 0.6094830168876797
+        },
+        "total_ms": {
+          "mean": 459.12504339939915,
+          "median": 460.0971865147585,
+          "p95": 465.35259499796666,
+          "min": 447.6869619975332,
+          "max": 465.35259499796666
+        },
+        "generated_tokens": {
+          "mean": 15.0,
+          "median": 15.0,
+          "p95": 15.0,
+          "min": 15.0,
+          "max": 15.0
+        },
+        "generated_tokens_per_second": {
+          "mean": 33.9650328505398,
+          "median": 33.83563340349414,
+          "p95": 34.761157454245726,
+          "min": 33.507895244681556,
+          "max": 34.761157454245726
+        },
+        "rtf": {
+          "mean": 0.08210390618730315,
+          "median": 0.08227775152266784,
+          "p95": 0.08321755990664641,
+          "min": 0.08005846959898663,
+          "max": 0.08321755990664641
+        }
+      },
+      "measurements": [
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 18.080788984661922,
+          "h2d_ms": 1.4999939885456115,
+          "generate_ms": 444.85224402160384,
+          "decode_ms": 0.582378008402884,
+          "total_ms": 465.35259499796666,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.71906110756078,
+          "rtf": 0.08321755990664641
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 16.64767600595951,
+          "h2d_ms": 1.7465889977756888,
+          "generate_ms": 445.8152700099163,
+          "decode_ms": 0.5723939975723624,
+          "total_ms": 465.10919998399913,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.64622301893417,
+          "rtf": 0.08317403433190257
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 10.869113000808284,
+          "h2d_ms": 0.9299039957113564,
+          "generate_ms": 443.74176498968154,
+          "decode_ms": 0.5776099860668182,
+          "total_ms": 456.470334000187,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.803444217942385,
+          "rtf": 0.08162917274681455
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 12.581366987433285,
+          "h2d_ms": 1.3747440243605524,
+          "generate_ms": 446.2325289787259,
+          "decode_ms": 0.597545993514359,
+          "total_ms": 461.14161500008777,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.61476142120317,
+          "rtf": 0.08246452342633902
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 13.729355006944388,
+          "h2d_ms": 1.498616999015212,
+          "generate_ms": 447.6556910085492,
+          "decode_ms": 0.5798820056952536,
+          "total_ms": 463.7943349953275,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.507895244681556,
+          "rtf": 0.08293890110789119
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 15.198851993773133,
+          "h2d_ms": 1.1501639964990318,
+          "generate_ms": 442.0196610153653,
+          "decode_ms": 0.5863459955435246,
+          "total_ms": 459.3594130128622,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.935142082918745,
+          "rtf": 0.08214581777769353
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 15.3538630111143,
+          "h2d_ms": 1.621019997401163,
+          "generate_ms": 442.8982690151315,
+          "decode_ms": 0.6094830168876797,
+          "total_ms": 460.8349600166548,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.8678225890459,
+          "rtf": 0.08240968526764214
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 14.432471012696624,
+          "h2d_ms": 1.4798970078118145,
+          "generate_ms": 435.3799349919427,
+          "decode_ms": 0.5784420063719153,
+          "total_ms": 452.21622398821637,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 34.45266718659783,
+          "rtf": 0.08086842345998148
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 14.287411991972476,
+          "h2d_ms": 0.9460000146646053,
+          "generate_ms": 431.5161260019522,
+          "decode_ms": 0.5877539806533605,
+          "total_ms": 447.6869619975332,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 34.761157454245726,
+          "rtf": 0.08005846959898663
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 19.5547990151681,
+          "h2d_ms": 2.0275549904908985,
+          "generate_ms": 436.780987016391,
+          "decode_ms": 0.5797539779450744,
+          "total_ms": 459.2847960011568,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 34.34215418226778,
+          "rtf": 0.0821324742491339
+        }
+      ]
+    }
+  ]
+}

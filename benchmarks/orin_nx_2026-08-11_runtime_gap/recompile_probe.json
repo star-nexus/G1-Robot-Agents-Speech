@@ -1,0 +1,321 @@
+{
+  "generated_at": "2026-08-11T13:00:31.531073+08:00",
+  "torch_logs": "recompiles,graph_breaks",
+  "compile_dynamic": true,
+  "cache_implementation": "static",
+  "rows": [
+    {
+      "sequence": 1,
+      "audio": "real_vad_extracted.wav",
+      "audio_sample_count": 52608,
+      "audio_seconds": 3.288,
+      "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+      "text_characters": 9,
+      "wall_ms": 628.514948009979,
+      "profile": {
+        "audio_seconds": 3.288,
+        "processor_ms": 23.9001460140571,
+        "h2d_ms": 2.6205600006505847,
+        "generate_ms": 600.7632760156412,
+        "decode_ms": 0.5482339765876532,
+        "total_ms": 628.2148470054381,
+        "generated_tokens": 10,
+        "generated_tokens_per_second": 16.6454914926252,
+        "rtf": 0.19106290967318676
+      },
+      "dynamo_counters_before": {},
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 5
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "audio": "zh.wav",
+      "audio_sample_count": 89472,
+      "audio_seconds": 5.592,
+      "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+      "text_characters": 15,
+      "wall_ms": 826.392343005864,
+      "profile": {
+        "audio_seconds": 5.592,
+        "processor_ms": 20.876572001725435,
+        "h2d_ms": 1.7165440076496452,
+        "generate_ms": 802.5838139874395,
+        "decode_ms": 0.6375470256898552,
+        "total_ms": 826.1490419972688,
+        "generated_tokens": 15,
+        "generated_tokens_per_second": 18.689636818709566,
+        "rtf": 0.14773766845444722
+      },
+      "dynamo_counters_before": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 5
+        }
+      },
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 10
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "audio": "test_audio_30s.m4a",
+      "audio_sample_count": 485013,
+      "audio_seconds": 30.3133125,
+      "text_sha256": "996b9a775993cb672be44b49b04b1f0e01db22ac841c5899dc4cdfc973c2fd8c",
+      "text_characters": 136,
+      "wall_ms": 3586.4778920076787,
+      "profile": {
+        "audio_seconds": 30.3133125,
+        "processor_ms": 40.23913198034279,
+        "h2d_ms": 3.011382999829948,
+        "generate_ms": 3540.4584310017526,
+        "decode_ms": 2.1451269858516753,
+        "total_ms": 3586.219518998405,
+        "generated_tokens": 98,
+        "generated_tokens_per_second": 27.680031247329588,
+        "rtf": 0.11830510172711758
+      },
+      "dynamo_counters_before": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 10
+        }
+      },
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "audio": "test_audio_30s.m4a",
+      "audio_sample_count": 485013,
+      "audio_seconds": 30.3133125,
+      "text_sha256": "996b9a775993cb672be44b49b04b1f0e01db22ac841c5899dc4cdfc973c2fd8c",
+      "text_characters": 136,
+      "wall_ms": 3212.687447987264,
+      "profile": {
+        "audio_seconds": 30.3133125,
+        "processor_ms": 34.140750009100884,
+        "h2d_ms": 1.3094960013404489,
+        "generate_ms": 3174.5662090252154,
+        "decode_ms": 2.075653988867998,
+        "total_ms": 3212.453715997981,
+        "generated_tokens": 98,
+        "generated_tokens_per_second": 30.870359459313956,
+        "rtf": 0.10597501398100195
+      },
+      "dynamo_counters_before": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "audio": "zh.wav",
+      "audio_sample_count": 89472,
+      "audio_seconds": 5.592,
+      "text_sha256": "6165a0c8281357d3d182e4dadf0124daf8719583d12192b09efbc13d639c6e7d",
+      "text_characters": 15,
+      "wall_ms": 566.4478020044044,
+      "profile": {
+        "audio_seconds": 5.592,
+        "processor_ms": 15.135252004256472,
+        "h2d_ms": 1.9595880003180355,
+        "generate_ms": 548.0915950029157,
+        "decode_ms": 0.6585080118384212,
+        "total_ms": 566.1978459975217,
+        "generated_tokens": 15,
+        "generated_tokens_per_second": 27.367688424268216,
+        "rtf": 0.10125140307537941
+      },
+      "dynamo_counters_before": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "audio": "real_vad_extracted.wav",
+      "audio_sample_count": 52608,
+      "audio_seconds": 3.288,
+      "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+      "text_characters": 9,
+      "wall_ms": 409.3077550060116,
+      "profile": {
+        "audio_seconds": 3.288,
+        "processor_ms": 12.389537994749844,
+        "h2d_ms": 1.2405030138324946,
+        "generate_ms": 394.4930210127495,
+        "decode_ms": 0.5547940090764314,
+        "total_ms": 409.06231000553817,
+        "generated_tokens": 10,
+        "generated_tokens_per_second": 25.348990900593936,
+        "rtf": 0.12441067822552865
+      },
+      "dynamo_counters_before": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "dynamo_counters_after": {
+        "inductor": {
+          "cudagraph_recorded_non_static_inputs": 15
+        }
+      },
+      "compiled_state": {
+        "_compiled_call": {
+          "present": true,
+          "is_none": false,
+          "type": "builtins.function"
+        },
+        "_compiled_call_impl": {
+          "present": true,
+          "is_none": true,
+          "type": null
+        },
+        "_compiled_forward": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        },
+        "_generation_compile_config": {
+          "present": false,
+          "is_none": true,
+          "type": null
+        }
+      }
+    }
+  ],
+  "final_dynamo_counters": {
+    "inductor": {
+      "cudagraph_recorded_non_static_inputs": 15
+    }
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "instrumented": true,
+  "performance_comparable": false,
+  "reason": "Python shape hook is diagnostic-only and excluded from benchmark summaries",
+  "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+  "text_characters": 9,
+  "profile": {
+    "audio_seconds": 3.288,
+    "processor_ms": 15.345839987276122,
+    "h2d_ms": 3.006990998983383,
+    "generate_ms": 374.5913300081156,
+    "decode_ms": 0.5033360212109983,
+    "total_ms": 393.7448459910229,
+    "generated_tokens": 10,
+    "generated_tokens_per_second": 26.695759348683662,
+    "rtf": 0.11975208211405806
+  },
+  "prepare_inputs_call_count": 10,
+  "calls": [
+    {
+      "call": 1,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            59
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            59
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            59,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        },
+        "input_features": {
+          "shape": [
+            1,
+            128,
+            400
+          ],
+          "dtype": "torch.float16",
+          "device": "cuda:0"
+        },
+        "input_features_mask": {
+          "shape": [
+            1,
+            400
+          ],
+          "dtype": "torch.int32",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 2,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 3,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 4,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 5,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 6,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 7,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 8,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 9,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    },
+    {
+      "call": 10,
+      "input_shapes": {
+        "input_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "position_ids": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "torch.int64",
+          "device": "cuda:0"
+        },
+        "attention_mask": {
+          "shape": [
+            1,
+            1,
+            1,
+            459
+          ],
+          "dtype": "torch.bool",
+          "device": "cuda:0"
+        }
+      },
+      "cache_position_shape": null
+    }
+  ]
+}
