@@ -1,21 +1,26 @@
-# Qwen3-ASR controlled benchmark 与 E2E 表观吞吐差异归因
+# Qwen3-ASR controlled benchmark 与 E2E request-level throughput 差异归因
 
 ## 1. Executive conclusion
 
-**结论：`31–34 tok/s` 与 `15.3 tok/s` 不是 autoregressive decode 真实下降约 2 倍。**
+> **Qwen3-ASR 在 Orin NX 上的 steady-state autoregressive decode 实际仍维持约
+> 35.5 tok/s；之前观测到的 15.3 tok/s 是 request-level apparent generation
+> throughput 被固定 encoder/prefill 成本和首次新-shape graph warm-up 拉低后的表观值，
+> 并不是 decoder 性能回退。**
+
 本轮严格控制实验测得动态编译 runtime 的增量 decode 成本为
-`28.15 ms/token`，即 **35.53 decode tok/s**，线性拟合
+`28.15 ms/token`，即 **incremental decode throughput = 35.53 tok/s**，线性拟合
 `R²=0.9997`。`15.3 tok/s` 来自把 audio encoder、multimodal projector、LM
 prefill、首 Token、decode 和 generation bookkeeping 全部放入分母，并叠加了新 audio
-shape 首次 CUDA Graph 录制/热化；它是请求级 apparent throughput，不是 decode-only
-throughput。
+shape 首次 CUDA Graph 录制/热化；它是 **request-level apparent generation
+throughput**，不是 decoder 本身的吞吐。
 
 四项直接证据共同支持该判断：
 
 1. 同一进程、同一模型对象、同一 PCM 的 VAD-fed 与 direct replay，`generate_ms` 差异
    只有 `+0.63%` 和 `-0.64%`，均在运行波动内；E2E/VAD pipeline 没有改变 ASR compute。
 2. 5/10/15/20/30/50 Token 同音频实验满足
-   `generate_ms = 157.22 + 28.147 × tokens`，`R²=0.9997`。表观吞吐自然从
+   `generate_ms = 157.22 + 28.147 × tokens`，`R²=0.9997`。request-level apparent
+   generation throughput 自然从
    5 Token 的 `16.12 tok/s` 上升到 50 Token 的 `31.86 tok/s`。
 3. E2E steady-state Nsight 仍有 `9` 次 `cudaGraphLaunch`；10 Token 正好包含 1 次
    prefill/首 Token和 9 次后续 decode。普通 kernel launch 为 `2,698`，与历史 controlled
@@ -24,10 +29,13 @@ throughput。
    CUDA 12.6 / Transformers 5.13.0 / Triton 3.5.1 / SM87，而不是旧 `.venv-gpu`
    PyTorch 2.5。
 
-历史 controlled 与实时 E2E 并非完全相同配置：历史结果使用 fixed-shape compiled
+**独立确认的次要发现：在本机当前 workload/config 下，dynamic compile 比 fixed-shape
+慢。** 历史 controlled 与实时 E2E 并非完全相同配置：历史结果使用 fixed-shape compiled
 decode，实时配置使用 `CompileConfig(dynamic=True)`。当代同机重跑 fixed-shape 得到
-`459.1ms / 33.97 apparent tok/s`，与历史 `451.6ms / 34.27 tok/s` 重合；同输入动态配置
-为 `580.1ms / 26.58 tok/s`。这项差异确认贡献约 `121ms`，但仍不构成 decode 2 倍退化。
+`459.1ms / request-level apparent generation throughput = 33.97 tok/s`，与历史
+`451.6ms / 34.27 tok/s` 重合；同输入动态配置为 `580.1ms / 26.58 tok/s`。动态配置总延迟
+增加约 `121ms`（`26.3%`），generate 增加约 `123ms`（`27.8%`），但仍不构成 decode
+2 倍退化。
 
 ## 2. Runtime fingerprint comparison
 
@@ -110,7 +118,7 @@ SHA-256 保存在
 `max_new_tokens`；每个长度 warm-up 2 次、正式 10 次。低上限输出是预期截断，不用于
 识别质量判断。
 
-| Generated tokens | Generate mean | Apparent tokens/s | First request generate |
+| Generated tokens | Generate mean | Request-level apparent generation throughput | First request generate |
 |---:|---:|---:|---:|
 | 5 | 310.3ms | 16.12 | 612.4ms |
 | 10 | 435.1ms | 22.99 | 526.9ms |
@@ -129,12 +137,13 @@ estimated incremental decode throughput = 35.53 tokens/s
 
 这里的 `157.216ms` 是外推的固定 generation 成本，包含 audio encoder、multimodal
 projector、LM prefill、首 Token 和固定 bookkeeping；它不是直接测得的 TTFT。斜率是
-每增加一个生成 Token 的增量成本，因此是本轮最可靠的 decode-only 近似。
+每增加一个生成 Token 的增量成本，因此是本轮最可靠的 incremental decode throughput
+近似。
 
-这个模型也直接解释指标错觉：10 Token 请求即使完全稳态，固定成本仍占明显比例，表观
-吞吐约 23 tok/s；输出变长后固定成本被摊薄，50 Token 已接近 32 tok/s，而增量 decode
-本身约 35.5 tok/s。原始 15.3 tok/s 还叠加了新 shape 第一次 graph 录制和单次测量，不能
-代表逐 Token decoder。
+这个模型也直接解释指标错觉：10 Token 请求即使完全稳态，固定成本仍占明显比例，
+request-level apparent generation throughput 约 23 tok/s；输出变长后固定成本被摊薄，
+50 Token 已接近 32 tok/s，而 incremental decode throughput 本身约 35.5 tok/s。原始
+15.3 tok/s 还叠加了新 shape 第一次 graph 录制和单次测量，不能代表逐 Token decoder。
 
 ## 5. CUDA Graph / Nsight comparison
 
@@ -215,8 +224,8 @@ case 故意不提供 `generate_ms`：在关闭 stage boundary synchronization �
 | 2. E2E 未命中 static-cache compiled decode | **Ruled out** | `static`、`_compiled_call` 持续存在，launch 数约 2.7k |
 | 3. CUDA Graph 没有 replay | **Ruled out** | 10 Token 请求有 9 次 graph launch |
 | 4. Dynamic shape 触发 recompile / eager fallback | **Fallback ruled out; first-shape recording confirmed** | 无 recompile/graph-break log；新 shape graph counter +5，重复不再增加 |
-| 5. 10-Token 固定 audio/prefill 成本占比高 | **Confirmed** | 固定成本估计 157.2ms；短输出表观 tok/s 显著较低 |
-| 6. `tokens / entire generate` 指标误导 | **Confirmed, primary** | 增量 decode 35.53 tok/s，表观吞吐随 N 从 16.12 升至 31.86 |
+| 5. 10-Token 固定 audio/prefill 成本占比高 | **Confirmed** | 固定成本估计 157.2ms；短输出的 request-level apparent generation throughput 显著较低 |
+| 6. `tokens / entire generate` 指标误导 | **Confirmed, primary** | incremental decode throughput 为 35.53 tok/s，请求级指标随 N 从 16.12 升至 31.86 |
 | 7. synchronized profiling overhead | **Ruled out** | `-0.21%`，文本一致 |
 | 8. VAD/E2E pipeline 影响 ASR compute | **Ruled out** | 同 PCM direct-vs-VAD-fed 差异绝对值小于 1% |
 | 9. GPU frequency / thermal / concurrent workload | **Unlikely for 2×; not fully ruled out** | 无并发 ASR 服务，MAXN_SUPER，测试后 46–53°C；未锁频、未记录逐 run clocks |
@@ -234,14 +243,14 @@ case 故意不提供 `generate_ms`：在关闭 stage boundary synchronization �
 
 **不是。** 15.3 tok/s 是 `10 / (audio encoder + projector + prefill + first token +
 9 decode steps + bookkeeping)` 的请求级比值，并叠加新 shape 首次 graph 录制。相同
-3.288s PCM 达到 steady state 后为约 `24.4–24.5 apparent tok/s`；固定音频的 Token
-scaling 则估计真实增量 decode 为 **35.53 tok/s**。目前没有任何证据显示 autoregressive
-decoder 退化约 2 倍。
+3.288s PCM 达到 steady state 后的 request-level apparent generation throughput 为约
+`24.4–24.5 tok/s`；固定音频的 Token scaling 则估计 incremental decode throughput 为
+**35.53 tok/s**。目前没有任何证据显示 autoregressive decoder 退化约 2 倍。
 
-本轮不提出新的性能优化。下一步如果要继续测量，只应把 `apparent generate tok/s` 改名为
-request-level 指标，并把回归得到的 incremental decode tok/s 与 first-shape/steady-state
-状态同时记录；是否改变 dynamic compile 或 warm-up 策略属于后续独立优化决策，不应混入
-本次归因结论。
+本轮不提出新的性能优化。下一步如果要继续测量，应把该请求级指标统一称为
+`request-level apparent generation throughput`，并把回归得到的
+`incremental decode throughput` 与 first-shape/steady-state 状态同时记录；是否改变
+dynamic compile 或 warm-up 策略属于后续独立优化决策，不应混入本次归因结论。
 
 ## Scope, methodology, limitations, and reproducibility
 
@@ -264,7 +273,8 @@ request-level 指标，并把回归得到的 incremental decode tok/s 与 first-
 本轮归因完成后，建议只做测量治理：
 
 1. 将现有 `generated_tokens_per_second` 在日志/报告中明确标注为
-   `request_apparent_tokens_per_second`；保留原字段以避免 API 破坏可在后续单独设计。
+   `request-level apparent generation throughput`；保留原字段以避免 API 破坏可在后续
+   单独设计。
 2. 性能验收同时报告 first-shape、third-request 和 10-run steady-state，而不是单点。
 3. 若必须获得真实 TTFT，再设计不引入逐 Token D2H 同步的 CUDA event/NVTX 专项实验；在此
    之前不要将回归 intercept 宣称为直接 TTFT。

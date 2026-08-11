@@ -627,6 +627,15 @@ def main() -> int:
     payload = {
         "schema_version": 1,
         "title": "Qwen3-ASR direct vs E2E runtime-gap attribution",
+        "metric_definitions": {
+            "generated_tokens_per_second": (
+                "request-level apparent generation throughput: generated tokens divided "
+                "by the entire generate stage, including fixed encoder/prefill costs"
+            ),
+            "estimated_decode_tokens_per_second": (
+                "incremental decode throughput: reciprocal of the token-scaling OLS slope"
+            ),
+        },
         "generated_at": datetime.now().astimezone().isoformat(),
         "runtime_fingerprint": fingerprint,
         "input_preparation": {

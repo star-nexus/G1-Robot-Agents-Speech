@@ -29,6 +29,11 @@ Host-local transcripts in JSON/CSV are represented by SHA-256 and character coun
 the benchmark checks hash determinism for every formal run group, while the committed
 evidence does not publish the user's local speech content.
 
+The legacy raw field `generated_tokens_per_second` means **request-level apparent
+generation throughput** (`generated_tokens / entire generate_ms`), not decoder speed.
+Decoder capability is reported separately as **incremental decode throughput**, estimated
+from the slope of the controlled token-scaling regression.
+
 ## Main attribution command
 
 The command used the same environment configured by host-local `deploy.env`:
