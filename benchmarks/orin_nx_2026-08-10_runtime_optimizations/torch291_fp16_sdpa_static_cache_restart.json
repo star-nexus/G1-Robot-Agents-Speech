@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "title": "PyTorch 2.9.1 FP16 SDPA static cache process restart",
+  "generated_at": "2026-08-10T05:04:43.117708+08:00",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "torch_version": "2.9.1",
+  "cuda_version": "12.6",
+  "device_name": "Orin",
+  "config": {
+    "backend": "qwen3_asr",
+    "model": "Qwen3-ASR-0.6B-hf",
+    "device": "cuda",
+    "dtype": "float16",
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "cache_implementation": "static",
+    "quantization": null,
+    "max_new_tokens": 256
+  },
+  "load_ms": 11436.437655996997,
+  "cases": [
+    {
+      "name": "zh",
+      "audio_seconds": 5.592,
+      "warmup": 1,
+      "runs": 5,
+      "first_request_ms": 17560.40122100967,
+      "warmup_measurements": [
+        {
+          "text": "開放時間：早上九點至下午五點。",
+          "audio_seconds": 5.592,
+          "processor_ms": 113.94039299921133,
+          "h2d_ms": 3.785381995839998,
+          "generate_ms": 17437.742668989813,
+          "decode_ms": 4.553423990728334,
+          "total_ms": 17560.40122100967,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 0.8602030827462007,
+          "rtf": 3.1402720352306277
+        }
+      ],
+      "text": "開放時間：早上九點至下午五點。",
+      "summary": {
+        "processor_ms": {
+          "mean": 14.01195019716397,
+          "median": 13.430099003016949,
+          "p95": 16.332402999978513,
+          "min": 12.403366999933496,
+          "max": 16.332402999978513
+        },
+        "h2d_ms": {
+          "mean": 1.36555660283193,
+          "median": 1.3788380019832402,
+          "p95": 1.5471759834326804,
+          "min": 1.2188529944978654,
+          "max": 1.5471759834326804
+        },
+        "generate_ms": {
+          "mean": 478.01393900299445,
+          "median": 464.6409490087535,
+          "p95": 553.6050119844731,
+          "min": 446.32106900098734,
+          "max": 553.6050119844731
+        },
+        "decode_ms": {
+          "mean": 0.6037392013240606,
+          "median": 0.5917760136071593,
+          "p95": 0.6582159840036184,
+          "min": 0.5822069942951202,
+          "max": 0.6582159840036184
+        },
+        "total_ms": {
+          "mean": 494.34111780137755,
+          "median": 480.3743069933262,
+          "p95": 572.4463920050766,
+          "min": 461.00621999357827,
+          "max": 572.4463920050766
+        },
+        "generated_tokens": {
+          "mean": 15.0,
+          "median": 15.0,
+          "p95": 15.0,
+          "min": 15.0,
+          "max": 15.0
+        },
+        "generated_tokens_per_second": {
+          "mean": 31.564348636930653,
+          "median": 32.28299191451034,
+          "p95": 33.60809301155088,
+          "min": 27.095130418401457,
+          "max": 33.60809301155088
+        },
+        "rtf": {
+          "mean": 0.08840148744659829,
+          "median": 0.08590384602884947,
+          "p95": 0.10236881115970613,
+          "min": 0.08244031115764991,
+          "max": 0.10236881115970613
+        }
+      },
+      "measurements": [
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 16.332402999978513,
+          "h2d_ms": 1.5471759834326804,
+          "generate_ms": 553.6050119844731,
+          "decode_ms": 0.5917760136071593,
+          "total_ms": 572.4463920050766,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 27.095130418401457,
+          "rtf": 0.10236881115970613
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 12.403366999933496,
+          "h2d_ms": 1.297069014981389,
+          "generate_ms": 467.16299300896935,
+          "decode_ms": 0.6582159840036184,
+          "total_ms": 481.85973000363447,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 32.10870771973157,
+          "rtf": 0.08616947961438386
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 12.529106985311955,
+          "h2d_ms": 1.2188529944978654,
+          "generate_ms": 446.32106900098734,
+          "decode_ms": 0.5971210193820298,
+          "total_ms": 461.00621999357827,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 33.60809301155088,
+          "rtf": 0.08244031115764991
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 15.364774997578934,
+          "h2d_ms": 1.3858470192644745,
+          "generate_ms": 458.33967201178893,
+          "decode_ms": 0.5893759953323752,
+          "total_ms": 476.0189400112722,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 32.72682012045902,
+          "rtf": 0.08512498927240204
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 13.430099003016949,
+          "h2d_ms": 1.3788380019832402,
+          "generate_ms": 464.6409490087535,
+          "decode_ms": 0.5822069942951202,
+          "total_ms": 480.3743069933262,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 32.28299191451034,
+          "rtf": 0.08590384602884947
+        }
+      ]
+    }
+  ]
+}

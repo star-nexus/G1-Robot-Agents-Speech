@@ -21,10 +21,19 @@ class Utterance:
     sample_rate: int
     started_monotonic_ns: int
     ended_monotonic_ns: int
+    # Time at which VAD emitted the completed utterance.  This is deliberately
+    # separate from ended_monotonic_ns, which tracks the estimated acoustic end
+    # of speech and therefore excludes the configured trailing-silence wait.
+    ready_monotonic_ns: int | None = None
 
     @property
     def duration_ms(self) -> int:
         return round(self.samples.size * 1000 / self.sample_rate)
+
+    @property
+    def vad_ready_monotonic_ns(self) -> int:
+        """Return VAD-ready time while remaining compatible with older adapters."""
+        return self.ready_monotonic_ns or self.ended_monotonic_ns
 
 
 @dataclass(frozen=True)
@@ -87,6 +96,8 @@ class AsrEngine(Protocol):
     def load(self) -> None: ...
 
     def transcribe(self, utterance: Utterance) -> RecognitionResult: ...
+
+    def close(self) -> None: ...
 
 
 class EventSink(Protocol):

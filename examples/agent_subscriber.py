@@ -15,7 +15,11 @@ from g1_speech.dds import (
 
 def on_speech(event) -> None:
     # Keep this callback short: enqueue into the Agent's perception queue.
-    print(f"Agent perception <- [{event.event_id}] {event.text}")
+    created_to_received_ms = max(0, time.time_ns() - event.created_unix_ns) / 1_000_000
+    print(
+        f"Agent perception <- [{event.event_id}] "
+        f"created_to_received={created_to_received_ms:.1f}ms {event.text}"
+    )
 
 
 def main() -> None:

@@ -20,6 +20,9 @@
     "max_speech_seconds": 10.0,
     "buffer_seconds": 30.0
   },
+  "asr": {
+    "backend": "sensevoice"
+  },
   "sensevoice": {
     "model_dir": "models",
     "model_file": null,
@@ -27,6 +30,22 @@
     "language": "zh",
     "use_itn": true,
     "num_threads": 4
+  },
+  "qwen3_asr": {
+    "model_dir": "models/Qwen3-ASR-0.6B-hf",
+    "device": "auto",
+    "dtype": "auto",
+    "language": "zh",
+    "prompt": null,
+    "max_new_tokens": 256,
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "compile_dynamic": false,
+    "startup_warmup_seconds": 0.0,
+    "cache_implementation": null,
+    "quantization": null,
+    "log_profile": false
   },
   "transport": {
     "backend": "dds"

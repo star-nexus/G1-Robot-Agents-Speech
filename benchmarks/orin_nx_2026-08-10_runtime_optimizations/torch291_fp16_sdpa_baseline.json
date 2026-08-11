@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "title": "PyTorch 2.9.1 FP16 SDPA baseline",
+  "generated_at": "2026-08-10T02:47:33.591923+08:00",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "torch_version": "2.9.1",
+  "cuda_version": "12.6",
+  "device_name": "Orin",
+  "config": {
+    "backend": "qwen3_asr",
+    "model": "Qwen3-ASR-0.6B-hf",
+    "device": "cuda",
+    "dtype": "float16",
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "cache_implementation": null,
+    "max_new_tokens": 256
+  },
+  "load_ms": 9742.320663004648,
+  "cases": [
+    {
+      "name": "zh",
+      "audio_seconds": 5.592,
+      "warmup": 3,
+      "runs": 10,
+      "first_request_ms": 2255.715079983929,
+      "warmup_measurements": [
+        {
+          "text": "開放時間：早上九點至下午五點。",
+          "audio_seconds": 5.592,
+          "processor_ms": 57.357084995601326,
+          "h2d_ms": 3.245316998800263,
+          "generate_ms": 2194.2145689972676,
+          "decode_ms": 0.648660003207624,
+          "total_ms": 2255.715079983929,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 6.836159148671973,
+          "rtf": 0.4033825250328915
+        },
+        {
+          "text": "開放時間：早上九點至下午五點。",
+          "audio_seconds": 5.592,
+          "processor_ms": 14.11967200692743,
+          "h2d_ms": 1.4567489852197468,
+          "generate_ms": 1376.3180270034354,
+          "decode_ms": 0.39834799827076495,
+          "total_ms": 1392.4994590051938,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.898643849531267,
+          "rtf": 0.2490163553299703
+        },
+        {
+          "text": "開放時間：早上九點至下午五點。",
+          "audio_seconds": 5.592,
+          "processor_ms": 12.208603991894051,
+          "h2d_ms": 0.7968250138219446,
+          "generate_ms": 1385.3220860182773,
+          "decode_ms": 0.4531339800450951,
+          "total_ms": 1398.9924959896598,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.827806869890686,
+          "rtf": 0.2501774849766917
+        }
+      ],
+      "text": "開放時間：早上九點至下午五點。",
+      "summary": {
+        "processor_ms": {
+          "mean": 15.05149659642484,
+          "median": 15.340862490120344,
+          "p95": 19.65219699195586,
+          "min": 11.726030003046617,
+          "max": 19.65219699195586
+        },
+        "h2d_ms": {
+          "mean": 1.3718443922698498,
+          "median": 1.292696499149315,
+          "p95": 2.451403997838497,
+          "min": 0.7641839911229908,
+          "max": 2.451403997838497
+        },
+        "generate_ms": {
+          "mean": 1377.6837138953852,
+          "median": 1375.4310740041547,
+          "p95": 1394.7362919861916,
+          "min": 1364.1236039984506,
+          "max": 1394.7362919861916
+        },
+        "decode_ms": {
+          "mean": 0.4264675924787298,
+          "median": 0.42212499829474837,
+          "p95": 0.46423799358308315,
+          "min": 0.4110529844183475,
+          "max": 0.46423799358308315
+        },
+        "total_ms": {
+          "mean": 1394.7463486052584,
+          "median": 1394.5472339983098,
+          "p95": 1408.7447610218078,
+          "min": 1384.2123900249135,
+          "max": 1408.7447610218078
+        },
+        "generated_tokens": {
+          "mean": 15.0,
+          "median": 15.0,
+          "p95": 15.0,
+          "min": 15.0,
+          "max": 15.0
+        },
+        "generated_tokens_per_second": {
+          "mean": 10.888199472377192,
+          "median": 10.905675780005637,
+          "p95": 10.996070998282526,
+          "min": 10.754721223062937,
+          "max": 10.996070998282526
+        },
+        "rtf": {
+          "mean": 0.2494181596218273,
+          "median": 0.24938255257480507,
+          "p95": 0.2519214522571187,
+          "min": 0.24753440451089298,
+          "max": 0.2519214522571187
+        }
+      },
+      "measurements": [
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 17.000178020680323,
+          "h2d_ms": 2.451403997838497,
+          "generate_ms": 1364.1236039984506,
+          "decode_ms": 0.4110529844183475,
+          "total_ms": 1384.2123900249135,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.996070998282526,
+          "rtf": 0.24753440451089298
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 15.970641979947686,
+          "h2d_ms": 1.4774859882891178,
+          "generate_ms": 1372.6476799929515,
+          "decode_ms": 0.4308609932195395,
+          "total_ms": 1390.7331399968825,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.927785926886225,
+          "rtf": 0.24870048998513639
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 19.65219699195586,
+          "h2d_ms": 1.27370297559537,
+          "generate_ms": 1373.848840012215,
+          "decode_ms": 0.41479698847979307,
+          "total_ms": 1395.4015119816177,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.918231732005271,
+          "rtf": 0.2495353204545096
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 16.48601799388416,
+          "h2d_ms": 1.2425349850673229,
+          "generate_ms": 1373.6901489901356,
+          "decode_ms": 0.44721298036165535,
+          "total_ms": 1392.0745300129056,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.919493024702264,
+          "rtf": 0.24894036659744379
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 18.60022800974548,
+          "h2d_ms": 1.3093849993310869,
+          "generate_ms": 1376.252567017218,
+          "decode_ms": 0.42401300743222237,
+          "total_ms": 1396.8025840003975,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.899162231907638,
+          "rtf": 0.24978586981409112
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 14.711083000293002,
+          "h2d_ms": 1.5861619904171675,
+          "generate_ms": 1382.0491659862455,
+          "decode_ms": 0.41230101487599313,
+          "total_ms": 1398.9662069943734,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.853448899768942,
+          "rtf": 0.2501727837972771
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 12.615176994586363,
+          "h2d_ms": 1.2760079989675432,
+          "generate_ms": 1379.127349006012,
+          "decode_ms": 0.46423799358308315,
+          "total_ms": 1393.692956015002,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.876442999126262,
+          "rtf": 0.24922978469510051
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 11.775406979722902,
+          "h2d_ms": 0.9592620190232992,
+          "generate_ms": 1385.7519109733403,
+          "decode_ms": 0.42023698915727437,
+          "total_ms": 1399.1111119976267,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.82444835992622,
+          "rtf": 0.25019869670916073
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 11.726030003046617,
+          "h2d_ms": 0.7641839911229908,
+          "generate_ms": 1374.6095809910912,
+          "decode_ms": 0.4116289783269167,
+          "total_ms": 1387.7242940070573,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.912189328103638,
+          "rtf": 0.24816242739754246
+        },
+        {
+          "audio_seconds": 5.592,
+          "processor_ms": 11.97800599038601,
+          "h2d_ms": 1.3783149770461023,
+          "generate_ms": 1394.7362919861916,
+          "decode_ms": 0.4283339949324727,
+          "total_ms": 1408.7447610218078,
+          "generated_tokens": 15,
+          "generated_tokens_per_second": 10.754721223062937,
+          "rtf": 0.2519214522571187
+        }
+      ]
+    }
+  ]
+}

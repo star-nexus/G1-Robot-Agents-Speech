@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-08-09T20:58:20.395149+08:00",
+  "audio": "zh.wav",
+  "profile": {
+    "audio_seconds": 5.592,
+    "processor_ms": 14.447446999838576,
+    "h2d_ms": 2.3032749886624515,
+    "generate_ms": 1782.48684501159,
+    "decode_ms": 0.5812030140077695,
+    "total_ms": 1801.0638970008586,
+    "generated_tokens": 15,
+    "generated_tokens_per_second": 8.415209369975726,
+    "rtf": 0.32207866541503194
+  },
+  "text": "開放時間：早上九點至下午五點。",
+  "event_count": 99050,
+  "cuda_event_count": 0,
+  "kernel_launch_event_count": 0,
+  "peak_memory_allocated_bytes": 1624124928,
+  "peak_memory_reserved_bytes": 1675624448,
+  "trace_exported": false
+}

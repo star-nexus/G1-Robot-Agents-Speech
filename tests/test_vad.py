@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from types import SimpleNamespace
 
 import numpy as np
@@ -82,3 +83,58 @@ def test_sample_ring_buffer_preserves_order_after_wraparound():
     assert ring.end_sample == 7
     assert ring.read(0, 2) is None
     np.testing.assert_array_equal(ring.read(2, 7), [2, 3, 4, 5, 6])
+
+
+def test_segmenter_distinguishes_acoustic_end_from_vad_ready_time(tmp_path):
+    model = tmp_path / "silero_vad.onnx"
+    model.write_bytes(b"test")
+
+    class FakeSherpa:
+        class VadModelConfig:
+            def __init__(self):
+                self.silero_vad = SimpleNamespace(window_size=512)
+                self.sample_rate = 0
+
+        class Detector:
+            def __init__(self):
+                self.segments = []
+
+            def accept_waveform(self, window):
+                if len(self.segments) == 0:
+                    self.segments.append(
+                        SimpleNamespace(
+                            start=0,
+                            samples=np.ones(512, dtype=np.float32),
+                        )
+                    )
+
+            def empty(self):
+                return not self.segments
+
+            @property
+            def front(self):
+                return self.segments[0]
+
+            def pop(self):
+                self.segments.pop(0)
+
+        @classmethod
+        def VoiceActivityDetector(cls, _config, *, buffer_size_in_seconds):
+            return cls.Detector()
+
+    settings = VadConfig(model=str(model), speech_pre_roll_seconds=0.0)
+    segmenter = SileroVadSegmenter(settings=settings, sherpa_module=FakeSherpa)
+    captured_ns = time.monotonic_ns()
+
+    utterances = segmenter.accept(
+        AudioChunk(np.ones(600, dtype=np.float32), 16000, captured_ns)
+    )
+
+    assert len(utterances) == 1
+    utterance = utterances[0]
+    # 88 pending samples plus 0 samples after the segment endpoint: the segment
+    # ends at the last complete 512-sample VAD window.
+    assert utterance.ended_monotonic_ns == captured_ns - round(88e9 / 16000)
+    assert utterance.ready_monotonic_ns is not None
+    assert utterance.vad_ready_monotonic_ns == utterance.ready_monotonic_ns
+    assert utterance.ready_monotonic_ns >= utterance.ended_monotonic_ns

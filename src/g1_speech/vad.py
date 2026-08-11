@@ -136,7 +136,6 @@ class SileroVadSegmenter:
             self._pending_size = remaining
 
         utterances: list[Utterance] = []
-        now = time.monotonic_ns()
         while not self._vad.empty():
             segment = self._vad.front
             vad_samples = np.asarray(segment.samples, dtype=np.float32)
@@ -150,13 +149,25 @@ class SileroVadSegmenter:
             if samples is None:
                 samples = vad_samples.copy()
             self._vad.pop()
+            ready_ns = time.monotonic_ns()
+            # PortAudio timestamps each callback near the end of its block.  The
+            # ring buffer contains only complete VAD windows, so subtract the
+            # still-pending tail and then map the VAD's absolute sample endpoint
+            # onto the monotonic clock.  Unlike the previous `now` timestamp,
+            # this excludes the silence which made VAD decide the segment ended.
+            history_end_ns = chunk.captured_monotonic_ns - self._samples_to_ns(
+                self._pending_size
+            )
+            samples_after_segment = max(0, self._history.end_sample - segment_end)
+            ended_ns = history_end_ns - self._samples_to_ns(samples_after_segment)
             duration_ns = round(samples.size * 1_000_000_000 / self._sample_rate)
             utterances.append(
                 Utterance(
                     samples=samples,
                     sample_rate=self._sample_rate,
-                    started_monotonic_ns=now - duration_ns,
-                    ended_monotonic_ns=now,
+                    started_monotonic_ns=ended_ns - duration_ns,
+                    ended_monotonic_ns=ended_ns,
+                    ready_monotonic_ns=ready_ns,
                 )
             )
         return utterances
@@ -178,3 +189,6 @@ class SileroVadSegmenter:
     def _accept_window(self, window: np.ndarray) -> None:
         self._history.append(window)
         self._vad.accept_waveform(window)
+
+    def _samples_to_ns(self, sample_count: int) -> int:
+        return round(sample_count * 1_000_000_000 / self._sample_rate)

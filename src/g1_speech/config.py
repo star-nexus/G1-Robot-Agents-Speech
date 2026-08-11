@@ -42,6 +42,31 @@ class SenseVoiceConfig:
 
 
 @dataclass(frozen=True)
+class AsrConfig:
+    """Select an ASR adapter without coupling the pipeline to its runtime."""
+
+    backend: str = "sensevoice"
+
+
+@dataclass(frozen=True)
+class Qwen3AsrConfig:
+    model_dir: str = "models/Qwen3-ASR-0.6B-hf"
+    device: str = "auto"
+    dtype: str = "auto"
+    language: str | None = "zh"
+    prompt: str | None = None
+    max_new_tokens: int = 256
+    attention_implementation: str | None = "sdpa"
+    compile: bool = False
+    compile_mode: str = "reduce-overhead"
+    compile_dynamic: bool = False
+    startup_warmup_seconds: float = 0.0
+    cache_implementation: str | None = None
+    quantization: str | None = None
+    log_profile: bool = False
+
+
+@dataclass(frozen=True)
 class DdsConfig:
     domain_id: int = 0
     network_interface: str | None = None
@@ -79,7 +104,9 @@ class ServiceConfig:
     metrics_interval_seconds: float = 60.0
     audio: AudioConfig = field(default_factory=AudioConfig)
     vad: VadConfig = field(default_factory=VadConfig)
+    asr: AsrConfig = field(default_factory=AsrConfig)
     sensevoice: SenseVoiceConfig = field(default_factory=SenseVoiceConfig)
+    qwen3_asr: Qwen3AsrConfig = field(default_factory=Qwen3AsrConfig)
     transport: TransportConfig = field(default_factory=TransportConfig)
     dds: DdsConfig = field(default_factory=DdsConfig)
     ros2: Ros2Config = field(default_factory=Ros2Config)
@@ -87,7 +114,7 @@ class ServiceConfig:
 
     def validate(self) -> None:
         if self.audio.sample_rate != 16000:
-            raise ValueError("SenseVoice and Silero VAD require a 16000 Hz sample rate")
+            raise ValueError("The bundled ASR backends and Silero VAD require 16000 Hz audio")
         if self.audio.block_ms <= 0 or self.audio.block_ms > 500:
             raise ValueError("audio.block_ms must be between 1 and 500")
         if self.audio.queue_seconds <= 0:
@@ -104,10 +131,50 @@ class ServiceConfig:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
             raise ValueError("vad.threshold must be between 0 and 1")
+        if self.vad.min_silence_seconds <= 0:
+            raise ValueError("vad.min_silence_seconds must be greater than zero")
+        if self.vad.min_speech_seconds <= 0:
+            raise ValueError("vad.min_speech_seconds must be greater than zero")
         if not 0 <= self.vad.speech_pre_roll_seconds <= 1:
             raise ValueError("vad.speech_pre_roll_seconds must be between 0 and 1")
         if self.sensevoice.device not in {"cpu", "cuda", "auto"}:
             raise ValueError("sensevoice.device must be cpu, cuda, or auto")
+        if not self.asr.backend.strip():
+            raise ValueError("asr.backend must not be empty")
+        if self.qwen3_asr.device not in {"cpu", "cuda", "auto"}:
+            raise ValueError("qwen3_asr.device must be cpu, cuda, or auto")
+        if self.qwen3_asr.dtype not in {"auto", "float32", "float16", "bfloat16"}:
+            raise ValueError(
+                "qwen3_asr.dtype must be auto, float32, float16, or bfloat16"
+            )
+        if self.qwen3_asr.attention_implementation not in {
+            None,
+            "eager",
+            "sdpa",
+            "fa2",
+            "flash_attention_2",
+        }:
+            raise ValueError(
+                "qwen3_asr.attention_implementation must be eager, sdpa, "
+                "fa2, flash_attention_2, or null"
+            )
+        if self.qwen3_asr.max_new_tokens < 1:
+            raise ValueError("qwen3_asr.max_new_tokens must be greater than zero")
+        if not self.qwen3_asr.compile_mode.strip():
+            raise ValueError("qwen3_asr.compile_mode must not be empty")
+        if self.qwen3_asr.compile_dynamic and self.qwen3_asr.cache_implementation not in {
+            "static",
+            "offloaded_static",
+        }:
+            raise ValueError(
+                "qwen3_asr.compile_dynamic requires a static cache implementation"
+            )
+        if not 0.0 <= self.qwen3_asr.startup_warmup_seconds <= 30.0:
+            raise ValueError(
+                "qwen3_asr.startup_warmup_seconds must be between 0 and 30"
+            )
+        if self.qwen3_asr.quantization not in {None, "bnb_nf4"}:
+            raise ValueError("qwen3_asr.quantization must be bnb_nf4 or null")
         if self.vad.max_speech_seconds <= self.vad.min_speech_seconds:
             raise ValueError("vad.max_speech_seconds must exceed min_speech_seconds")
         if self.vad.buffer_seconds <= 0:
@@ -149,6 +216,12 @@ def write_config(
         raw = json.loads(base_path.read_text(encoding="utf-8"))
 
     raw = deepcopy(raw)
+    defaults = default_config_dict()
+    for section, value in defaults.items():
+        if isinstance(value, dict):
+            target_section = raw.setdefault(section, {})
+            for field_name, default_value in value.items():
+                target_section.setdefault(field_name, deepcopy(default_value))
     if environment is not None:
         _apply_environment_overrides(raw, environment)
     for assignment in overrides:
@@ -187,6 +260,7 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
     vad_raw = raw.pop("vad", {})
     vad_raw["model"] = str(_resolve_path(base, vad_raw.get("model", VadConfig.model)))
     vad = _merge_dataclass(VadConfig, vad_raw)
+    asr = _merge_dataclass(AsrConfig, raw.pop("asr", {}))
     sense_raw = raw.pop("sensevoice", {})
     sense_raw["model_dir"] = str(
         _resolve_path(base, sense_raw.get("model_dir", SenseVoiceConfig.model_dir))
@@ -196,6 +270,11 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
         str(_resolve_path(base, model_file)) if model_file else None
     )
     sensevoice = _merge_dataclass(SenseVoiceConfig, sense_raw)
+    qwen_raw = raw.pop("qwen3_asr", {})
+    qwen_raw["model_dir"] = str(
+        _resolve_path(base, qwen_raw.get("model_dir", Qwen3AsrConfig.model_dir))
+    )
+    qwen3_asr = _merge_dataclass(Qwen3AsrConfig, qwen_raw)
     transport = _merge_dataclass(TransportConfig, raw.pop("transport", {}))
     dds = _merge_dataclass(DdsConfig, raw.pop("dds", {}))
     ros2 = _merge_dataclass(Ros2Config, raw.pop("ros2", {}))
@@ -203,7 +282,9 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
     config = ServiceConfig(
         audio=audio,
         vad=vad,
+        asr=asr,
         sensevoice=sensevoice,
+        qwen3_asr=qwen3_asr,
         transport=transport,
         dds=dds,
         ros2=ros2,
@@ -240,10 +321,28 @@ def _parse_bool(value: str) -> bool:
 
 _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "MICROPHONE_DEVICE": ("audio", "device", _parse_optional_device),
+    "ASR_BACKEND": ("asr", "backend", str),
     "SENSEVOICE_DEVICE": ("sensevoice", "device", str),
     "SENSEVOICE_THREADS": ("sensevoice", "num_threads", int),
     "SENSEVOICE_LANGUAGE": ("sensevoice", "language", str),
     "SENSEVOICE_USE_ITN": ("sensevoice", "use_itn", _parse_bool),
+    "QWEN3_ASR_MODEL_DIR": ("qwen3_asr", "model_dir", str),
+    "QWEN3_ASR_DEVICE": ("qwen3_asr", "device", str),
+    "QWEN3_ASR_DTYPE": ("qwen3_asr", "dtype", str),
+    "QWEN3_ASR_LANGUAGE": ("qwen3_asr", "language", _parse_optional_string),
+    "QWEN3_ASR_PROMPT": ("qwen3_asr", "prompt", _parse_optional_string),
+    "QWEN3_ASR_MAX_NEW_TOKENS": ("qwen3_asr", "max_new_tokens", int),
+    "QWEN3_ASR_ATTENTION": (
+        "qwen3_asr",
+        "attention_implementation",
+        _parse_optional_string,
+    ),
+    "QWEN3_ASR_QUANTIZATION": (
+        "qwen3_asr",
+        "quantization",
+        _parse_optional_string,
+    ),
+    "QWEN3_ASR_LOG_PROFILE": ("qwen3_asr", "log_profile", _parse_bool),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
     "ROS2_NODE_NAME": ("ros2", "node_name", str),
     "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),

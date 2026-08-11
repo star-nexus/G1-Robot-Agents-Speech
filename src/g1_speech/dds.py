@@ -441,6 +441,11 @@ class DdsSpeechSubscriber:
             self.duplicates += 1
             logger.info("Ignoring duplicate SpeechEvent: %s", event.event_id)
             return
+        logger.info(
+            "DDS SpeechEvent received: event_id=%s created_to_received=%.1fms",
+            event.event_id,
+            max(0, time.time_ns() - event.created_unix_ns) / 1_000_000,
+        )
         self._callback(event)
 
 

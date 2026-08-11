@@ -1,4 +1,4 @@
-"""Bounded three-stage speech pipeline: capture -> VAD -> SenseVoice -> sink."""
+"""Bounded three-stage speech pipeline: capture -> VAD -> ASR -> sink."""
 
 from __future__ import annotations
 
@@ -63,6 +63,8 @@ class SpeechPipeline:
         self._metrics_lock = threading.Lock()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
+        self._recognition_ready = threading.Event()
+        self._recognition_start_error: Exception | None = None
         self._started = False
 
     def prepare(self) -> None:
@@ -75,18 +77,37 @@ class SpeechPipeline:
         self._sink.start()
         try:
             self.prepare()
+            self._stop.clear()
+            self._recognition_ready.clear()
+            self._recognition_start_error = None
+            recognition_thread = threading.Thread(
+                target=self._recognition_loop,
+                name="speech-asr",
+                daemon=True,
+            )
+            self._threads = [recognition_thread]
+            recognition_thread.start()
+            self._recognition_ready.wait()
+            if self._recognition_start_error is not None:
+                raise RuntimeError("ASR recognition thread failed to start") from (
+                    self._recognition_start_error
+                )
             self._source.start()
         except Exception:
+            self._stop.set()
             self._source.close()
+            for thread in self._threads:
+                thread.join(timeout=3.0)
+            self._threads.clear()
             self._sink.close()
             raise
-        self._stop.clear()
-        self._threads = [
-            threading.Thread(target=self._segment_loop, name="speech-vad", daemon=True),
-            threading.Thread(target=self._recognition_loop, name="speech-asr", daemon=True),
-        ]
-        for thread in self._threads:
-            thread.start()
+        segment_thread = threading.Thread(
+            target=self._segment_loop,
+            name="speech-vad",
+            daemon=True,
+        )
+        self._threads.insert(0, segment_thread)
+        segment_thread.start()
         self._started = True
         logger.info("Speech pipeline started: session_id=%s", self._session_id)
 
@@ -101,6 +122,9 @@ class SpeechPipeline:
                 logger.warning("Thread %s did not stop within %.1fs", thread.name, join_timeout)
         self._threads.clear()
         self._segmenter.reset()
+        close_engine = getattr(self._engine, "close", None)
+        if close_engine is not None:
+            close_engine()
         self._sink.close()
         self._started = False
         logger.info("Speech pipeline stopped")
@@ -182,20 +206,32 @@ class SpeechPipeline:
             self._increment("utterances_dropped")
 
     def _recognition_loop(self) -> None:
+        try:
+            warmup = getattr(self._engine, "warmup", None)
+            if warmup is not None:
+                warmup()
+        except Exception as error:  # noqa: BLE001
+            self._recognition_start_error = error
+            logger.exception("ASR startup warm-up failed")
+            self._recognition_ready.set()
+            return
+        self._recognition_ready.set()
         while not self._stop.is_set() or not self._utterances.empty():
             try:
                 utterance = self._utterances.get(timeout=0.2)
             except queue.Empty:
                 continue
             try:
+                recognition_started_ns = time.monotonic_ns()
                 result = self._engine.transcribe(utterance)
             except Exception:  # noqa: BLE001
                 self._increment("recognition_errors")
-                logger.exception("SenseVoice recognition failed")
+                logger.exception("ASR recognition failed")
                 continue
             if not result.text:
                 self._increment("recognitions_empty")
                 continue
+            recognition_finished_ns = time.monotonic_ns()
             self._sequence += 1
             event = SpeechEvent(
                 event_id=str(uuid.uuid4()),
@@ -209,6 +245,17 @@ class SpeechPipeline:
                 inference_ms=result.inference_ms,
                 engine=result.engine,
                 is_final=True,
+            )
+            vad_ready_ns = utterance.vad_ready_monotonic_ns
+            logger.info(
+                "Speech latency event_id=%s vad_tail=%.1fms asr_queue=%.1fms "
+                "inference=%.1fms speech_end_to_final=%.1fms",
+                event.event_id,
+                max(0, vad_ready_ns - utterance.ended_monotonic_ns) / 1_000_000,
+                max(0, recognition_started_ns - vad_ready_ns) / 1_000_000,
+                result.inference_ms,
+                max(0, recognition_finished_ns - utterance.ended_monotonic_ns)
+                / 1_000_000,
             )
             self._increment("recognitions_succeeded")
             if self._sink.publish(event):

@@ -27,6 +27,12 @@ asr = [
   "sounddevice>=0.4.6",
   "sherpa-onnx>=1.13",
 ]
+qwen3-asr = [
+  "accelerate>=1.0",
+  "numpy>=1.24,<1.25",
+  "pillow>=10",
+  "transformers==5.13.0",
+]
 dds = ["cyclonedds==0.10.2"]
 dev = ["pytest>=7.4"]
 

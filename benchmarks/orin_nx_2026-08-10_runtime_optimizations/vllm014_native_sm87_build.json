@@ -1,0 +1,36 @@
+{
+  "date": "2026-08-10",
+  "platform": "Jetson Orin NX 16GB / JetPack 6.2 / CUDA 12.6 / SM87",
+  "source": {
+    "qwen3_asr_commit": "7c6daf77a2421100f5fb066495372c00129d39ff",
+    "vllm_version": "0.14.0",
+    "vllm_commit": "b17039bccc17b94a2ea107272ad7bc93508708df"
+  },
+  "isolated_runtime": {
+    "python": "3.10",
+    "torch": "2.9.1",
+    "triton": "3.5.1",
+    "flashinfer_python": "0.5.3",
+    "transformers": "4.57.6",
+    "qwen_asr": "0.0.6"
+  },
+  "build": {
+    "cuda_home": "/usr/local/cuda",
+    "torch_cuda_arch_list": "8.7",
+    "wheel": "vllm-0.14.0+cu126-cp310-cp310-linux_aarch64.whl",
+    "wheel_sha256": "a40fd05732f7ef5f40c55bb5e82137b252ee0216f187979faf6e32bf585baa3b",
+    "native_extension": "vllm/_C.abi3.so",
+    "native_extension_bytes": 94910296,
+    "included": ["vllm._C", "vllm.cumem_allocator", "vllm.triton_kernels"],
+    "omitted_for_sm87_dense_build": ["vllm._moe_C", "bundled FA2", "FA3", "FlashMLA"]
+  },
+  "validation": {
+    "wheel_built": true,
+    "native_extension_imported": true,
+    "sm87_cuda_op_smoke_test": true,
+    "qwen3_asr_backend_imported": true,
+    "engine_reached_model_weight_loading": true,
+    "end_to_end_transcription": false,
+    "runtime_blocker": "Linux OOM killer during model weight loading on 16GB unified memory"
+  }
+}

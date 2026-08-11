@@ -1,0 +1,79 @@
+Traceback (most recent call last):
+  File "<repo>/acceptance/benchmark_qwen3_profile.py", line 156, in <module>
+    raise SystemExit(main())
+  File "<repo>/acceptance/benchmark_qwen3_profile.py", line 91, in main
+    warmup_result, warmup_profile = engine.transcribe_profiled(utterance)
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 334, in transcribe_profiled
+    result, profile = self._transcribe(
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 389, in _transcribe
+    output_ids = self._run_stage(
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 468, in _run_stage
+    value = operation()
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 391, in <lambda>
+    lambda: self._model.generate(**inputs, **generation_options),
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/generation/utils.py", line 2645, in generate
+    result = decoding_method(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/generation/utils.py", line 2859, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "<repo>/src/g1_speech/qwen3_asr.py", line 280, in compiled_forward_with_step
+    return compiled_forward(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 832, in compile_wrapper
+    return fn(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/utils/generic.py", line 905, in wrapper
+    @wraps(func)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 1044, in _fn
+    return fn(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1130, in forward
+    return compiled_fn(full_args)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 353, in runtime_wrapper
+    all_outs = call_func_at_runtime_with_args(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/utils.py", line 129, in call_func_at_runtime_with_args
+    out = normalize_as_list(f(args))
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 526, in wrapper
+    return compiled_fn(runtime_args)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/output_code.py", line 613, in __call__
+    return self.current_callable(inputs)
+  File "<isolated-build>/inductor-cache/6h/c6hfqvqgm6f3n22g4b45knmhfgzgf3mkdcezi2yqsuatk63wy46s.py", line 4575, in call
+    (buf13, buf15, buf42, buf44, buf72, buf74, buf101, buf103, buf131, buf133, buf160, buf162, buf190, buf192, buf219, buf221, buf249, buf251, buf278, buf280, buf308, buf310, buf337, buf339, buf367, buf369, buf396, buf398, buf426, buf428, buf455, buf457, buf485, buf487, buf514, buf516, buf544, buf546, buf573, buf575, buf603, buf605, buf632, buf634, buf662, buf664, buf691, buf693, buf721, buf723, buf750, buf752, buf780, buf782, buf809, buf811, buf831) = self.partitions[0](partition0_args)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 1772, in run
+    return compiled_fn(new_inputs)  # type: ignore[arg-type]
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 404, in deferred_cudagraphify
+    fn, out = cudagraphify(model, inputs, new_static_input_idxs, *args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 463, in cudagraphify
+    return manager.add_function(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 2316, in add_function
+    return fn, fn(inputs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 2012, in run
+    out = self._run(new_inputs, function_id)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 2116, in _run
+    return self.run_eager(new_inputs, function_id)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 2277, in run_eager
+    return node.run(new_inputs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 671, in run
+    non_cudagraph_inps_storages = get_non_cudagraph_inps()
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 663, in get_non_cudagraph_inps
+    non_cudagraph_inps = [
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/torch/_inductor/cudagraph_trees.py", line 667, in <listcomp>
+    and t.untyped_storage().data_ptr() not in existing_path_data_ptrs
+RuntimeError: Error: accessing tensor output of CUDAGraphs that has been overwritten by a subsequent run. Stack trace: File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/models/qwen3_asr/modeling_qwen3_asr.py", line 557, in torch_dynamo_resume_in_forward_at_552
+    outputs = self.language_model(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/utils/generic.py", line 1040, in wrapper
+    output = func(self, *args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/utils/output_capturing.py", line 252, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 424, in forward
+    hidden_states = decoder_layer(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 318, in forward
+    hidden_states, _ = self.self_attn(
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 268, in forward
+    query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+  File "<isolated-build>/.venv-torch291/lib/python3.10/site-packages/transformers/models/qwen3/modeling_qwen3.py", line 180, in apply_rotary_pos_emb
+    k_embed = (k * cos) + (rotate_half(k) * sin). To prevent overwriting, clone the tensor outside of torch.compile() or call torch.compiler.cudagraph_mark_step_begin() before each model invocation.

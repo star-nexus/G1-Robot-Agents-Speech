@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import threading
 import time
 
 import numpy as np
@@ -56,8 +57,20 @@ class EveryChunkIsUtterance:
 
 
 class FakeEngine:
+    def __init__(self, source=None):
+        self.warmups = 0
+        self.source = source
+        self.source_started_during_warmup = None
+        self.warmup_thread_name = None
+
     def load(self):
         pass
+
+    def warmup(self):
+        self.warmups += 1
+        self.warmup_thread_name = threading.current_thread().name
+        if self.source is not None:
+            self.source_started_during_warmup = self.source.started
 
     def transcribe(self, utterance):
         return RecognitionResult("向前走", "zh", 5.0)
@@ -93,7 +106,8 @@ def wait_for(predicate, timeout=1.0):
     assert predicate()
 
 
-def test_pipeline_publishes_final_event():
+def test_pipeline_publishes_final_event(caplog):
+    caplog.set_level("INFO", logger="g1_speech.pipeline")
     source = FakeSource()
     sink = CollectingSink()
     pipeline = SpeechPipeline(
@@ -112,6 +126,28 @@ def test_pipeline_publishes_final_event():
     assert event.text == "向前走"
     assert event.is_final
     assert event.sequence == 1
+    assert f"Speech latency event_id={event.event_id}" in caplog.text
+    assert "speech_end_to_final=" in caplog.text
+
+
+def test_pipeline_warms_engine_before_starting_audio_capture():
+    source = FakeSource()
+    engine = FakeEngine(source)
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=EveryChunkIsUtterance(),
+        engine=engine,
+        sink=CollectingSink(),
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+    )
+
+    pipeline.start()
+
+    assert engine.warmups == 1
+    assert engine.warmup_thread_name == "speech-asr"
+    assert engine.source_started_during_warmup is False
+    assert source.started is True
+    pipeline.close()
 
 
 def test_playback_audio_is_suppressed_not_recognized():

@@ -17,15 +17,15 @@ from pathlib import Path
 import numpy as np
 
 from .app import SpeechService
+from .asr import asr_diagnostic_checks, create_asr_engine
 from .config import load_config, write_config
-from .engine import SenseVoiceEngine, find_model_files
 from .contracts import Utterance
 from .dds import DdsSpeechSubscriber, initialize_dds
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Offline SenseVoice service for robot Agents"
+        description="Pluggable offline ASR service for robot Agents"
     )
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     config_init.add_argument("--force", action="store_true", help="Overwrite output")
 
-    serve = sub.add_parser("serve", help="Start microphone, VAD, SenseVoice, and transport")
+    serve = sub.add_parser("serve", help="Start microphone, VAD, ASR, and transport")
     serve.add_argument("--config", required=True)
     serve.add_argument("--transport", choices=("dds", "ros2"))
     serve.add_argument("--run-seconds", type=float, default=0.0, help="0 runs continuously")
@@ -163,14 +163,9 @@ def _doctor(
         except Exception as exc:  # noqa: BLE001
             checks.append((name, False, f"{type(exc).__name__}: {exc}"))
 
-    check(
-        "SenseVoice model files",
-        lambda: find_model_files(
-            config.sensevoice.model_dir, config.sensevoice.model_file
-        ),
-    )
+    for name, callback in asr_diagnostic_checks(config):
+        check(name, callback)
     check("Silero VAD model", lambda: _require_file(config.vad.model))
-    check("sherpa_onnx", lambda: _module_path("sherpa_onnx"))
     if not skip_audio:
         check("sounddevice/microphone", _audio_devices)
     if selected_transport == "dds":
@@ -179,16 +174,15 @@ def _doctor(
         check("rclpy", lambda: _module_path("rclpy"))
         check("g1_speech_msgs", lambda: _module_path("g1_speech_msgs"))
     if load_model:
-        engine = SenseVoiceEngine(
-            model_dir=config.sensevoice.model_dir,
-            model_file=config.sensevoice.model_file,
-            device=config.sensevoice.device,
-            sample_rate=config.audio.sample_rate,
-            language=config.sensevoice.language,
-            use_itn=config.sensevoice.use_itn,
-            num_threads=config.sensevoice.num_threads,
-        )
-        check("SenseVoice runtime load", lambda: engine.load() or "loaded")
+        try:
+            engine = create_asr_engine(config)
+        except Exception as exc:  # noqa: BLE001
+            checks.append(("ASR adapter creation", False, f"{type(exc).__name__}: {exc}"))
+        else:
+            check(
+                f"{config.asr.backend} runtime load",
+                lambda: engine.load() or "loaded",
+            )
 
     for name, ok, detail in checks:
         print(f"[{'PASS' if ok else 'FAIL'}] {name}: {detail}")
@@ -229,18 +223,13 @@ def _transcribe(config_path: str, wav_path: str) -> int:
     samples, sample_rate = _read_wav(wav_path)
     now = time.monotonic_ns()
     utterance = Utterance(samples, sample_rate, now, now)
-    engine = SenseVoiceEngine(
-        model_dir=config.sensevoice.model_dir,
-        model_file=config.sensevoice.model_file,
-        device=config.sensevoice.device,
-        sample_rate=config.audio.sample_rate,
-        language=config.sensevoice.language,
-        use_itn=config.sensevoice.use_itn,
-        num_threads=config.sensevoice.num_threads,
-    )
-    result = engine.transcribe(utterance)
-    print(json.dumps(asdict(result), ensure_ascii=False))
-    return 0 if result.text else 1
+    engine = create_asr_engine(config)
+    try:
+        result = engine.transcribe(utterance)
+        print(json.dumps(asdict(result), ensure_ascii=False))
+        return 0 if result.text else 1
+    finally:
+        engine.close()
 
 
 def _read_wav(path: str) -> tuple[np.ndarray, int]:

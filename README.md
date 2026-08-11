@@ -2,25 +2,26 @@
 
 English | [简体中文](README_ZH.md)
 
-Offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
+Pluggable offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
 Give robots fast, private speech input for responsive, real-time interaction with people—without relying on the cloud.
 
-**Tested on [Unitree G1](https://www.unitree.com/mobile/g1/) and
-[Galbot G1](https://www.galbot.com/g1). Benchmarked on NVIDIA Jetson Orin NX.**
-It also runs on other Jetson-powered robots and Linux edge computers such as NVIDIA DGX Spark.
+The project has no robot-vendor SDK dependency. It integrates through standard audio devices,
+DDS, or ROS 2. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
+computers, NVIDIA DGX Spark, and general Linux edge systems are also supported targets.
+`G1` is retained only as the existing project and protocol namespace; it does not bind the
+service to any robot brand with that name.
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
+- **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
-- **High performance**: 0.01–0.2 s recognition latency with high accuracy
+- **Measured performance**: backend-specific latency and RTF benchmarks on Jetson Orin NX
 
 ## Verified Platforms
 
 | Platform | Compute | Available backends | Validation |
 |---|---|---|---|
-| Unitree G1 | Jetson Orin NX test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
-| Galbot G1 | Jetson Orin test configuration | CPU INT8 / CUDA FP32 | ✅ Verified |
 | Jetson Orin NX edge systems | Jetson Linux | CPU INT8 / CUDA FP32 | ✅ Benchmark platform |
 | NVIDIA DGX Spark | ARM64 Linux | CPU INT8 | ✅ Original deployment |
 | Other Jetson/Linux robots | Jetson or Linux edge computer | CPU INT8; CUDA FP32 on Jetson | Compatibility target |
@@ -29,12 +30,68 @@ Validation refers to configurations tested by this project; vendor hardware conf
 
 ## Performance
 
-Benchmarked on a Jetson Orin NX using the same 5.592-second Chinese audio sample, with 3 warm-up runs and 30 measured runs:
+Measured on a Jetson Orin NX in `MAXN_SUPER` mode (dynamic clocks, not locked), using
+the same 5.592-second Chinese WAV, 3 warm-ups, and 10 measured runs:
 
-| Backend | Model | Mean latency | Median | P95 | RTF |
-|---|---|---:|---:|---:|---:|
-| CPU | INT8 | 206.9 ms | 206.8 ms | 208.6 ms | 0.0370 |
-| GPU | FP32 | 69.5 ms | 64.5 ms | 94.3 ms | 0.0124 |
+| Model | Device | Precision | Attention | Mean | Median | P95 | RTF |
+|---|---|---|---|---:|---:|---:|---:|
+| SenseVoice-Small | CPU | INT8 | N/A | 205.9 ms | 206.0 ms | 206.4 ms | **0.0368** |
+| SenseVoice-Small | GPU | FP32 | N/A | 77.1 ms | 78.0 ms | 97.7 ms | **0.0138** |
+| Qwen3-ASR-0.6B | CPU | FP32 | eager | 8489.4 ms | 8469.6 ms | 9537.6 ms | 1.5181 |
+| Qwen3-ASR-0.6B | CPU | FP32 | SDPA | 17045.2 ms | 16967.9 ms | 19567.6 ms | 3.0481 |
+| Qwen3-ASR-0.6B | CPU | — | FA2 | unsupported (CUDA only) | — | — | — |
+| Qwen3-ASR-0.6B | GPU | BF16 | eager | 1378.2 ms | 1375.9 ms | 1391.5 ms | 0.2465 |
+| Qwen3-ASR-0.6B | GPU | BF16 | SDPA | **1235.7 ms** | 1234.8 ms | 1241.7 ms | **0.2210** |
+| Qwen3-ASR-0.6B | GPU | FP16 | SDPA | **1218.3 ms** | 1216.0 ms | 1244.7 ms | **0.2179** |
+| Qwen3-ASR-0.6B | GPU | BF16 | FA2 | 1493.4 ms | 1494.3 ms | 1500.2 ms | 0.2671 |
+
+Attention selection does not apply to SenseVoice's ONNX graph. On this Orin and
+single-request workload, GPU SDPA is 10.3% faster than eager; FA2 is 20.9% slower
+than SDPA. CPU SDPA is also slower because the installed Jetson PyTorch lacks native
+GQA and the compatibility path explicitly expands KV heads. These are end-to-end
+Transformers adapter measurements, not server-GPU vLLM throughput or an accuracy
+benchmark.
+
+### Why is Qwen3-ASR slower on Jetson Orin NX?
+
+The latency gap should not be attributed primarily to the attention backend.
+Qwen3-ASR is a large audio-language model that combines an audio encoder with an
+autoregressive Qwen3 decoder. On Jetson Orin NX, single-request decoding is dominated
+by repeated decoder execution, GEMM work, memory traffic, and kernel-launch overhead
+rather than attention alone.
+
+Our measurements support this interpretation. Switching from eager attention to SDPA
+reduces Qwen3-ASR-0.6B latency by 10.3%, while FlashAttention 2 is 20.9% slower than
+SDPA on the same short, batch-1 workload. A synchronized stage breakdown attributes
+98.8% of the 1.28-second request to `generate()`. Nsight Systems records about 26,000
+CUDA kernel launches in one 15-token request: GEMM kernels account for about 65% of
+GPU kernel time, while attention kernels account for about 2.3%.
+
+The official efficiency results are not directly comparable. They use approximately
+two-minute audio, vLLM 0.14.0, CUDA Graphs, BF16, and server-oriented batch or
+asynchronous serving. This project measures a 5.592-second utterance through native
+Transformers `generate()` at batch 1. Consequently, GPU SDPA + FP16 is the sealed
+Orin NX baseline. A 10-utterance, 50.188-second labeled check found identical
+punctuation-insensitive content CER for BF16 and FP16 (6.22%), 10/10 matching content
+transcripts, deterministic output over three runs per utterance, and 100% language
+identification. FP16 also provides a measured 4.9% fixed-sample latency reduction.
+The sealed service environment still has no Triton and remains unchanged. A later
+isolated Jetson-native PyTorch 2.9.1 / Triton 3.5.1 experiment made compiled decode
+measurable: Transformers static-cache generation reached 451.6 ms and 34.3 tokens/s
+of request-level apparent generation throughput, while decoder-only bitsandbytes NF4
+was slower than FP16. A controlled token-scaling regression estimates steady-state
+incremental decode throughput at 35.5 tokens/s; the earlier 15.3 tokens/s live value
+was depressed by fixed encoder/prefill cost and first-new-shape graph warm-up, not a
+decoder regression.
+
+See the [full Orin NX latency report](docs/qwen3_asr_orin_nx_latency.md), the
+[raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), the
+[sealed FP16 baseline](benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md), and the
+[runtime optimization follow-up](docs/qwen3_asr_orin_nx_runtime_optimizations.md),
+the [English runtime optimization report](docs/qwen3_asr_orin_nx_runtime_optimization_report_en.md),
+the [controlled E2E runtime-gap attribution](docs/qwen3_asr_e2e_runtime_gap.md),
+the [JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md), and the
+[end-to-end latency instrumentation and streaming plan](docs/speech_end_to_end_latency.md).
 
 ## Quick Start
 
@@ -102,6 +159,50 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+### Select SenseVoice or Qwen3-ASR
+
+The pipeline depends only on the `AsrEngine` contract. Prepare a host-local Qwen config,
+validate the CUDA load, and select it for the existing GPU service:
+
+```bash
+bash scripts/setup-qwen3-asr.sh
+cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+# Edit model_dir first.
+.venv-gpu/bin/g1-speech doctor \
+  --config config.qwen3-asr.local.json --load-model --skip-audio
+
+# deploy.env
+ASR_BACKEND="qwen3_asr"
+SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
+sudo g1-speech-service gpu dds
+```
+
+SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
+the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
+The Qwen example selects FP16 because it passed the Orin NX CER gate; BF16 remains
+the conservative fallback for other CUDA platforms until measured there.
+Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
+FlashAttention 2 is an optional CUDA-only backend. Build its Jetson extension once,
+then select it in the same local JSON configuration:
+
+```bash
+bash scripts/setup-flash-attention-2.sh
+.venv-gpu/bin/g1-speech config init \
+  --output config.qwen3-asr-fa2.local.json \
+  --base config.qwen3-asr.local.json \
+  --set qwen3_asr.attention_implementation=flash_attention_2
+```
+
+FA2 requires CUDA and FP16/BF16. Both released Qwen3-ASR models use head-dim 64
+for the audio tower and 128 for the text decoder; the setup script builds an auditable
+Qwen-only wheel with native Orin SM 8.7 inference kernels for just those dimensions
+(no training/backward path). It limits Ninja to one job by
+default to avoid memory pressure; override `MAX_JOBS` only when the device has enough
+free RAM. Use an upstream full wheel if another model needs other dimensions or GPU
+architectures.
+Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
+for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
+
 ### ROS 2
 
 ROS 2 is optional and does not affect the default DDS deployment. Prepare it
@@ -144,7 +245,7 @@ See [ROS 2 setup and lifecycle details](ros2/README.md).
 Microphone
   → 16 kHz mono audio
   → Silero VAD
-  → SenseVoice-Small
+  → selected ASR adapter (SenseVoice / Qwen3-ASR / external plugin)
   → DDS or ROS 2 transport
   → Robot / Agent / application
 

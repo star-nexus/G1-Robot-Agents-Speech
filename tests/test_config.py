@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from g1_speech.config import default_config_dict, load_config, write_config
+from g1_speech.config import (
+    Qwen3AsrConfig,
+    ServiceConfig,
+    default_config_dict,
+    load_config,
+    write_config,
+)
 
 
 def test_config_example_matches_canonical_defaults():
@@ -46,6 +52,23 @@ def test_write_config_derives_gpu_config_without_copying_defaults(tmp_path):
     assert gpu.vad == cpu.vad
 
 
+def test_write_config_upgrades_an_older_base_with_new_default_fields(tmp_path):
+    base = tmp_path / "old.json"
+    base.write_text(
+        json.dumps({"qwen3_asr": {"model_dir": "/models/qwen3-asr"}}),
+        encoding="utf-8",
+    )
+
+    output = write_config(
+        tmp_path / "new.json",
+        base=base,
+        overrides=("qwen3_asr.compile=true",),
+    )
+
+    assert load_config(output).qwen3_asr.compile is True
+    assert load_config(output).qwen3_asr.attention_implementation == "sdpa"
+
+
 def test_paths_are_relative_to_config_file(tmp_path):
     config_path = tmp_path / "config.json"
     config_path.write_text(
@@ -56,6 +79,7 @@ def test_paths_are_relative_to_config_file(tmp_path):
                     "model_dir": "assets/sensevoice",
                     "model_file": "assets/sensevoice/model.onnx",
                 },
+                "qwen3_asr": {"model_dir": "assets/qwen3-asr"},
             }
         ),
         encoding="utf-8",
@@ -68,6 +92,65 @@ def test_paths_are_relative_to_config_file(tmp_path):
     assert config.sensevoice.model_file == str(
         (tmp_path / "assets/sensevoice/model.onnx").resolve()
     )
+    assert config.qwen3_asr.model_dir == str((tmp_path / "assets/qwen3-asr").resolve())
+
+
+def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
+    path = write_config(
+        tmp_path / "config.json",
+        environment={
+            "ASR_BACKEND": "qwen3_asr",
+            "QWEN3_ASR_MODEL_DIR": "/models/qwen3-asr",
+            "QWEN3_ASR_DTYPE": "bfloat16",
+            "QWEN3_ASR_QUANTIZATION": "bnb_nf4",
+            "QWEN3_ASR_LOG_PROFILE": "1",
+        },
+    )
+
+    config = load_config(path)
+    assert config.asr.backend == "qwen3_asr"
+    assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
+    assert config.qwen3_asr.dtype == "bfloat16"
+    assert config.qwen3_asr.quantization == "bnb_nf4"
+    assert config.qwen3_asr.log_profile is True
+
+
+def test_qwen3_asr_defaults_to_sdpa_attention():
+    assert ServiceConfig().qwen3_asr.attention_implementation == "sdpa"
+    assert ServiceConfig().qwen3_asr.compile is False
+    assert ServiceConfig().qwen3_asr.compile_dynamic is False
+    assert ServiceConfig().qwen3_asr.startup_warmup_seconds == 0.0
+    assert ServiceConfig().qwen3_asr.cache_implementation is None
+    assert ServiceConfig().qwen3_asr.quantization is None
+    assert ServiceConfig().qwen3_asr.log_profile is False
+
+
+def test_qwen3_asr_rejects_unknown_attention_backend():
+    config = ServiceConfig(
+        qwen3_asr=Qwen3AsrConfig(attention_implementation="magic")
+    )
+    with pytest.raises(ValueError, match="attention_implementation"):
+        config.validate()
+
+
+def test_qwen3_asr_rejects_unknown_quantization():
+    config = ServiceConfig(qwen3_asr=Qwen3AsrConfig(quantization="awq-ish"))
+    with pytest.raises(ValueError, match="quantization"):
+        config.validate()
+
+
+def test_qwen3_asr_dynamic_compile_requires_static_cache():
+    config = ServiceConfig(qwen3_asr=Qwen3AsrConfig(compile_dynamic=True))
+    with pytest.raises(ValueError, match="static cache"):
+        config.validate()
+
+
+def test_qwen3_asr_startup_warmup_is_bounded():
+    config = ServiceConfig(
+        qwen3_asr=Qwen3AsrConfig(startup_warmup_seconds=31.0)
+    )
+    with pytest.raises(ValueError, match="startup_warmup_seconds"):
+        config.validate()
 
 
 def test_unknown_config_key_is_rejected(tmp_path):

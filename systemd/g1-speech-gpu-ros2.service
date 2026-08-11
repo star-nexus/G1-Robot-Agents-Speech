@@ -3,6 +3,8 @@ Description=Offline speech recognition for robot Agents (GPU FP32, ROS 2)
 After=network-online.target sound.target
 Wants=network-online.target
 Conflicts=g1-speech.service g1-speech-gpu.service g1-speech-ros2.service
+StartLimitIntervalSec=30
+StartLimitBurst=3
 
 [Service]
 Type=simple

@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "status": "stable",
+  "sealed_on": "2026-08-10",
+  "target": "Jetson Orin NX 16GB / JetPack 6.2 / CUDA 12.6 / SM 8.7",
+  "model": {
+    "name": "Qwen3-ASR-0.6B-hf",
+    "model_safetensors_sha256": "d3f212dd20abecd315d830bc54ae3865e56ebfc3276484e57b771288ba27fd35",
+    "config_sha256": "9eecf6f1b383e343889c2e6010e632590fa57d4bc678e151c7d6a160a0dfb04a",
+    "processor_config_sha256": "bc0b230081b44e629dd5b9045b78495615c1831b4b9f4cffe97bd37e82a6156a"
+  },
+  "runtime": {
+    "pytorch": "2.5.0a0+872d972e41.nv24.08",
+    "transformers": "5.13.0",
+    "cuda": "12.6"
+  },
+  "configuration": {
+    "device": "cuda",
+    "dtype": "float16",
+    "attention_implementation": "sdpa",
+    "language": "zh",
+    "max_new_tokens": 256,
+    "do_sample": false,
+    "compile": false,
+    "cache_implementation": null
+  },
+  "cer_gate": {
+    "utterances": 10,
+    "audio_seconds": 50.188,
+    "languages": ["zh", "en", "yue"],
+    "warmup": 3,
+    "runs_per_utterance": 3,
+    "language_hint": null,
+    "maximum_content_cer_regression_absolute": 0.005,
+    "require_deterministic_output": true,
+    "require_language_accuracy": 1.0,
+    "bf16": {
+      "strict_cer": 0.1422,
+      "strict_edits": 30,
+      "strict_reference_characters": 211,
+      "content_cer": 0.0622,
+      "content_edits": 13,
+      "content_reference_characters": 209,
+      "deterministic": true,
+      "language_accuracy": 1.0
+    },
+    "fp16": {
+      "strict_cer": 0.1327,
+      "strict_edits": 28,
+      "strict_reference_characters": 211,
+      "content_cer": 0.0622,
+      "content_edits": 13,
+      "content_reference_characters": 209,
+      "deterministic": true,
+      "language_accuracy": 1.0
+    },
+    "content_cer_regression_absolute": 0.0,
+    "content_transcript_matches": "10/10",
+    "passed": true
+  },
+  "fixed_5_592_second_latency": {
+    "mean_ms": 1218.3,
+    "median_ms": 1216.0,
+    "p95_ms": 1244.7,
+    "rtf": 0.2179,
+    "relative_improvement_vs_profiled_bf16": 0.049
+  }
+}

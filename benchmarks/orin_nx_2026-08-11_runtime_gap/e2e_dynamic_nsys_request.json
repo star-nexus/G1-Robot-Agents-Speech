@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "title": "Warm E2E extracted PCM dynamic-cache Nsight request",
+  "generated_at": "2026-08-11T13:02:28.249886+08:00",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "torch_version": "2.9.1",
+  "cuda_version": "12.6",
+  "device_name": "Orin",
+  "config": {
+    "backend": "qwen3_asr",
+    "model": "Qwen3-ASR-0.6B-hf",
+    "device": "cuda",
+    "dtype": "float16",
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "compile_dynamic": true,
+    "startup_warmup_seconds": 1.2,
+    "cache_implementation": "static",
+    "quantization": null,
+    "max_new_tokens": 256
+  },
+  "load_ms": 10589.097701013088,
+  "cases": [
+    {
+      "name": "real_vad_extracted",
+      "audio_seconds": 3.288,
+      "warmup": 3,
+      "runs": 1,
+      "first_request_ms": 51872.590501006925,
+      "warmup_measurements": [
+        {
+          "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+          "text_characters": 9,
+          "audio_seconds": 3.288,
+          "processor_ms": 61.79430001066066,
+          "h2d_ms": 3.169243020238355,
+          "generate_ms": 51802.133221994154,
+          "decode_ms": 5.136096995556727,
+          "total_ms": 51872.590501006925,
+          "generated_tokens": 10,
+          "generated_tokens_per_second": 0.19304224320542457,
+          "rtf": 15.776335310525221
+        },
+        {
+          "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+          "text_characters": 9,
+          "audio_seconds": 3.288,
+          "processor_ms": 15.085499995620921,
+          "h2d_ms": 2.044487016974017,
+          "generate_ms": 527.2985890042037,
+          "decode_ms": 0.5981239955872297,
+          "total_ms": 545.3760820091702,
+          "generated_tokens": 10,
+          "generated_tokens_per_second": 18.964587064199936,
+          "rtf": 0.1658686380806479
+        },
+        {
+          "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+          "text_characters": 9,
+          "audio_seconds": 3.288,
+          "processor_ms": 12.2276860056445,
+          "h2d_ms": 1.4528269821312279,
+          "generate_ms": 458.26800900977105,
+          "decode_ms": 0.5023140111006796,
+          "total_ms": 472.76933799730614,
+          "generated_tokens": 10,
+          "generated_tokens_per_second": 21.821291915200614,
+          "rtf": 0.14378629501134615
+        }
+      ],
+      "text_sha256": "54bcf1759939f5888b8371429babd3f96c974a7bf27a04dd115f7a2afdd919c0",
+      "text_characters": 9,
+      "summary": {
+        "processor_ms": {
+          "mean": 16.325939999660477,
+          "median": 16.325939999660477,
+          "p95": 16.325939999660477,
+          "min": 16.325939999660477,
+          "max": 16.325939999660477
+        },
+        "h2d_ms": {
+          "mean": 3.1750040070619434,
+          "median": 3.1750040070619434,
+          "p95": 3.1750040070619434,
+          "min": 3.1750040070619434,
+          "max": 3.1750040070619434
+        },
+        "generate_ms": {
+          "mean": 634.8645929829217,
+          "median": 634.8645929829217,
+          "p95": 634.8645929829217,
+          "min": 634.8645929829217,
+          "max": 634.8645929829217
+        },
+        "decode_ms": {
+          "mean": 0.7501580112148076,
+          "median": 0.7501580112148076,
+          "p95": 0.7501580112148076,
+          "min": 0.7501580112148076,
+          "max": 0.7501580112148076
+        },
+        "total_ms": {
+          "mean": 657.0341640035622,
+          "median": 657.0341640035622,
+          "p95": 657.0341640035622,
+          "min": 657.0341640035622,
+          "max": 657.0341640035622
+        },
+        "generated_tokens": {
+          "mean": 10.0,
+          "median": 10.0,
+          "p95": 10.0,
+          "min": 10.0,
+          "max": 10.0
+        },
+        "generated_tokens_per_second": {
+          "mean": 15.75139031303484,
+          "median": 15.75139031303484,
+          "p95": 15.75139031303484,
+          "min": 15.75139031303484,
+          "max": 15.75139031303484
+        },
+        "rtf": {
+          "mean": 0.19982790876020748,
+          "median": 0.19982790876020748,
+          "p95": 0.19982790876020748,
+          "min": 0.19982790876020748,
+          "max": 0.19982790876020748
+        }
+      },
+      "measurements": [
+        {
+          "audio_seconds": 3.288,
+          "processor_ms": 16.325939999660477,
+          "h2d_ms": 3.1750040070619434,
+          "generate_ms": 634.8645929829217,
+          "decode_ms": 0.7501580112148076,
+          "total_ms": 657.0341640035622,
+          "generated_tokens": 10,
+          "generated_tokens_per_second": 15.75139031303484,
+          "rtf": 0.19982790876020748
+        }
+      ]
+    }
+  ]
+}
