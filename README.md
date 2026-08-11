@@ -77,13 +77,19 @@ transcripts, deterministic output over three runs per utterance, and 100% langua
 identification. FP16 also provides a measured 4.9% fixed-sample latency reduction.
 The sealed service environment still has no Triton and remains unchanged. A later
 isolated Jetson-native PyTorch 2.9.1 / Triton 3.5.1 experiment made compiled decode
-measurable: Transformers static-cache generation reached 451.6 ms and 34.3 tokens/s,
-while decoder-only bitsandbytes NF4 was slower than FP16.
+measurable: Transformers static-cache generation reached 451.6 ms and 34.3 tokens/s
+of request-level apparent generation throughput, while decoder-only bitsandbytes NF4
+was slower than FP16. A controlled token-scaling regression estimates steady-state
+incremental decode throughput at 35.5 tokens/s; the earlier 15.3 tokens/s live value
+was depressed by fixed encoder/prefill cost and first-new-shape graph warm-up, not a
+decoder regression.
 
 See the [full Orin NX latency report](docs/qwen3_asr_orin_nx_latency.md), the
 [raw benchmark data](benchmarks/orin_nx_2026-08-09/README.md), the
 [sealed FP16 baseline](benchmarks/orin_nx_2026-08-10_fp16_baseline/README.md), and the
 [runtime optimization follow-up](docs/qwen3_asr_orin_nx_runtime_optimizations.md),
+the [English runtime optimization report](docs/qwen3_asr_orin_nx_runtime_optimization_report_en.md),
+the [controlled E2E runtime-gap attribution](docs/qwen3_asr_e2e_runtime_gap.md),
 the [JetPack 6 vLLM feasibility note](docs/vllm_orin_jp6.md), and the
 [end-to-end latency instrumentation and streaming plan](docs/speech_end_to_end_latency.md).
 

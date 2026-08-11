@@ -49,6 +49,14 @@ GPU SDPA 比 eager 快 10.3%；FA2 反而比 SDPA 慢 20.9%。CPU SDPA 更慢，
 Jetson PyTorch 缺少原生 GQA，兼容路径需要显式展开 KV heads。这里测量的是端到端
 Transformers adapter 延迟，不是服务器 GPU 上的 vLLM 吞吐，也不是准确率基准。
 
+后续在隔离的 PyTorch 2.9.1 / Triton 3.5.1 环境中，static KV cache 与
+generation-aware compiled decode 将固定样本延迟降至 451.6 ms。严格归因实验进一步
+确认：steady-state incremental decode throughput 约为 35.5 tok/s；此前实时路径记录的
+15.3 tok/s 是被固定 encoder/prefill 成本和首次新-shape graph warm-up 拉低的
+request-level apparent generation throughput，并非 decoder 性能回退。详见
+[runtime 优化报告](docs/qwen3_asr_orin_nx_runtime_optimization_report_en.md)和
+[E2E 差异归因](docs/qwen3_asr_e2e_runtime_gap.md)。
+
 ## 快速接入
 
 ### 运行语音服务
