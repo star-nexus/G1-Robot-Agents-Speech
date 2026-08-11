@@ -96,7 +96,8 @@ def test_runner_can_switch_asr_configuration_without_changing_systemd_units():
     assert "SPEECH_PYTHON_GPU" in runner
     assert 'export PYTHONPATH="$ROOT/src' in runner
     assert 'export CPATH="$CUDA_INCLUDE' in runner
-    assert "QWEN3_CUDSS_DIR" in runner
+    assert "SPEECH_GPU_LIBRARY_PATH" in runner
+    assert "QWEN3_CUDSS_DIR" in runner  # compatibility with existing hosts
     assert 'CYCLONEDDS_HOME/lib/libddsc.so' in runner
     assert "scripts/install-cyclonedds.sh" in runner
 

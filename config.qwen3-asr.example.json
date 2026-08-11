@@ -12,6 +12,10 @@
     "attention_implementation": "sdpa",
     "compile": false,
     "compile_mode": "reduce-overhead",
-    "cache_implementation": null
+    "compile_dynamic": false,
+    "startup_warmup_seconds": 0.0,
+    "cache_implementation": null,
+    "quantization": null,
+    "log_profile": false
   }
 }

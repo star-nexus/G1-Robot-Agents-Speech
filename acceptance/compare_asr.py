@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import time
 from dataclasses import dataclass
@@ -61,7 +62,7 @@ def parse_config(value: str) -> tuple[str, Path]:
 
 
 def benchmark(label: str, config_path: Path, cases: list[Case], warmup: int, runs: int):
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     engine = create_asr_engine(config)
     times: list[float] = []
     audio_ms_total = 0.0

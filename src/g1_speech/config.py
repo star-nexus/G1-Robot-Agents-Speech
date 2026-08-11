@@ -216,12 +216,7 @@ def write_config(
         raw = json.loads(base_path.read_text(encoding="utf-8"))
 
     raw = deepcopy(raw)
-    defaults = default_config_dict()
-    for section, value in defaults.items():
-        if isinstance(value, dict):
-            target_section = raw.setdefault(section, {})
-            for field_name, default_value in value.items():
-                target_section.setdefault(field_name, deepcopy(default_value))
+    _fill_missing_section_defaults(raw)
     if environment is not None:
         _apply_environment_overrides(raw, environment)
     for assignment in overrides:
@@ -244,10 +239,37 @@ def _merge_dataclass(cls, raw: dict[str, Any]):
     return cls(**raw)
 
 
-def load_config(path: str | Path) -> ServiceConfig:
+def load_config(
+    path: str | Path,
+    *,
+    runtime_environment: Mapping[str, str] | None = None,
+) -> ServiceConfig:
+    """Load a model profile and optionally apply backend-neutral host overrides.
+
+    Model selection and model-specific tuning always come from the JSON profile.
+    The runtime environment is deliberately restricted to settings that apply to
+    every ASR backend, such as the microphone, VAD, transport, and playback gate.
+    """
     config_path = Path(path).expanduser().resolve()
     raw = json.loads(config_path.read_text(encoding="utf-8"))
+    _fill_missing_section_defaults(raw)
+    if runtime_environment is not None:
+        _apply_environment_overrides(
+            raw,
+            runtime_environment,
+            allowed_names=_RUNTIME_ENV_OVERRIDE_NAMES,
+        )
     return _config_from_raw(raw, config_path.parent)
+
+
+def _fill_missing_section_defaults(raw: dict[str, Any]) -> None:
+    """Make intentionally small model profiles safe for section-level overrides."""
+    for section, value in default_config_dict().items():
+        if not isinstance(value, dict):
+            continue
+        target_section = raw.setdefault(section, {})
+        for field_name, default_value in value.items():
+            target_section.setdefault(field_name, deepcopy(default_value))
 
 
 def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
@@ -310,39 +332,8 @@ def _parse_optional_string(value: str) -> str | None:
     return value or None
 
 
-def _parse_bool(value: str) -> bool:
-    normalized = value.strip().lower()
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    raise ValueError(f"invalid boolean value: {value!r}")
-
-
 _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "MICROPHONE_DEVICE": ("audio", "device", _parse_optional_device),
-    "ASR_BACKEND": ("asr", "backend", str),
-    "SENSEVOICE_DEVICE": ("sensevoice", "device", str),
-    "SENSEVOICE_THREADS": ("sensevoice", "num_threads", int),
-    "SENSEVOICE_LANGUAGE": ("sensevoice", "language", str),
-    "SENSEVOICE_USE_ITN": ("sensevoice", "use_itn", _parse_bool),
-    "QWEN3_ASR_MODEL_DIR": ("qwen3_asr", "model_dir", str),
-    "QWEN3_ASR_DEVICE": ("qwen3_asr", "device", str),
-    "QWEN3_ASR_DTYPE": ("qwen3_asr", "dtype", str),
-    "QWEN3_ASR_LANGUAGE": ("qwen3_asr", "language", _parse_optional_string),
-    "QWEN3_ASR_PROMPT": ("qwen3_asr", "prompt", _parse_optional_string),
-    "QWEN3_ASR_MAX_NEW_TOKENS": ("qwen3_asr", "max_new_tokens", int),
-    "QWEN3_ASR_ATTENTION": (
-        "qwen3_asr",
-        "attention_implementation",
-        _parse_optional_string,
-    ),
-    "QWEN3_ASR_QUANTIZATION": (
-        "qwen3_asr",
-        "quantization",
-        _parse_optional_string,
-    ),
-    "QWEN3_ASR_LOG_PROFILE": ("qwen3_asr", "log_profile", _parse_bool),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
     "ROS2_NODE_NAME": ("ros2", "node_name", str),
     "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),
@@ -364,10 +355,43 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
 }
 
 
+# These are deployment/host settings, not model settings.  Keeping this list
+# separate prevents deploy.env from silently replacing the backend, checkpoint,
+# dtype, attention implementation, or cache policy selected by a JSON profile.
+_RUNTIME_ENV_OVERRIDE_NAMES = frozenset(
+    {
+        "MICROPHONE_DEVICE",
+        "SPEECH_TRANSPORT",
+        "ROS2_NODE_NAME",
+        "ROS2_SPEECH_TOPIC",
+        "ROS2_PLAYBACK_TOPIC",
+        "ROS2_QOS_DEPTH",
+        "VAD_THRESHOLD",
+        "VAD_PRE_ROLL_SECONDS",
+        "VAD_MIN_SILENCE_SECONDS",
+        "VAD_MIN_SPEECH_SECONDS",
+        "VAD_MAX_SPEECH_SECONDS",
+        "DDS_DOMAIN_ID",
+        "DDS_NETWORK_INTERFACE",
+        "SPEECH_TOPIC",
+        "PLAYBACK_TOPIC",
+        "DDS_DELIVERY_TTL_SECONDS",
+        "DDS_OUTBOX_CAPACITY",
+        "PLAYBACK_RESUME_DELAY_MS",
+        "PLAYBACK_MAX_ACTIVE_SECONDS",
+    }
+)
+
+
 def _apply_environment_overrides(
-    raw: dict[str, Any], environment: Mapping[str, str]
+    raw: dict[str, Any],
+    environment: Mapping[str, str],
+    *,
+    allowed_names: frozenset[str] | None = None,
 ) -> None:
     for name, (section, field_name, parser) in _ENV_OVERRIDES.items():
+        if allowed_names is not None and name not in allowed_names:
+            continue
         if name not in environment:
             continue
         try:

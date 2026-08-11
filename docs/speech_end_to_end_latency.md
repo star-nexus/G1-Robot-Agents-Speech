@@ -68,15 +68,16 @@ adds small measurement overhead. Enable it only during diagnosis:
 }
 ```
 
-It adds `generated_tokens`, `generate_ms`, generated tokens/s, processor, H2D, and
-decode timing to each recognition. The equivalent environment override is
-`QWEN3_ASR_LOG_PROFILE=1` when generating configuration from `deploy.env`.
+It adds `generated_tokens`, `generate_ms`, request-level apparent generation
+throughput, processor, H2D, and decode timing to each recognition. This is a
+model-profile setting and intentionally has no `deploy.env` override.
 
 ## 200 ms VAD experiment
 
-The Orin host-local Qwen configuration uses `vad.min_silence_seconds = 0.20`. This
+The Orin host-local `deploy.env` uses `VAD_MIN_SILENCE_SECONDS=0.20`. This shared
 removes about 150 ms from the former 350 ms tail threshold when the VAD decision
-tracks configuration exactly. It is an experiment, not a universal default: noise,
+tracks configuration exactly, regardless of the selected ASR model. It is an
+experiment, not a universal default: noise,
 hesitation, and natural pauses can split one sentence into multiple utterances.
 
 Validate at least these cases before making 200 ms the deployment default:

@@ -28,17 +28,22 @@ ffmpeg. The M4A files remain host-local and are intentionally ignored by Git.
 
 ## Reproduction commands
 
+The commands below use the current single host-local profile
+`config.qwen3-asr.local.json`. The older experiment-specific root filenames were
+intentionally removed when the configuration layout was consolidated; the exact
+variant parameters remain preserved in this directory's raw JSON evidence.
+
 ```bash
 export PYTHONPATH=src
 
 .venv-gpu/bin/python acceptance/benchmark_qwen3_profile.py \
-  --config config.qwen3-asr-0.6b.local.json \
+  --config config.qwen3-asr.local.json \
   --audio models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav \
   --factors 1,2,4,8 --warmup 3 --runs 10 \
   --output-prefix benchmarks/orin_nx_2026-08-09/qwen3_asr_bf16_sdpa_controlled_scaling
 
 .venv-gpu/bin/python acceptance/benchmark_qwen3_profile.py \
-  --config config.qwen3-asr-0.6b.local.json \
+  --config config.qwen3-asr.local.json \
   --audio tests/test_audio_6s.m4a \
   --audio tests/test_audio_30s.m4a \
   --audio tests/test_audio_60s.m4a \
@@ -47,20 +52,20 @@ export PYTHONPATH=src
   --output-prefix benchmarks/orin_nx_2026-08-09/qwen3_asr_bf16_sdpa_natural_length_scan
 ```
 
-The failed optimization probes used local configs derived without modifying the
-baseline. Reproduce either variant with `g1-speech config init`, then run the same
-benchmark command shown above with the derived config:
+The failed optimization probes used temporary configs derived without modifying the
+baseline. Reproduce either variant outside the project root, then run the same
+benchmark command shown above with that temporary config:
 
 ```bash
 .venv/bin/g1-speech config init \
-  --output config.qwen3-asr-compile.local.json \
-  --base config.qwen3-asr-0.6b.local.json \
+  --output /tmp/qwen3-asr-compile.json \
+  --base config.qwen3-asr.local.json \
   --set qwen3_asr.compile=true \
   --set qwen3_asr.compile_mode=reduce-overhead
 
 .venv/bin/g1-speech config init \
-  --output config.qwen3-asr-static-cache.local.json \
-  --base config.qwen3-asr-0.6b.local.json \
+  --output /tmp/qwen3-asr-static-cache.json \
+  --base config.qwen3-asr.local.json \
   --set qwen3_asr.cache_implementation=static
 ```
 

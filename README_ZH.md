@@ -137,10 +137,15 @@ cp config.qwen3-asr.example.json config.qwen3-asr.local.json
 长期运行时在 `deploy.env` 选择配置，然后继续使用同一个 systemd 服务入口：
 
 ```bash
-ASR_BACKEND="qwen3_asr"
 SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
-sudo g1-speech-service gpu dds
+sudo g1-speech-service restart
+# 服务当前停止时：sudo g1-speech-service gpu dds
 ```
+
+`SPEECH_CONFIG_GPU` 是部署时唯一的模型选择入口。JSON profile 负责
+`asr.backend`、模型目录、dtype、attention 和 cache；`deploy.env` 不再重复这些字段。
+切回 SenseVoice GPU 时只需选择 `config.gpu.json` 并重启。详见
+[配置模型](docs/configuration.md)。
 
 示例配置在 Orin NX 上采用已封存的 `SDPA + FP16` baseline：10 条、50.188 秒带标注
 语料中，FP16 与 BF16 的忽略标点内容 CER 均为 6.22%，10/10 内容转写一致，且每条
@@ -150,21 +155,9 @@ sudo g1-speech-service gpu dds
 NVIDIA PyTorch 2.5 缺少 `enable_gqa` 参数，adapter 会自动展开 KV heads 后进入 SDPA，
 无需修改 Transformers。需要排障或复现旧基线时可显式设为 `eager`。
 
-FlashAttention 2 是可选的 CUDA 后端。先在 Jetson 上编译一次扩展，再生成独立的本机配置：
-
-```bash
-bash scripts/setup-flash-attention-2.sh
-.venv-gpu/bin/g1-speech config init \
-  --output config.qwen3-asr-fa2.local.json \
-  --base config.qwen3-asr.local.json \
-  --set qwen3_asr.attention_implementation=flash_attention_2
-```
-
-FA2 只支持 CUDA FP16/BF16。已发布的两种 Qwen3-ASR 都在音频塔使用 head-dim 64、
-文本解码器使用 128；安装脚本会构建一个可审计的 Qwen 专用 wheel，只保留这两种维度
-的 Orin SM 8.7 推理内核（不包含训练反向路径），并把 Ninja 限制为单任务，避免
-16 GB 设备在编译期间内存不足。其他模型若需
-不同维度或 GPU 架构，应改用上游完整 wheel。
+FlashAttention 2 仍可用于受控实验，但不再作为部署 profile：在已测 Orin batch=1
+场景中，它比 SDPA 慢 20.9%。实验变体及其完整参数应跟随 benchmark artifact 保存，
+而不是继续在根目录增加 `config.qwen3-*` 文件。
 
 每次识别日志都会报告音频时长和 RTF。固定 WAV 的可复现基准命令：
 
@@ -278,23 +271,34 @@ GPU 部署会：
 
 ## 配置
 
-复制 `deploy.env.example` 后只填写自己的设备信息，不需要固定 IP：
+配置明确分成两层：
+
+1. JSON 模型 profile 选择 SenseVoice/Qwen3-ASR，并拥有全部模型专属参数。
+2. `deploy.env` 描述本机部署，拥有 profile 路径、Python runtime、麦克风、通用
+   VAD/播放门控、transport 与安装选项。
+
+`deploy.env.example` 与真实 `deploy.env` 字段和顺序一致，仅使用与主机无关的示例值：
 
 | 配置 | 说明 |
 |---|---|
+| `SPEECH_CONFIG_CPU` / `SPEECH_CONFIG_GPU` | CPU/GPU 服务选择的 JSON profile |
+| `SPEECH_PYTHON_GPU` | GPU 服务可选的隔离 Python runtime |
+| `SPEECH_GPU_LIBRARY_PATH` | 该 runtime 需要的冒号分隔 native library 路径 |
 | `DDS_NETWORK_INTERFACE` | DDS 使用的本机网卡；留空时自动选择 |
 | `MICROPHONE_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
 | `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
-| `SENSEVOICE_THREADS` | CPU 推理线程数 |
+| `VAD_*` | 对全部 ASR backend 生效的通用分句参数 |
+| `PLAYBACK_*` | 对全部 ASR backend 生效的通用识别门控 |
 | `SPEECH_TRANSPORT` | `dds`（默认）或 `ros2` |
 | `ROS2_SETUP` | 可选 ROS 2 `setup.bash`；通常可自动发现 |
 | `ROS2_WORKSPACE_SETUP` | 可选自定义工作空间 overlay 路径 |
 | `ROS2_DOMAIN_ID` | 可选 ROS Domain；安装时默认沿用当前终端的值 |
 
-运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
-按配置文件所在目录解析。
+不要在 `deploy.env` 中配置 `ASR_BACKEND`、`SENSEVOICE_*` 或 `QWEN3_ASR_*`；它们属于
+被选中的 JSON profile。backend-neutral 环境设置会在生成配置和服务启动时应用，因此
+会一致地作用于 SenseVoice 与 Qwen3-ASR。相对模型路径按 JSON profile 所在目录解析。
 
 也可以直接根据应用的统一默认值生成配置：
 
@@ -302,8 +306,8 @@ GPU 部署会：
 g1-speech config init --output config.json
 ```
 
-安装脚本使用同一个命令，并且只应用 `deploy.env` 中明确设置的覆盖项，因此 CPU、
-GPU、示例配置和代码调用不会再分别维护默认参数。
+安装脚本使用同一个命令，并且只应用 `deploy.env` 中明确设置的 backend-neutral
+覆盖项。完整字段归属与优先级见 [`docs/configuration.md`](docs/configuration.md)。
 
 ## 验证与测试
 

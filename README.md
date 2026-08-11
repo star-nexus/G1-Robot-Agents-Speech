@@ -172,34 +172,26 @@ cp config.qwen3-asr.example.json config.qwen3-asr.local.json
   --config config.qwen3-asr.local.json --load-model --skip-audio
 
 # deploy.env
-ASR_BACKEND="qwen3_asr"
 SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
-sudo g1-speech-service gpu dds
+# Restart the selected service, or select GPU + DDS when currently stopped.
+sudo g1-speech-service restart
+# sudo g1-speech-service gpu dds
 ```
+
+`SPEECH_CONFIG_GPU` is the single deployment-time model selector. The JSON
+profile owns `asr.backend`, checkpoint, dtype, attention, and cache settings;
+`deploy.env` does not duplicate them. To return to SenseVoice GPU, select
+`config.gpu.json` and restart. See the [configuration model](docs/configuration.md).
 
 SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
 the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
 The Qwen example selects FP16 because it passed the Orin NX CER gate; BF16 remains
 the conservative fallback for other CUDA platforms until measured there.
 Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
-FlashAttention 2 is an optional CUDA-only backend. Build its Jetson extension once,
-then select it in the same local JSON configuration:
-
-```bash
-bash scripts/setup-flash-attention-2.sh
-.venv-gpu/bin/g1-speech config init \
-  --output config.qwen3-asr-fa2.local.json \
-  --base config.qwen3-asr.local.json \
-  --set qwen3_asr.attention_implementation=flash_attention_2
-```
-
-FA2 requires CUDA and FP16/BF16. Both released Qwen3-ASR models use head-dim 64
-for the audio tower and 128 for the text decoder; the setup script builds an auditable
-Qwen-only wheel with native Orin SM 8.7 inference kernels for just those dimensions
-(no training/backward path). It limits Ninja to one job by
-default to avoid memory pressure; override `MAX_JOBS` only when the device has enough
-free RAM. Use an upstream full wheel if another model needs other dimensions or GPU
-architectures.
+FlashAttention 2 remains available for controlled experiments, but it is not a
+deployment profile: it was 20.9% slower than SDPA on the measured Orin batch-1
+workload. Experimental variants and their exact settings belong with benchmark
+artifacts rather than as additional root-level `config.qwen3-*` files.
 Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
 for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
 
@@ -304,22 +296,38 @@ The current GPU build targets CUDA 12.6, sherpa-onnx 1.13.4, and ONNX Runtime 1.
 
 ## Configuration
 
-Copy `deploy.env.example` and enter your own device settings. No fixed IP address is required:
+Configuration has two explicit layers:
+
+1. A JSON model profile selects SenseVoice or Qwen3-ASR and owns every
+   model-specific setting.
+2. `deploy.env` describes this host and owns the selected profile path, Python
+   runtime, microphone, common VAD/playback behavior, transport, and installer.
+
+Copy `deploy.env.example`; it has the same fields and ordering as a real
+`deploy.env`, with host-neutral values:
 
 | Setting | Description |
 |---|---|
+| `SPEECH_CONFIG_CPU` / `SPEECH_CONFIG_GPU` | JSON profile selected by each service mode |
+| `SPEECH_PYTHON_GPU` | Optional isolated Python used by the GPU service |
+| `SPEECH_GPU_LIBRARY_PATH` | Optional colon-separated native-library paths for that runtime |
 | `DDS_NETWORK_INTERFACE` | Optional local interface used by DDS; leave empty for automatic selection |
 | `MICROPHONE_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
 | `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
-| `SENSEVOICE_THREADS` | Number of CPU inference threads |
+| `VAD_*` | Shared utterance segmentation applied to every ASR backend |
+| `PLAYBACK_*` | Shared recognition gate applied to every ASR backend |
 | `SPEECH_TRANSPORT` | `dds` (default) or `ros2` |
 | `ROS2_SETUP` | Optional ROS 2 `setup.bash`; normally discovered automatically |
 | `ROS2_WORKSPACE_SETUP` | Optional custom workspace overlay path |
 | `ROS2_DOMAIN_ID` | Optional ROS graph domain; setup preserves the current shell value |
 
-Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
+Do not put `ASR_BACKEND`, `SENSEVOICE_*`, or `QWEN3_ASR_*` in `deploy.env`.
+Those values belong to the selected JSON profile. Backend-neutral environment
+settings are applied both during configuration generation and when the service
+starts, so they consistently affect SenseVoice and Qwen3-ASR. Relative model paths
+are resolved from the directory containing the JSON profile.
 
 Generate a configuration directly from the application's canonical defaults:
 
@@ -327,7 +335,9 @@ Generate a configuration directly from the application's canonical defaults:
 g1-speech config init --output config.json
 ```
 
-The setup scripts use the same command and apply only variables explicitly set in `deploy.env`. This keeps CPU, GPU, example, and programmatic defaults consistent.
+The setup scripts use the same command and apply only backend-neutral variables
+explicitly set in `deploy.env`. Full ownership and precedence are documented in
+[`docs/configuration.md`](docs/configuration.md).
 
 ## Validation and Testing
 

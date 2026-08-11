@@ -30,7 +30,7 @@ def main() -> int:
     parser.add_argument("--sample-seconds", type=float, default=10)
     parser.add_argument("--max-rss-growth-mb", type=float, default=64)
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = load_config(args.config, runtime_environment=os.environ)
     service = SpeechService(config)
     service.start()
     baseline_rss = rss_mb()

@@ -95,7 +95,7 @@ def test_paths_are_relative_to_config_file(tmp_path):
     assert config.qwen3_asr.model_dir == str((tmp_path / "assets/qwen3-asr").resolve())
 
 
-def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
+def test_model_selection_is_not_accepted_from_deployment_environment(tmp_path):
     path = write_config(
         tmp_path / "config.json",
         environment={
@@ -108,11 +108,48 @@ def test_asr_backend_and_qwen_model_can_be_selected_from_environment(tmp_path):
     )
 
     config = load_config(path)
+    assert config.asr.backend == "sensevoice"
+    assert config.qwen3_asr.model_dir.endswith("models/Qwen3-ASR-0.6B-hf")
+    assert config.qwen3_asr.dtype == "auto"
+    assert config.qwen3_asr.quantization is None
+    assert config.qwen3_asr.log_profile is False
+
+
+def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
+    path = tmp_path / "qwen.json"
+    path.write_text(
+        json.dumps(
+            {
+                "asr": {"backend": "qwen3_asr"},
+                "qwen3_asr": {
+                    "model_dir": "/models/selected-qwen",
+                    "dtype": "float16",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(
+        path,
+        runtime_environment={
+            "ASR_BACKEND": "sensevoice",
+            "QWEN3_ASR_MODEL_DIR": "/models/should-not-win",
+            "QWEN3_ASR_DTYPE": "bfloat16",
+            "MICROPHONE_DEVICE": "USB Microphone",
+            "VAD_THRESHOLD": "0.42",
+            "DDS_DOMAIN_ID": "7",
+            "PLAYBACK_RESUME_DELAY_MS": "175",
+        },
+    )
+
     assert config.asr.backend == "qwen3_asr"
-    assert config.qwen3_asr.model_dir == "/models/qwen3-asr"
-    assert config.qwen3_asr.dtype == "bfloat16"
-    assert config.qwen3_asr.quantization == "bnb_nf4"
-    assert config.qwen3_asr.log_profile is True
+    assert config.qwen3_asr.model_dir == "/models/selected-qwen"
+    assert config.qwen3_asr.dtype == "float16"
+    assert config.audio.device == "USB Microphone"
+    assert config.vad.threshold == 0.42
+    assert config.dds.domain_id == 7
+    assert config.playback.resume_delay_ms == 175
 
 
 def test_qwen3_asr_defaults_to_sdpa_attention():

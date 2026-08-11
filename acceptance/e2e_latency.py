@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -74,7 +75,7 @@ def main() -> int:
     parser.add_argument("--target-ms", type=float, default=800.0)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = load_config(args.config, runtime_environment=os.environ)
     samples, rate = read_audio(args.wav, config.audio.sample_rate)
     if rate != config.audio.sample_rate:
         raise ValueError(f"WAV is {rate} Hz; expected {config.audio.sample_rate} Hz")

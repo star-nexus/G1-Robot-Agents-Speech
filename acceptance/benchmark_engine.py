@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import time
 
@@ -31,7 +32,7 @@ def main() -> int:
     if args.warmup < 0 or args.runs < 1:
         raise ValueError("warmup must be >= 0 and runs must be >= 1")
 
-    config = load_config(args.config)
+    config = load_config(args.config, runtime_environment=os.environ)
     samples, sample_rate = _read_wav(args.wav)
     if sample_rate != config.audio.sample_rate:
         raise ValueError(f"WAV is {sample_rate} Hz; expected {config.audio.sample_rate} Hz")

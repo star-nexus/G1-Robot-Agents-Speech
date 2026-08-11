@@ -120,7 +120,7 @@ def _config_init(
 
 
 def _serve(config_path: str, run_seconds: float, transport: str | None = None) -> int:
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     service = SpeechService(config, transport_backend=transport)
     stopped = threading.Event()
 
@@ -152,7 +152,7 @@ def _doctor(
     skip_audio: bool = False,
     transport: str | None = None,
 ) -> int:
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     selected_transport = transport or config.transport.backend
     checks: list[tuple[str, bool, str]] = []
 
@@ -192,7 +192,7 @@ def _doctor(
 def _listen(config_path: str, timeout: float, once: bool) -> int:
     if timeout < 0:
         raise ValueError("timeout must not be negative")
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     initialize_dds(config.dds.domain_id, config.dds.network_interface)
     stopped = threading.Event()
 
@@ -219,7 +219,7 @@ def _listen(config_path: str, timeout: float, once: bool) -> int:
 
 
 def _transcribe(config_path: str, wav_path: str) -> int:
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     samples, sample_rate = _read_wav(wav_path)
     now = time.monotonic_ns()
     utterance = Utterance(samples, sample_rate, now, now)

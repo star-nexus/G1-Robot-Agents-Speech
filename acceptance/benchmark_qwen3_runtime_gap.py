@@ -593,7 +593,7 @@ def main() -> int:
 
     sys.excepthook = save_failure
     config_path = Path(args.config).resolve()
-    config = load_config(config_path)
+    config = load_config(config_path, runtime_environment=os.environ)
     controlled, controlled_rate = load_audio(
         args.controlled_audio, config.audio.sample_rate
     )
