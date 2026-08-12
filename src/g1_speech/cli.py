@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 import wave
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from .audio import resolve_alsa_input_device
 from .asr import asr_diagnostic_checks, create_asr_engine
 from .config import AudioConfig, load_config, write_config
 from .contracts import Utterance
-from .dds import DdsSpeechSubscriber, initialize_dds
+from .dds import DdsSpeechSubscriber, DdsTtsPublisher, initialize_dds
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,6 +73,14 @@ def build_parser() -> argparse.ArgumentParser:
     transcribe = sub.add_parser("transcribe", help="Transcribe a WAV with the service engine")
     transcribe.add_argument("--config", required=True)
     transcribe.add_argument("wav")
+
+    speak = sub.add_parser("speak", help="Publish one complete TTS request over DDS")
+    speak.add_argument("--config", required=True)
+    speak.add_argument("--language", default="")
+    speak.add_argument("--voice", default="")
+    speak.add_argument("--instructions", default="")
+    speak.add_argument("--request-id")
+    speak.add_argument("text")
     return parser
 
 
@@ -98,6 +107,15 @@ def main(argv: list[str] | None = None) -> int:
         return _listen(args.config, args.timeout, args.once)
     if args.command == "transcribe":
         return _transcribe(args.config, args.wav)
+    if args.command == "speak":
+        return _speak(
+            args.config,
+            args.text,
+            args.request_id,
+            args.language,
+            args.voice,
+            args.instructions,
+        )
     parser.error("unknown command")
     return 2
 
@@ -231,6 +249,34 @@ def _transcribe(config_path: str, wav_path: str) -> int:
         return 0 if result.text else 1
     finally:
         engine.close()
+
+
+def _speak(
+    config_path: str,
+    text: str,
+    request_id: str | None,
+    language: str,
+    voice: str,
+    instructions: str,
+) -> int:
+    config = load_config(config_path, runtime_environment=os.environ)
+    initialize_dds(config.dds.domain_id, config.dds.network_interface)
+    publisher = DdsTtsPublisher(topic=config.dds.tts_topic, source="g1-speech-cli")
+    publisher.start()
+    try:
+        delivered = publisher.publish(
+            request_id=request_id or uuid.uuid4().hex,
+            sequence=0,
+            text=text,
+            is_final=True,
+            language=language,
+            voice=voice,
+            instructions=instructions,
+            timeout=1.0,
+        )
+        return 0 if delivered else 1
+    finally:
+        publisher.close()
 
 
 def _read_wav(path: str) -> tuple[np.ndarray, int]:

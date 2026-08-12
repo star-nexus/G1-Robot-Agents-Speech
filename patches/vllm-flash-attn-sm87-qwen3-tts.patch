@@ -1,0 +1,131 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e2d74f1..cfa2ba8 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -8,6 +8,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
+ 
+ set(FA2_ENABLED ON)
+ set(FA3_ENABLED ON)
++if(VLLM_ORIN_TTS_MINIMAL)
++    # Orin (SM87) cannot execute Hopper FA3. Qwen3-TTS uses head-dim 128;
++    # keep its dense and split-KV forward kernels, while excluding backward,
++    # sparse and unrelated head dimensions.
++    set(FA3_ENABLED OFF)
++endif()
+ 
+ # CUDA by default, can be overridden by using -DVLLM_TARGET_DEVICE=... (used by setup.py)
+ set(VLLM_TARGET_DEVICE "cuda" CACHE STRING "Target device backend for vLLM")
+@@ -139,7 +146,12 @@ string(REPLACE "-O2" "-O3" CMAKE_CUDA_FLAGS_RELWITHDEBINFO "${CMAKE_CUDA_FLA
+ #
+ 
+ if (FA2_ENABLED)
+-    file(GLOB FA2_GEN_SRCS "csrc/flash_attn/src/flash_fwd_*.cu")
++    if(VLLM_ORIN_TTS_MINIMAL)
++        file(GLOB FA2_GEN_SRCS
++            "csrc/flash_attn/src/flash_fwd_hdim128_*_sm80.cu"
++            "csrc/flash_attn/src/flash_fwd_split_hdim128_*_sm80.cu"
++            "csrc/flash_attn/src/flash_fwd_split_align_hdim128_*_sm80.cu")
++    else()
++        file(GLOB FA2_GEN_SRCS "csrc/flash_attn/src/flash_fwd_*.cu")
++    endif()
+ 
+     # For CUDA we set the architectures on a per file basis
+     if (VLLM_GPU_LANG STREQUAL "CUDA")
+@@ -155,12 +167,17 @@ if (FA2_ENABLED)
+     endif()
+ 
++    set(FA2_API_SRCS
++        csrc/flash_attn/flash_api.cpp
++        csrc/flash_attn/flash_api_torch_lib.cpp)
++    if(NOT VLLM_ORIN_TTS_MINIMAL)
++        list(APPEND FA2_API_SRCS csrc/flash_attn/flash_api_sparse.cpp)
++    endif()
++
+     define_gpu_extension_target(
+         _vllm_fa2_C
+         DESTINATION vllm_flash_attn
+         LANGUAGE ${VLLM_GPU_LANG}
+         SOURCES
+-            csrc/flash_attn/flash_api.cpp
+-            csrc/flash_attn/flash_api_sparse.cpp
+-            csrc/flash_attn/flash_api_torch_lib.cpp
++            ${FA2_API_SRCS}
+             ${FA2_GEN_SRCS}
+         COMPILE_FLAGS ${VLLM_FA_GPU_FLAGS}
+         USE_SABI 3
+@@ -181,6 +198,9 @@ if (FA2_ENABLED)
+         FLASHATTENTION_DISABLE_PYBIND
+     )
++    if(VLLM_ORIN_TTS_MINIMAL)
++        target_compile_definitions(_vllm_fa2_C PRIVATE VLLM_ORIN_TTS_MINIMAL)
++    endif()
+ endif ()
+ 
+ # FA3 requires CUDA 12.0 or later
+diff --git a/csrc/flash_attn/flash_api.cpp b/csrc/flash_attn/flash_api.cpp
+index 5f88c9c..3e3ad08 100644
+--- a/csrc/flash_attn/flash_api.cpp
++++ b/csrc/flash_attn/flash_api.cpp
+@@ -240,6 +240,19 @@ void set_params_dgrad(Flash_bwd_params &params,
+ }
+ 
+ void run_mha_fwd(Flash_fwd_params &params, cudaStream_t stream, bool force_split_kernel=false) {
++#ifdef VLLM_ORIN_TTS_MINIMAL
++    TORCH_CHECK(params.d == 128,
++                "The Orin Qwen3-TTS FA2 build supports head-dim 128 only");
++    FP16_SWITCH(!params.is_bf16, [&] {
++        constexpr int kHeadDim = 128;
++        BOOL_SWITCH(params.is_causal, Is_causal, [&] {
++            if (params.num_splits <= 1 && !force_split_kernel) {
++                run_mha_fwd_<elem_type, kHeadDim, Is_causal>(params, stream);
++            } else {
++                run_mha_fwd_splitkv_dispatch<elem_type, kHeadDim, Is_causal>(params, stream);
++            }
++        });
++    });
++#else
+     FP16_SWITCH(!params.is_bf16, [&] {
+         HEADDIM_SWITCH(params.d, [&] {
+             BOOL_SWITCH(params.is_causal, Is_causal, [&] {
+@@ -251,6 +264,7 @@ void run_mha_fwd(Flash_fwd_params &params, cudaStream_t stream, bool force_spli
+             });
+         });
+     });
++#endif
+ }
+ 
+ // Find the number of splits that maximizes the occupancy. For example, if we have
+diff --git a/csrc/flash_attn/flash_api_torch_lib.cpp b/csrc/flash_attn/flash_api_torch_lib.cpp
+index a4e5707..bdcc850 100644
+--- a/csrc/flash_attn/flash_api_torch_lib.cpp
++++ b/csrc/flash_attn/flash_api_torch_lib.cpp
+@@ -61,6 +61,7 @@ mha_fwd_kvcache(at::Tensor &q,                 // batch_size x seqlen_q x num_h
+                 int num_splits);
+ 
+ /////////////////////////// From flash_api_sparse.cpp //////////////////////////
++#ifndef VLLM_ORIN_TTS_MINIMAL
+ 
+ std::vector<at::Tensor>
+ mha_fwd_sparse(at::Tensor &q,         // batch_size x seqlen_q x num_heads x head_size
+@@ -100,6 +101,7 @@ mha_varlen_fwd_sparse(at::Tensor &q,  // total_q x num_heads x head_size, total_
+                       const bool return_softmax,
+                       std::optional<at::Generator> gen_);
++#endif
+ 
+ /**
+  *  Torch Library Registration
+@@ -119,6 +121,7 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
+             "int window_size_right, float softcap, bool is_rotary_interleaved, int num_splits) -> Tensor[]");
+     ops.impl("fwd_kvcache", torch::kCUDA, make_pytorch_shim(&mha_fwd_kvcache));
+ 
++#ifndef VLLM_ORIN_TTS_MINIMAL
+     ops.def("fwd_sparse(Tensor! q, Tensor k, Tensor v, "
+             "Tensor block_count, Tensor block_offset, Tensor column_count, Tensor column_index, "
+             "Tensor!? out, Tensor? alibi_slopes, "
+@@ -135,6 +138,7 @@ TORCH_LIBRARY_EXPAND(TORCH_EXTENSION_NAME, ops) {
+             "Generator? gen) -> Tensor[]");
+     ops.impl("varlen_fwd_sparse", torch::kCUDA, &mha_varlen_fwd_sparse);
++#endif
+ }
+ 
+ REGISTER_EXTENSION(TORCH_EXTENSION_NAME);

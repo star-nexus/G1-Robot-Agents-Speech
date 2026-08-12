@@ -12,7 +12,12 @@ from typing import Any, Callable, Protocol
 
 from .contracts import EventSink, SpeechEvent
 from .config import DdsConfig
-from .dds_types import DDS_IDL_AVAILABLE, PlaybackStateMessage, SpeechEventMessage
+from .dds_types import (
+    DDS_IDL_AVAILABLE,
+    PlaybackStateMessage,
+    SpeechEventMessage,
+    TtsTextChunkMessage,
+)
 from .gate import PlaybackGate
 
 logger = logging.getLogger(__name__)
@@ -482,6 +487,91 @@ class DdsPlaybackSubscriber:
         logger.info("Playback gate active=%s request_id=%s", message.active, message.request_id)
 
 
+class DdsTtsSubscriber:
+    def __init__(self, callback: Callable[[Any], None], *, topic: str) -> None:
+        self._callback = callback
+        self._topic = topic
+        self._subscriber: _DdsReader | None = None
+
+    def start(self) -> None:
+        if self._subscriber is not None:
+            return
+        self._subscriber = _DdsReader(
+            self._topic,
+            TtsTextChunkMessage,
+            self._on_message,
+            32,
+        )
+        self._subscriber.start()
+        logger.info("DDS TtsTextChunk subscriber: %s", self._topic)
+
+    def close(self) -> None:
+        if self._subscriber is not None:
+            self._subscriber.close()
+            self._subscriber = None
+
+    def _on_message(self, message: TtsTextChunkMessage) -> None:
+        from .tts import TtsTextChunk
+
+        self._callback(
+            TtsTextChunk(
+                request_id=message.request_id,
+                sequence=int(message.sequence),
+                text=message.text,
+                is_final=bool(message.is_final),
+                interrupt=bool(message.interrupt),
+                language=message.language,
+                voice=message.voice,
+                instructions=message.instructions,
+                created_unix_ns=int(message.created_unix_ns),
+                source=message.source,
+            )
+        )
+
+
+class DdsTtsPublisher:
+    """Agent-side incremental text publisher for the robot mouth."""
+
+    def __init__(self, *, topic: str = "rt/g1/hri/tts/request", source: str = "agent") -> None:
+        self._source = source
+        self._publisher = _DdsWriter(topic, TtsTextChunkMessage)
+
+    def start(self) -> None:
+        self._publisher.start()
+
+    def publish(
+        self,
+        *,
+        request_id: str,
+        sequence: int,
+        text: str,
+        is_final: bool = False,
+        interrupt: bool = False,
+        language: str = "",
+        voice: str = "",
+        instructions: str = "",
+        timeout: float = 0.25,
+    ) -> bool:
+        return self._publisher.write(
+            TtsTextChunkMessage(
+                request_id=request_id,
+                sequence=sequence,
+                text=text,
+                is_final=is_final,
+                interrupt=interrupt,
+                language=language,
+                voice=voice,
+                instructions=instructions,
+                created_unix_ns=time.time_ns(),
+                source=self._source,
+            ),
+            timeout,
+        )
+
+    def close(self) -> None:
+        self._publisher.close()
+
+
 class DdsPlaybackPublisher:
     """Agent-side helper for wrapping TTS/playback with set_active(True/False)."""
 
@@ -532,6 +622,9 @@ class DdsTransport:
     def __init__(self, config: DdsConfig, gate: PlaybackGate) -> None:
         initialize_dds(config.domain_id, config.network_interface)
         self._playback = DdsPlaybackSubscriber(gate, topic=config.playback_topic)
+        self._config = config
+        self._tts: DdsTtsSubscriber | None = None
+        self._tts_playback: DdsPlaybackPublisher | None = None
         writer = DdsEventWriter(config.speech_topic)
         self.sink = RetryingEventSink(
             writer,
@@ -543,9 +636,40 @@ class DdsTransport:
 
     def start(self) -> None:
         self._playback.start()
+        if self._tts is not None:
+            self._tts.start()
+        if self._tts_playback is not None:
+            self._tts_playback.start()
 
     def stop(self) -> None:
+        if self._tts is not None:
+            self._tts.close()
+        if self._tts_playback is not None:
+            self._tts_playback.close()
         self._playback.close()
+
+    def register_tts_handler(self, callback: Callable[[Any], None]) -> None:
+        if self._tts is not None:
+            raise RuntimeError("TTS handler is already registered")
+        self._tts = DdsTtsSubscriber(callback, topic=self._config.tts_topic)
+        self._tts_playback = DdsPlaybackPublisher(
+            topic=self._config.playback_topic,
+            source="g1_speech_tts",
+        )
+
+    def publish_playback_state(self, active: bool, request_id: str) -> None:
+        if self._tts_playback is None:
+            return
+        if not self._tts_playback.set_active(
+            active,
+            request_id=request_id,
+            timeout=0.25,
+        ):
+            logger.warning(
+                "DDS playback state was not delivered: active=%s request_id=%s",
+                active,
+                request_id,
+            )
 
     def close(self) -> None:
         self.stop()

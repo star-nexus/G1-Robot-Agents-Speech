@@ -45,6 +45,7 @@ stops the previous mode, starts the requested mode, and enables it at boot.
 |---|---|---|
 | `/hri/speech/final` | `g1_speech_msgs/msg/SpeechEvent` | Service to Agent |
 | `/hri/playback/state` | `g1_speech_msgs/msg/PlaybackState` | Agent/TTS to service |
+| `/hri/tts/request` | `g1_speech_msgs/msg/TtsTextChunk` | Agent to streaming TTS |
 
 Topic names are relative internally, so ROS namespaces and remapping work
 without changing service configuration. In the root namespace they resolve to

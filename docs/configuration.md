@@ -5,7 +5,7 @@ The project uses two configuration layers with non-overlapping ownership.
 | Layer | File | Owns |
 |---|---|---|
 | Model profile | `config*.json` | ASR backend, checkpoint, device, dtype, attention, cache, model prompt |
-| Host deployment | `deploy.env` | Selected profile path, Python/runtime libraries, microphone, shared VAD/playback behavior, transport, installer |
+| Host deployment | `deploy.env` | Selected profile path, Python/runtime libraries, audio devices/processing, shared VAD/playback behavior, TTS endpoint, transport, installer |
 
 The separation is intentional: changing a host setting must never silently replace
 the ASR model, while changing an ASR model must not require new DDS/ROS 2 units or
@@ -91,6 +91,8 @@ The following `deploy.env` groups are deliberately shared by every ASR backend:
 
 - `AUDIO_INPUT_*`: backend, callback block, latency request, and fallback policy.
 - `ALSA_INPUT_*`: stable physical card ID and native hardware capture format.
+- `AUDIO_PROCESSING_MODE`, `WEBRTC_*`: half duplex, hardware DSP, or WebRTC APM.
+- `ALSA_OUTPUT_*`, `TTS_*`: physical speaker and local streaming-TTS endpoint.
 - `PULSE_INPUT_DEVICE`, `PULSE_SOURCE`: PulseAudio fallback device and optional
   pinned source.
 - `VAD_*`: utterance start/end segmentation before ASR inference.
@@ -105,6 +107,28 @@ Backend-neutral values are applied both by `config init --from-env` during setup
 again by the service at startup. Edit `deploy.env`, then restart the selected service.
 The complete Jetson input design and verification procedure is documented in
 [`audio_input.md`](audio_input.md).
+
+## Full-duplex speech
+
+The processing mode is deliberately independent of the ASR model:
+
+```bash
+# No AEC: recognition is gated while the robot speaks.
+AUDIO_PROCESSING_MODE="off"
+
+# A verified microphone/DSP owns AEC/NS: do not apply software AEC again.
+AUDIO_PROCESSING_MODE="hardware"
+
+# Ordinary microphone: use native WebRTC APM/AEC3 and actual speaker PCM.
+AUDIO_PROCESSING_MODE="webrtc"
+```
+
+`TTS_ENABLED=1` starts the speech service's streaming client and ALSA player; the
+Qwen3-TTS server remains an independently managed process. Model variant, task type,
+and reference-voice semantics belong in the JSON profile. The host endpoint, speaker
+card, and processing choice belong in `deploy.env`. See
+[`full_duplex_audio.md`](full_duplex_audio.md) and
+[`qwen3_tts_vllm_omni_jp6.md`](qwen3_tts_vllm_omni_jp6.md).
 
 ## Creating the one local Qwen profile
 

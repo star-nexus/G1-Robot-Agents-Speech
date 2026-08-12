@@ -4,7 +4,7 @@
   "metrics_interval_seconds": 60.0,
   "audio": {
     "input_backend": "alsa",
-    "fallback_backend": "pulse",
+    "fallback_backend": null,
     "alsa_card": null,
     "alsa_device": 0,
     "alsa_sample_rate": 48000,
@@ -18,6 +18,27 @@
     "heartbeat_timeout_seconds": 2.0,
     "reconnect_initial_seconds": 0.5,
     "reconnect_max_seconds": 10.0
+  },
+  "audio_processing": {
+    "mode": "off",
+    "sample_rate": 16000,
+    "frame_ms": 10,
+    "echo_cancellation": true,
+    "noise_suppression": true,
+    "automatic_gain_control": false,
+    "stream_delay_ms": 80,
+    "noise_suppression_level": 2
+  },
+  "audio_output": {
+    "backend": "alsa",
+    "alsa_card": null,
+    "alsa_device": 0,
+    "sample_rate": 48000,
+    "channels": 2,
+    "dtype": "int16",
+    "block_ms": 10,
+    "latency": "low",
+    "volume": 1.0
   },
   "vad": {
     "model": "models/silero_vad.onnx",
@@ -63,6 +84,7 @@
     "network_interface": null,
     "speech_topic": "rt/g1/hri/speech/final",
     "playback_topic": "rt/g1/hri/playback/state",
+    "tts_topic": "rt/g1/hri/tts/request",
     "write_timeout_seconds": 0.5,
     "retry_interval_seconds": 0.2,
     "delivery_ttl_seconds": 120.0,
@@ -72,10 +94,35 @@
     "node_name": "g1_speech",
     "speech_topic": "hri/speech/final",
     "playback_topic": "hri/playback/state",
+    "tts_topic": "hri/tts/request",
     "qos_depth": 10
   },
   "playback": {
     "resume_delay_ms": 250,
     "max_active_seconds": 30.0
+  },
+  "tts": {
+    "enabled": false,
+    "backend": "vllm_omni",
+    "websocket_url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+    "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "task_type": "CustomVoice",
+    "voice": "Ryan",
+    "language": "Auto",
+    "instructions": "",
+    "reference_audio": null,
+    "reference_text": null,
+    "max_new_tokens": 2048,
+    "initial_codec_chunk_frames": null,
+    "connect_timeout_seconds": 5.0,
+    "receive_timeout_seconds": 0.1,
+    "request_queue_capacity": 16,
+    "max_buffer_characters": 240,
+    "style_tokens": {
+      "happy": "Speak in a bright, delighted and energetic tone.",
+      "sad": "Speak in a subdued, sad and gentle tone.",
+      "angry": "Speak firmly with controlled anger.",
+      "calm": "Speak calmly, clearly and reassuringly."
+    }
   }
 }

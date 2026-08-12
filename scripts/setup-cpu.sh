@@ -36,7 +36,7 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 : "${RUNTIME_PYTHON:=python3}"
 : "${DDS_NETWORK_INTERFACE:=}"
 : "${AUDIO_INPUT_BACKEND:=alsa}"
-: "${AUDIO_INPUT_FALLBACK:=pulse}"
+: "${AUDIO_INPUT_FALLBACK:=}"
 : "${ALSA_INPUT_CARD:=}"
 : "${ALSA_INPUT_DEVICE:=0}"
 : "${ALSA_INPUT_SAMPLE_RATE:=48000}"
@@ -46,6 +46,8 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 : "${AUDIO_INPUT_BLOCK_MS:=20}"
 : "${AUDIO_INPUT_LATENCY:=low}"
 : "${PROMPT_FOR_MIC_DEVICE:=1}"
+: "${AUDIO_PROCESSING_MODE:=off}"
+: "${TTS_ENABLED:=0}"
 : "${AUTO_INSTALL_CYCLONEDDS:=1}"
 : "${CYCLONEDDS_SOURCE_DIR:=$HOME/.cache/g1-speech/cyclonedds}"
 : "${CYCLONEDDS_HOME:=$CYCLONEDDS_SOURCE_DIR/install}"
@@ -89,7 +91,13 @@ PIP="$ROOT/.venv/bin/pip"
 if [[ "$UPGRADE_PIP" == "1" ]]; then
     "$PY" -m pip install --upgrade pip
 fi
-"$PIP" install -e "$ROOT" sounddevice sherpa-onnx
+"$PY" -m pip install -e "$ROOT" sounddevice sherpa-onnx
+if [[ "$TTS_ENABLED" == "1" ]]; then
+    "$PY" -m pip install websocket-client
+fi
+if [[ "$AUDIO_PROCESSING_MODE" == "webrtc" ]]; then
+    bash "$ROOT/scripts/setup-webrtc-apm.sh" "$PY"
+fi
 ok "CPU speech runtime installed"
 
 if [[ "$AUDIO_INPUT_BACKEND" == "alsa" && -z "$ALSA_INPUT_CARD" \
@@ -99,7 +107,7 @@ if [[ "$AUDIO_INPUT_BACKEND" == "alsa" && -z "$ALSA_INPUT_CARD" \
         [[ -f "$card_id_path" ]] || continue
         printf '  %s\n' "$(<"$card_id_path")"
     done
-    read -r -p "ALSA card ID (Enter uses auto-detection/fallback): " ALSA_INPUT_CARD
+    read -r -p "ALSA card ID (Enter uses unambiguous auto-detection): " ALSA_INPUT_CARD
     export ALSA_INPUT_CARD
 fi
 

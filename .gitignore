@@ -10,6 +10,7 @@ acceptance/results/
 acceptance/*.local.jsonl
 /tests/test_audio.*
 /tests/test_audio_*
+!/tests/test_audio_*.py
 .deps/
 build/
 .build/

@@ -1,0 +1,61 @@
+{
+  "date": "2026-08-13",
+  "platform": {
+    "device": "NVIDIA Jetson Orin NX 16GB",
+    "jetpack": "6.2",
+    "ubuntu": "22.04",
+    "cuda": "12.6",
+    "compute_capability": "8.7"
+  },
+  "isolation": {
+    "root": "/home/nvidia/Developer/vllm-omni-orin-jp6",
+    "stable_asr_environment_modified": false,
+    "system_python_modified": false,
+    "system_cuda_modified": false
+  },
+  "runtime": {
+    "vllm_omni_commit": "72a02b492a6957acc4659fde09be85c00ad0f90b",
+    "vllm_commit": "568afb3a1",
+    "vllm_version": "0.26.1.dev0+g568afb3a1.d20260812",
+    "pytorch": "2.11.0",
+    "pytorch_cuda": "12.6",
+    "triton": "3.5.1",
+    "torchaudio": "2.11.0",
+    "architecture": "aarch64",
+    "native_sm87_kernel_verified": true,
+    "vllm_stable_abi_import_verified": true,
+    "flash_attention_2_native_import_verified": true
+  },
+  "model": {
+    "path": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "task_type": "CustomVoice",
+    "architecture": "Qwen3TTSTalkerForConditionalGeneration",
+    "loaded_weights": 619,
+    "reported_model_memory_gib": 1.91,
+    "attention_backend": "FLASH_ATTN",
+    "flash_attention_version": 2
+  },
+  "build": {
+    "vllm_wheel_built": true,
+    "vllm_omni_cli_imported": true,
+    "torchaudio_source_build_succeeded": true,
+    "first_graph_compile_seconds": 57.24,
+    "initial_profile_warmup_seconds": 2.63
+  },
+  "compatibility_patches": [
+    "patches/vllm-0.26-orin-tts-minimal.patch",
+    "patches/vllm-flash-attn-sm87-qwen3-tts.patch",
+    "patches/vllm-omni-vllm026-randomize-inputs.patch"
+  ],
+  "service_validation": {
+    "websocket_endpoint_ready": false,
+    "audio_generated": false,
+    "production_baseline": false,
+    "first_fixed_blocker": "GPUModelRunner.maybe_randomize_inputs() rejected the obsolete randomize_inputs keyword; repository compatibility patch applied and verified past this point.",
+    "final_blocker": "AttributeError: 'MemoryProfilingResult' object has no attribute 'total_consumed'",
+    "final_blocker_location": "vllm_omni/worker/base.py:128",
+    "failure_phase": "stage-0 KV-cache memory profiling after model load and graph compilation",
+    "oom_observed": false
+  },
+  "conclusion": "JetPack 6.2 native compilation is feasible and the Qwen3-TTS talker reaches SM87 FA2 model load and graph compilation, but this unpinned upstream vLLM-Omni main plus vLLM 0.26 source pair is not API-compatible enough to serve requests. No TTS latency claim is valid yet."
+}

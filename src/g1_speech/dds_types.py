@@ -33,6 +33,19 @@ try:
         created_unix_ns: idl_types.uint64
         source: str
 
+    @dataclass
+    class TtsTextChunkMessage(IdlStruct, typename="g1_hri.msg.TtsTextChunk"):
+        request_id: str
+        sequence: idl_types.uint64
+        text: str
+        is_final: bool
+        interrupt: bool
+        language: str
+        voice: str
+        instructions: str
+        created_unix_ns: idl_types.uint64
+        source: str
+
 except ImportError:
     DDS_IDL_AVAILABLE = False
 
@@ -54,5 +67,18 @@ except ImportError:
     class PlaybackStateMessage:
         request_id: str
         active: bool
+        created_unix_ns: int
+        source: str
+
+    @dataclass
+    class TtsTextChunkMessage:
+        request_id: str
+        sequence: int
+        text: str
+        is_final: bool
+        interrupt: bool
+        language: str
+        voice: str
+        instructions: str
         created_unix_ns: int
         source: str

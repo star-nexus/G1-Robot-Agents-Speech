@@ -34,6 +34,10 @@ qwen3-asr = [
   "transformers==5.13.0",
 ]
 dds = ["cyclonedds==0.10.2"]
+tts = [
+  "sounddevice>=0.4.6",
+  "websocket-client>=1.8",
+]
 dev = ["pytest>=7.4"]
 
 [project.scripts]

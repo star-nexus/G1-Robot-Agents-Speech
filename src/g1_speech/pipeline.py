@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass
+from typing import Callable
 
 from .contracts import (
     AsrEngine,
@@ -47,6 +48,8 @@ class SpeechPipeline:
         source_name: str = "g1_speech_mic",
         utterance_queue_capacity: int = 4,
         session_id: str | None = None,
+        on_speech_start: Callable[[], None] | None = None,
+        suppress_during_playback: bool = True,
     ) -> None:
         self._source = source
         self._segmenter = segmenter
@@ -58,6 +61,8 @@ class SpeechPipeline:
             maxsize=utterance_queue_capacity
         )
         self._session_id = session_id or uuid.uuid4().hex
+        self._on_speech_start = on_speech_start
+        self._suppress_during_playback = suppress_during_playback
         self._sequence = 0
         self._metrics = _MutableMetrics()
         self._metrics_lock = threading.Lock()
@@ -157,6 +162,7 @@ class SpeechPipeline:
 
     def _segment_loop(self) -> None:
         was_muted = False
+        speech_was_active = False
         discontinuity_count = getattr(self._source, "discontinuity_count", 0)
         while not self._stop.is_set():
             chunk = self._source.read(timeout=0.2)
@@ -171,7 +177,9 @@ class SpeechPipeline:
             if chunk is None:
                 continue
             self._increment("audio_chunks_received")
-            if self._gate.is_muted(now_ns=chunk.captured_monotonic_ns):
+            if self._suppress_during_playback and self._gate.is_muted(
+                now_ns=chunk.captured_monotonic_ns
+            ):
                 self._increment("playback_chunks_suppressed")
                 if not was_muted:
                     self._segmenter.reset()
@@ -186,6 +194,13 @@ class SpeechPipeline:
                 logger.exception("VAD processing failed; resetting segmenter")
                 self._segmenter.reset()
                 continue
+            speech_active = bool(getattr(self._segmenter, "speech_active", False))
+            if speech_active and not speech_was_active and self._on_speech_start is not None:
+                try:
+                    self._on_speech_start()
+                except Exception:  # noqa: BLE001
+                    logger.exception("Speech-start callback failed")
+            speech_was_active = speech_active
             for utterance in utterances:
                 self._increment("utterances_detected")
                 self._enqueue_utterance(utterance)

@@ -15,6 +15,7 @@ import numpy as np
 
 from .config import AudioConfig
 from .contracts import AudioChunk
+from .audio_processing import AudioProcessor, PassthroughAudioProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ class SoundDeviceSource:
         settings: AudioConfig,
         sounddevice_module: Any | None = None,
         proc_asound_root: Path = Path("/proc/asound"),
+        processor: AudioProcessor | None = None,
     ) -> None:
         self.sample_rate = settings.sample_rate
         self.block_samples = round(settings.sample_rate * settings.block_ms / 1000)
@@ -126,6 +128,7 @@ class SoundDeviceSource:
         self.pulse_device = settings.pulse_device
         self.latency = settings.latency
         self._proc_asound_root = proc_asound_root
+        self._processor = processor or PassthroughAudioProcessor("off")
         self._heartbeat_timeout = settings.heartbeat_timeout_seconds
         self._reconnect_initial = settings.reconnect_initial_seconds
         self._reconnect_max = settings.reconnect_max_seconds
@@ -205,8 +208,10 @@ class SoundDeviceSource:
         except queue.Empty:
             self._maintain_stream()
             return None
+        converted = self._convert_to_pipeline_format(captured)
+        processed = self._processor.process_capture(converted, self.sample_rate)
         return AudioChunk(
-            samples=self._convert_to_pipeline_format(captured),
+            samples=processed,
             sample_rate=self.sample_rate,
             captured_monotonic_ns=captured.captured_monotonic_ns,
         )

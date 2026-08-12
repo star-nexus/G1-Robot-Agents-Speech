@@ -12,6 +12,8 @@ NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
 
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **ASR 模型可插拔**：内置 SenseVoice 与 Qwen3-ASR，切换模型不影响 VAD、DDS/ROS 2 或 Agent
+- **生产级全双工**：硬件 DSP / WebRTC APM(AEC3) 可插拔，支持 VAD 打断机器人发声
+- **流式机器人语音客户端**：实验性 Qwen3-TTS/vLLM-Omni PCM 分块通过低延迟 ALSA 直连播放
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
 - **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
@@ -79,18 +81,19 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-机器人部署默认优先使用 ALSA 硬件直连，并保留显式的 PulseAudio 回退。配置稳定的
-ALSA card ID，不要写入 USB 重枚举后会变化的 `hw:1,0` 数字：
+机器人生产部署使用 ALSA 硬件直连；所选麦克风不可用时直接报错，不静默回退到
+其他桌面麦克风。配置稳定的 ALSA card ID，不要写入 USB 重枚举后会变化的
+`hw:1,0` 数字：
 
 ```bash
 for path in /proc/asound/card*/id; do
   printf '%s: %s\n' "$path" "$(<"$path")"
 done
 
-# deploy.env——仅为示例，请使用本机输出的 ID
+# deploy.env——请使用本机输出的 ID
 AUDIO_INPUT_BACKEND="alsa"
-ALSA_INPUT_CARD="Microphone"
-AUDIO_INPUT_FALLBACK="pulse"
+ALSA_INPUT_CARD="your-card-id"
+AUDIO_INPUT_FALLBACK=""
 AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
@@ -98,9 +101,26 @@ g1-speech-service status
 ```
 
 服务用麦克风原生格式采集，并在实时 callback 之外转换成 ASR 所需的 16 kHz 单声道。
-ALSA 打开失败时会先明确告警，再使用配置的 Pulse fallback。`logs` 会报告实际打开的
-backend、解析后的设备、原生格式和 PortAudio latency。独占设备要求与完整验证方法见
+项目不根据厂商名猜测麦克风质量：安装时由用户选择 card ID，只有硬件候选唯一时才可留空自动选择。
+`logs` 会报告实际打开的 backend、解析后的设备、原生格式和 PortAudio latency。独占设备要求与完整验证方法见
 [低延迟输入指南](docs/audio_input.md)。
+
+全双工交互需要明确选择一种音频处理契约，并固定扬声器的稳定 ALSA card ID：
+
+```bash
+# 普通 USB 麦克风：软件 AEC3/NS，使用实际扬声器 PCM 作为参考。
+AUDIO_PROCESSING_MODE="webrtc"
+ALSA_OUTPUT_CARD="your-speaker-card-id"
+TTS_ENABLED=1
+
+# 已验证带 DSP/AEC 的麦克风阵列（不得重复叠加软件 AEC）：
+# AUDIO_PROCESSING_MODE="hardware"
+```
+
+`off` 保留安全的半双工播放门控；`hardware` 与 `webrtc` 在机器人说话时继续运行 VAD，
+用户开口后会终止合成、清空排队文本并立即 abort ALSA 播放。完整说明见
+[全双工音频指南](docs/full_duplex_audio.md)和
+[JetPack 6 vLLM-Omni 隔离环境记录](docs/qwen3_tts_vllm_omni_jp6.md)。
 
 DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
 相同的消息，Agent 无需修改。
@@ -205,8 +225,9 @@ ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```
 
-ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent` 和
-`g1_speech_msgs/msg/PlaybackState`，完整保留 DDS 事件契约。安装与生命周期说明见
+ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent`、
+`g1_speech_msgs/msg/PlaybackState`，并在启用 TTS 时订阅
+`g1_speech_msgs/msg/TtsTextChunk`，完整保留 DDS 事件契约。安装与生命周期说明见
 [ROS 2 文档](ros2/README.md)。
 
 ## 工作方式
@@ -220,16 +241,18 @@ Microphone
   → Robot / Agent / application
 
 TTS or playback
-  → rt/g1/hri/playback/state
-  → temporarily pause recognition
+  → off：通过 playback state 暂停识别
+  → hardware/webrtc：输入 AEC 参考，并由 VAD 打断播放
 ```
 
 | Topic | 方向 | 用途 |
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | 最终语音识别事件 |
 | `rt/g1/hri/playback/state` | Agent → Service | 播放期间暂停识别，避免机器人听到自己 |
+| `rt/g1/hri/tts/request` | Agent → Service | 流式 TTS 的增量、可去重文本块 |
 | `/hri/speech/final` | Service → ROS 2 Agent | 最终结构化 `SpeechEvent` |
 | `/hri/playback/state` | ROS 2 Agent → Service | 结构化播放门控状态 |
+| `/hri/tts/request` | ROS 2 Agent → Service | 增量 `TtsTextChunk` 请求 |
 
 `SpeechEvent` 包含稳定的 `event_id`、文本、语言、音频时长、推理耗时、来源和时间戳。
 发布端会在短暂 DDS 故障时重试，订阅端会按 `event_id` 去重。
@@ -290,11 +313,13 @@ GPU 部署会：
 | `SPEECH_PYTHON_GPU` | GPU 服务可选的隔离 Python runtime |
 | `SPEECH_GPU_LIBRARY_PATH` | 该 runtime 需要的冒号分隔 native library 路径 |
 | `DDS_NETWORK_INTERFACE` | DDS 使用的本机网卡；留空时自动选择 |
-| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | 优先 `alsa`，可回退 `pulse` |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | 生产默认：`alsa` 直连，不静默回退 |
 | `ALSA_INPUT_*` | 稳定 ALSA card ID 与硬件原生设备/采样率/声道/dtype |
 | `PULSE_INPUT_DEVICE` | 主动选择或回退时使用的 PulseAudio 设备 |
 | `PULSE_SOURCE` | 回退客户端可选的稳定 PulseAudio source |
 | `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | callback 大小与 PortAudio latency 请求 |
+| `AUDIO_PROCESSING_MODE` / `WEBRTC_*` | `off`、硬件 DSP 或原生 WebRTC APM/AEC3 |
+| `ALSA_OUTPUT_*` / `TTS_*` | 物理扬声器与本机流式 TTS endpoint |
 | `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |

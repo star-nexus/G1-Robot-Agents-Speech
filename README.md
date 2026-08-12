@@ -13,6 +13,8 @@ service to any robot brand with that name.
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
+- **Production full duplex**: selectable hardware-DSP or native WebRTC APM/AEC3 processing with VAD barge-in
+- **Streaming robot voice client**: experimental Qwen3-TTS/vLLM-Omni WebSocket chunks play through low-latency direct ALSA
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
@@ -115,19 +117,19 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-Robot deployments prefer direct ALSA hardware capture with an explicit PulseAudio
-fallback. Pin the stable ALSA card ID rather than a hot-plug-sensitive `hw:1,0`
-number:
+Robot deployments use direct ALSA hardware capture and fail closed if that selected
+microphone is unavailable. Pin the stable ALSA card ID rather than a
+hot-plug-sensitive `hw:1,0` number:
 
 ```bash
 for path in /proc/asound/card*/id; do
   printf '%s: %s\n' "$path" "$(<"$path")"
 done
 
-# deploy.env — example only; use an ID printed on your host
+# deploy.env — use an ID printed on your host
 AUDIO_INPUT_BACKEND="alsa"
-ALSA_INPUT_CARD="Microphone"
-AUDIO_INPUT_FALLBACK="pulse"
+ALSA_INPUT_CARD="your-card-id"
+AUDIO_INPUT_FALLBACK=""
 AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
@@ -135,11 +137,30 @@ g1-speech-service status
 ```
 
 The service opens the microphone's native format and converts it to ASR's 16 kHz
-mono format outside the real-time callback. ALSA failures are logged before the
-configured Pulse fallback is used. `logs` reports the backend actually opened,
-resolved device, native format, and PortAudio latency. See the
+mono format outside the real-time callback. It never guesses microphone quality
+from a vendor name: the installer lets the user select a card, while an empty ID
+is accepted only when hardware detection is unambiguous. `logs` reports the backend
+actually opened, resolved device, native format, and PortAudio latency. See the
 [low-latency input guide](docs/audio_input.md), including the exclusive-device
 ownership requirement.
+
+For full-duplex interaction, choose one explicit processing contract and pin a
+stable ALSA speaker card as well:
+
+```bash
+# Ordinary USB microphone: software AEC3/NS with actual speaker PCM reference.
+AUDIO_PROCESSING_MODE="webrtc"
+ALSA_OUTPUT_CARD="your-speaker-card-id"
+TTS_ENABLED=1
+
+# Or, for a verified DSP microphone array (never stack both AECs):
+# AUDIO_PROCESSING_MODE="hardware"
+```
+
+`off` retains the safe half-duplex playback gate. `hardware` and `webrtc` keep VAD
+active while the robot talks and abort synthesis/playback when the user starts
+speaking. See the [full-duplex audio guide](docs/full_duplex_audio.md) and the
+[isolated JetPack 6 vLLM-Omni note](docs/qwen3_tts_vllm_omni_jp6.md).
 
 DDS is the default transport. Recognition results are published to
 `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
@@ -233,8 +254,9 @@ ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```
 
-ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent` and subscribes to
-`g1_speech_msgs/msg/PlaybackState`, preserving the complete DDS event contract.
+ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent`, subscribes to
+`g1_speech_msgs/msg/PlaybackState`, and—when TTS is enabled—subscribes to
+`g1_speech_msgs/msg/TtsTextChunk`, preserving the complete DDS event contract.
 See [ROS 2 setup and lifecycle details](ros2/README.md).
 
 ## How It Works
@@ -248,16 +270,18 @@ Microphone
   → Robot / Agent / application
 
 TTS or playback
-  → rt/g1/hri/playback/state
-  → temporarily pause recognition
+  → off: rt/g1/hri/playback/state temporarily gates recognition
+  → hardware/webrtc: AEC reference + VAD-triggered interruption
 ```
 
 | Topic | Direction | Purpose |
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | Final speech recognition events |
 | `rt/g1/hri/playback/state` | Agent → Service | Pause recognition during playback so the robot does not hear itself |
+| `rt/g1/hri/tts/request` | Agent → Service | Incremental, idempotent text chunks for streaming TTS |
 | `/hri/speech/final` | Service → ROS 2 Agent | Final structured `SpeechEvent` |
 | `/hri/playback/state` | ROS 2 Agent → Service | Structured playback gate state |
+| `/hri/tts/request` | ROS 2 Agent → Service | Incremental `TtsTextChunk` requests |
 
 Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audio duration, inference latency, source, and timestamp. The publisher retries after transient DDS failures, while subscribers deduplicate events by `event_id`.
 
@@ -318,11 +342,13 @@ Copy `deploy.env.example`; it has the same fields and ordering as a real
 | `SPEECH_PYTHON_GPU` | Optional isolated Python used by the GPU service |
 | `SPEECH_GPU_LIBRARY_PATH` | Optional colon-separated native-library paths for that runtime |
 | `DDS_NETWORK_INTERFACE` | Optional local interface used by DDS; leave empty for automatic selection |
-| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | Prefer `alsa`; optionally fall back to `pulse` |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | Production default: direct `alsa`, no silent fallback |
 | `ALSA_INPUT_*` | Stable ALSA card ID plus native capture device/rate/channels/dtype |
 | `PULSE_INPUT_DEVICE` | PulseAudio device used when selected or as fallback |
 | `PULSE_SOURCE` | Optional stable PulseAudio source selected by the fallback client |
 | `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | Capture callback size and PortAudio latency request |
+| `AUDIO_PROCESSING_MODE` / `WEBRTC_*` | `off`, hardware DSP, or native WebRTC APM/AEC3 |
+| `ALSA_OUTPUT_*` / `TTS_*` | Physical speaker and local streaming-TTS endpoint |
 | `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |

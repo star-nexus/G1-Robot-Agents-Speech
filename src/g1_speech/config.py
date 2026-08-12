@@ -12,7 +12,7 @@ from typing import Any, Callable, Mapping, Sequence
 @dataclass(frozen=True)
 class AudioConfig:
     input_backend: str = "alsa"
-    fallback_backend: str | None = "pulse"
+    fallback_backend: str | None = None
     alsa_card: str | None = None
     alsa_device: int = 0
     alsa_sample_rate: int = 48000
@@ -26,6 +26,35 @@ class AudioConfig:
     heartbeat_timeout_seconds: float = 2.0
     reconnect_initial_seconds: float = 0.5
     reconnect_max_seconds: float = 10.0
+
+
+@dataclass(frozen=True)
+class AudioProcessingConfig:
+    """Microphone enhancement policy independent of the ASR backend."""
+
+    mode: str = "off"
+    sample_rate: int = 16000
+    frame_ms: int = 10
+    echo_cancellation: bool = True
+    noise_suppression: bool = True
+    automatic_gain_control: bool = False
+    stream_delay_ms: int = 80
+    noise_suppression_level: int = 2
+
+
+@dataclass(frozen=True)
+class AudioOutputConfig:
+    """Low-latency ALSA output selected by stable card ID."""
+
+    backend: str = "alsa"
+    alsa_card: str | None = None
+    alsa_device: int = 0
+    sample_rate: int = 48000
+    channels: int = 2
+    dtype: str = "int16"
+    block_ms: int = 10
+    latency: str | float = "low"
+    volume: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -80,6 +109,7 @@ class DdsConfig:
     network_interface: str | None = None
     speech_topic: str = "rt/g1/hri/speech/final"
     playback_topic: str = "rt/g1/hri/playback/state"
+    tts_topic: str = "rt/g1/hri/tts/request"
     write_timeout_seconds: float = 0.5
     retry_interval_seconds: float = 0.2
     delivery_ttl_seconds: float = 120.0
@@ -91,6 +121,7 @@ class Ros2Config:
     node_name: str = "g1_speech"
     speech_topic: str = "hri/speech/final"
     playback_topic: str = "hri/playback/state"
+    tts_topic: str = "hri/tts/request"
     qos_depth: int = 10
 
 
@@ -106,11 +137,43 @@ class PlaybackConfig:
 
 
 @dataclass(frozen=True)
+class TtsConfig:
+    """Streaming TTS client and sentence scheduler configuration."""
+
+    enabled: bool = False
+    backend: str = "vllm_omni"
+    websocket_url: str = "ws://127.0.0.1:8091/v1/audio/speech/stream"
+    model: str = "Qwen3-TTS-12Hz-0.6B-CustomVoice"
+    task_type: str = "CustomVoice"
+    voice: str = "Ryan"
+    language: str = "Auto"
+    instructions: str = ""
+    reference_audio: str | None = None
+    reference_text: str | None = None
+    max_new_tokens: int = 2048
+    initial_codec_chunk_frames: int | None = None
+    connect_timeout_seconds: float = 5.0
+    receive_timeout_seconds: float = 0.1
+    request_queue_capacity: int = 16
+    max_buffer_characters: int = 240
+    style_tokens: dict[str, str] = field(
+        default_factory=lambda: {
+            "happy": "Speak in a bright, delighted and energetic tone.",
+            "sad": "Speak in a subdued, sad and gentle tone.",
+            "angry": "Speak firmly with controlled anger.",
+            "calm": "Speak calmly, clearly and reassuringly.",
+        }
+    )
+
+
+@dataclass(frozen=True)
 class ServiceConfig:
     source_name: str = "g1_speech_mic"
     utterance_queue_capacity: int = 4
     metrics_interval_seconds: float = 60.0
     audio: AudioConfig = field(default_factory=AudioConfig)
+    audio_processing: AudioProcessingConfig = field(default_factory=AudioProcessingConfig)
+    audio_output: AudioOutputConfig = field(default_factory=AudioOutputConfig)
     vad: VadConfig = field(default_factory=VadConfig)
     asr: AsrConfig = field(default_factory=AsrConfig)
     sensevoice: SenseVoiceConfig = field(default_factory=SenseVoiceConfig)
@@ -119,6 +182,7 @@ class ServiceConfig:
     dds: DdsConfig = field(default_factory=DdsConfig)
     ros2: Ros2Config = field(default_factory=Ros2Config)
     playback: PlaybackConfig = field(default_factory=PlaybackConfig)
+    tts: TtsConfig = field(default_factory=TtsConfig)
 
     def validate(self) -> None:
         if self.audio.input_backend not in {"alsa", "pulse"}:
@@ -168,6 +232,43 @@ class ServiceConfig:
             raise ValueError(
                 "audio.reconnect_max_seconds must be at least reconnect_initial_seconds"
             )
+        if self.audio_processing.mode not in {"off", "hardware", "webrtc"}:
+            raise ValueError("audio_processing.mode must be off, hardware, or webrtc")
+        if self.audio_processing.mode == "webrtc":
+            if self.audio_processing.sample_rate != self.audio.sample_rate:
+                raise ValueError(
+                    "audio_processing.sample_rate must match the ASR pipeline sample rate"
+                )
+            if self.audio_processing.frame_ms != 10:
+                raise ValueError("WebRTC APM requires audio_processing.frame_ms=10")
+            frame_samples = (
+                self.audio_processing.sample_rate
+                * self.audio_processing.frame_ms
+                // 1000
+            )
+            if self.audio.block_ms * self.audio.sample_rate // 1000 % frame_samples:
+                raise ValueError("audio block size must contain complete WebRTC APM frames")
+        if not 0 <= self.audio_processing.stream_delay_ms <= 500:
+            raise ValueError("audio_processing.stream_delay_ms must be between 0 and 500")
+        if self.audio_processing.noise_suppression_level not in {0, 1, 2, 3}:
+            raise ValueError("audio_processing.noise_suppression_level must be 0..3")
+        if self.audio_output.backend != "alsa":
+            raise ValueError("audio_output.backend currently supports only alsa")
+        if self.audio_output.alsa_card is not None:
+            if not self.audio_output.alsa_card.strip():
+                raise ValueError("audio_output.alsa_card must be null or non-empty")
+            if self.audio_output.alsa_card.isdecimal():
+                raise ValueError("audio_output.alsa_card must be a stable ID, not an index")
+        if self.audio_output.sample_rate not in {16000, 24000, 32000, 44100, 48000}:
+            raise ValueError("audio_output.sample_rate is not a supported PCM rate")
+        if self.audio_output.channels not in {1, 2}:
+            raise ValueError("audio_output.channels must be 1 or 2")
+        if self.audio_output.dtype != "int16":
+            raise ValueError("audio_output.dtype currently supports only int16")
+        if self.audio_output.block_ms not in {10, 20}:
+            raise ValueError("audio_output.block_ms must be 10 or 20")
+        if not 0 < self.audio_output.volume <= 1:
+            raise ValueError("audio_output.volume must be greater than 0 and at most 1")
         if self.utterance_queue_capacity < 1:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
@@ -226,10 +327,33 @@ class ServiceConfig:
             raise ValueError("transport.backend must be dds or ros2")
         if not self.ros2.node_name:
             raise ValueError("ros2.node_name must not be empty")
-        if not self.ros2.speech_topic or not self.ros2.playback_topic:
+        if not self.ros2.speech_topic or not self.ros2.playback_topic or not self.ros2.tts_topic:
             raise ValueError("ROS 2 topic names must not be empty")
         if self.ros2.qos_depth < 1:
             raise ValueError("ros2.qos_depth must be greater than zero")
+        if self.tts.backend != "vllm_omni":
+            raise ValueError("tts.backend currently supports only vllm_omni")
+        if self.tts.task_type not in {"CustomVoice", "VoiceDesign", "Base"}:
+            raise ValueError("tts.task_type must be CustomVoice, VoiceDesign, or Base")
+        if not self.tts.websocket_url.startswith(("ws://", "wss://")):
+            raise ValueError("tts.websocket_url must use ws:// or wss://")
+        if self.tts.task_type == "Base" and self.tts.enabled:
+            if not self.tts.reference_audio:
+                raise ValueError("Base TTS requires tts.reference_audio")
+            if not self.tts.reference_text:
+                raise ValueError("Base TTS requires tts.reference_text")
+        if self.tts.task_type != "Base" and (
+            self.tts.reference_audio or self.tts.reference_text
+        ):
+            raise ValueError(
+                "reference audio/text are only valid with a Qwen3-TTS Base model"
+            )
+        if self.tts.max_new_tokens < 1:
+            raise ValueError("tts.max_new_tokens must be greater than zero")
+        if self.tts.request_queue_capacity < 1:
+            raise ValueError("tts.request_queue_capacity must be greater than zero")
+        if self.tts.max_buffer_characters < 8:
+            raise ValueError("tts.max_buffer_characters must be at least 8")
 
 
 def default_config_dict() -> dict[str, Any]:
@@ -334,6 +458,10 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
         raise ValueError(f"ServiceConfig contains unknown settings: {sorted(unknown_top)}")
 
     audio = _merge_dataclass(AudioConfig, raw.pop("audio", {}))
+    audio_processing = _merge_dataclass(
+        AudioProcessingConfig, raw.pop("audio_processing", {})
+    )
+    audio_output = _merge_dataclass(AudioOutputConfig, raw.pop("audio_output", {}))
     vad_raw = raw.pop("vad", {})
     vad_raw["model"] = str(_resolve_path(base, vad_raw.get("model", VadConfig.model)))
     vad = _merge_dataclass(VadConfig, vad_raw)
@@ -356,8 +484,16 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
     dds = _merge_dataclass(DdsConfig, raw.pop("dds", {}))
     ros2 = _merge_dataclass(Ros2Config, raw.pop("ros2", {}))
     playback = _merge_dataclass(PlaybackConfig, raw.pop("playback", {}))
+    tts_raw = raw.pop("tts", {})
+    reference_audio = tts_raw.get("reference_audio")
+    tts_raw["reference_audio"] = (
+        str(_resolve_path(base, reference_audio)) if reference_audio else None
+    )
+    tts = _merge_dataclass(TtsConfig, tts_raw)
     config = ServiceConfig(
         audio=audio,
+        audio_processing=audio_processing,
+        audio_output=audio_output,
         vad=vad,
         asr=asr,
         sensevoice=sensevoice,
@@ -366,6 +502,7 @@ def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
         dds=dds,
         ros2=ros2,
         playback=playback,
+        tts=tts,
         **raw,
     )
     config.validate()
@@ -399,6 +536,15 @@ def _parse_audio_latency(value: str) -> str | float:
     return float(normalized)
 
 
+def _parse_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError("expected a boolean value")
+
+
 _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "AUDIO_INPUT_BACKEND": ("audio", "input_backend", str),
     "AUDIO_INPUT_FALLBACK": ("audio", "fallback_backend", _parse_optional_backend),
@@ -410,12 +556,38 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "PULSE_INPUT_DEVICE": ("audio", "pulse_device", _parse_optional_device),
     "AUDIO_INPUT_BLOCK_MS": ("audio", "block_ms", int),
     "AUDIO_INPUT_LATENCY": ("audio", "latency", _parse_audio_latency),
+    "AUDIO_PROCESSING_MODE": ("audio_processing", "mode", str),
+    "WEBRTC_AEC_STREAM_DELAY_MS": (
+        "audio_processing",
+        "stream_delay_ms",
+        int,
+    ),
+    "WEBRTC_AEC_ENABLED": (
+        "audio_processing",
+        "echo_cancellation",
+        _parse_bool,
+    ),
+    "WEBRTC_NS_ENABLED": ("audio_processing", "noise_suppression", _parse_bool),
+    "WEBRTC_NS_LEVEL": ("audio_processing", "noise_suppression_level", int),
+    "WEBRTC_AGC_ENABLED": (
+        "audio_processing",
+        "automatic_gain_control",
+        _parse_bool,
+    ),
+    "ALSA_OUTPUT_CARD": ("audio_output", "alsa_card", _parse_optional_string),
+    "ALSA_OUTPUT_DEVICE": ("audio_output", "alsa_device", int),
+    "ALSA_OUTPUT_SAMPLE_RATE": ("audio_output", "sample_rate", int),
+    "ALSA_OUTPUT_CHANNELS": ("audio_output", "channels", int),
+    "AUDIO_OUTPUT_BLOCK_MS": ("audio_output", "block_ms", int),
+    "AUDIO_OUTPUT_LATENCY": ("audio_output", "latency", _parse_audio_latency),
+    "AUDIO_OUTPUT_VOLUME": ("audio_output", "volume", float),
     # Compatibility with deploy.env files created before the input-backend split.
     "MICROPHONE_DEVICE": ("audio", "pulse_device", _parse_optional_device),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
     "ROS2_NODE_NAME": ("ros2", "node_name", str),
     "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),
     "ROS2_PLAYBACK_TOPIC": ("ros2", "playback_topic", str),
+    "ROS2_TTS_TOPIC": ("ros2", "tts_topic", str),
     "ROS2_QOS_DEPTH": ("ros2", "qos_depth", int),
     "VAD_THRESHOLD": ("vad", "threshold", float),
     "VAD_PRE_ROLL_SECONDS": ("vad", "speech_pre_roll_seconds", float),
@@ -426,10 +598,15 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "DDS_NETWORK_INTERFACE": ("dds", "network_interface", _parse_optional_string),
     "SPEECH_TOPIC": ("dds", "speech_topic", str),
     "PLAYBACK_TOPIC": ("dds", "playback_topic", str),
+    "TTS_TOPIC": ("dds", "tts_topic", str),
     "DDS_DELIVERY_TTL_SECONDS": ("dds", "delivery_ttl_seconds", float),
     "DDS_OUTBOX_CAPACITY": ("dds", "outbox_capacity", int),
     "PLAYBACK_RESUME_DELAY_MS": ("playback", "resume_delay_ms", int),
     "PLAYBACK_MAX_ACTIVE_SECONDS": ("playback", "max_active_seconds", float),
+    "TTS_ENABLED": ("tts", "enabled", _parse_bool),
+    "TTS_WEBSOCKET_URL": ("tts", "websocket_url", str),
+    "TTS_VOICE": ("tts", "voice", str),
+    "TTS_LANGUAGE": ("tts", "language", str),
 }
 
 
@@ -449,10 +626,24 @@ _RUNTIME_ENV_OVERRIDE_NAMES = frozenset(
         "PULSE_INPUT_DEVICE",
         "AUDIO_INPUT_BLOCK_MS",
         "AUDIO_INPUT_LATENCY",
+        "AUDIO_PROCESSING_MODE",
+        "WEBRTC_AEC_STREAM_DELAY_MS",
+        "WEBRTC_AEC_ENABLED",
+        "WEBRTC_NS_ENABLED",
+        "WEBRTC_NS_LEVEL",
+        "WEBRTC_AGC_ENABLED",
+        "ALSA_OUTPUT_CARD",
+        "ALSA_OUTPUT_DEVICE",
+        "ALSA_OUTPUT_SAMPLE_RATE",
+        "ALSA_OUTPUT_CHANNELS",
+        "AUDIO_OUTPUT_BLOCK_MS",
+        "AUDIO_OUTPUT_LATENCY",
+        "AUDIO_OUTPUT_VOLUME",
         "SPEECH_TRANSPORT",
         "ROS2_NODE_NAME",
         "ROS2_SPEECH_TOPIC",
         "ROS2_PLAYBACK_TOPIC",
+        "ROS2_TTS_TOPIC",
         "ROS2_QOS_DEPTH",
         "VAD_THRESHOLD",
         "VAD_PRE_ROLL_SECONDS",
@@ -463,10 +654,15 @@ _RUNTIME_ENV_OVERRIDE_NAMES = frozenset(
         "DDS_NETWORK_INTERFACE",
         "SPEECH_TOPIC",
         "PLAYBACK_TOPIC",
+        "TTS_TOPIC",
         "DDS_DELIVERY_TTL_SECONDS",
         "DDS_OUTBOX_CAPACITY",
         "PLAYBACK_RESUME_DELAY_MS",
         "PLAYBACK_MAX_ACTIVE_SECONDS",
+        "TTS_ENABLED",
+        "TTS_WEBSOCKET_URL",
+        "TTS_VOICE",
+        "TTS_LANGUAGE",
     }
 )
 

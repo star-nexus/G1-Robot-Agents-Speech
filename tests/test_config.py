@@ -7,6 +7,7 @@ import pytest
 
 from g1_speech.config import (
     AudioConfig,
+    AudioProcessingConfig,
     Qwen3AsrConfig,
     ServiceConfig,
     default_config_dict,
@@ -156,6 +157,14 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
             "VAD_THRESHOLD": "0.42",
             "DDS_DOMAIN_ID": "7",
             "PLAYBACK_RESUME_DELAY_MS": "175",
+            "AUDIO_PROCESSING_MODE": "webrtc",
+            "WEBRTC_AEC_ENABLED": "1",
+            "WEBRTC_AEC_STREAM_DELAY_MS": "65",
+            "WEBRTC_NS_ENABLED": "1",
+            "WEBRTC_NS_LEVEL": "3",
+            "WEBRTC_AGC_ENABLED": "0",
+            "TTS_ENABLED": "1",
+            "TTS_WEBSOCKET_URL": "ws://localhost:9000/v1/audio/speech/stream",
         },
     )
 
@@ -172,6 +181,31 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
     assert config.vad.threshold == 0.42
     assert config.dds.domain_id == 7
     assert config.playback.resume_delay_ms == 175
+    assert config.audio_processing.mode == "webrtc"
+    assert config.audio_processing.echo_cancellation is True
+    assert config.audio_processing.stream_delay_ms == 65
+    assert config.audio_processing.noise_suppression is True
+    assert config.audio_processing.noise_suppression_level == 3
+    assert config.audio_processing.automatic_gain_control is False
+    assert config.tts.enabled is True
+    assert config.tts.websocket_url.startswith("ws://localhost:9000/")
+
+
+def test_webrtc_mode_requires_complete_ten_ms_capture_frames():
+    config = ServiceConfig(
+        audio=AudioConfig(block_ms=15),
+        audio_processing=AudioProcessingConfig(mode="webrtc"),
+    )
+
+    with pytest.raises(ValueError, match="complete WebRTC APM frames"):
+        config.validate()
+
+
+def test_off_mode_does_not_impose_webrtc_frame_alignment():
+    ServiceConfig(
+        audio=AudioConfig(block_ms=15),
+        audio_processing=AudioProcessingConfig(mode="off"),
+    ).validate()
 
 
 def test_qwen3_asr_defaults_to_sdpa_attention():

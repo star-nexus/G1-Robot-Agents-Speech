@@ -1,0 +1,63 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f514ba4..9662c48 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -31,6 +31,9 @@ endif()
+ 
+ # CUDA by default, can be overridden by using -DVLLM_TARGET_DEVICE=... (used by setup.py)
+ set(VLLM_TARGET_DEVICE "cuda" CACHE STRING "Target device backend for vLLM")
++option(VLLM_ORIN_TTS_MINIMAL
++  "Trim Hopper FA3 and independent MoE targets for single-GPU Qwen3-TTS"
++  OFF)
+ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+ message(STATUS "Target device: ${VLLM_TARGET_DEVICE}")
+ 
+@@ -1308,6 +1328,19 @@ if(VLLM_GPU_LANG STREQUAL "CUDA")
+   endif()
+ endif()
+ 
++if(VLLM_ORIN_TTS_MINIMAL)
++  message(STATUS "Orin TTS minimal build: skipping Marlin MoE template kernels")
++  set(VLLM_MOE_EXT_SRC
++    "csrc/libtorch_stable/moe/torch_bindings.cpp"
++    "csrc/libtorch_stable/moe/moe_align_sum_kernels.cu"
++    "csrc/libtorch_stable/moe/topk_softmax_kernels.cu"
++    "csrc/libtorch_stable/moe/topk_softplus_sqrt_kernels.cu"
++    "csrc/libtorch_stable/moe/moe_wna16.cu"
++    "csrc/libtorch_stable/moe/grouped_topk_kernels.cu"
++    "csrc/libtorch_stable/moe/permute_unpermute_kernels/moe_permute_unpermute_kernel.cu"
++    "csrc/libtorch_stable/moe/moe_permute_unpermute_op.cu")
++endif()
++
+ message(STATUS "Enabling MoE C_stable extension.")
+ define_extension_target(
+   _moe_C_stable_libtorch
+diff --git a/setup.py b/setup.py
+index e946a9f..abf13c2 100644
+--- a/setup.py
++++ b/setup.py
+@@ -1130,11 +1130,15 @@ if _is_hip():
+ 
+ if _is_cuda():
+     ext_modules.append(CMakeExtension(name="vllm.vllm_flash_attn._vllm_fa2_C"))
+-    if USE_PRECOMPILED_EXTENSIONS or (
+-        CUDA_HOME and get_nvcc_cuda_version() >= Version("12.3")
+-    ):
++    if (
++        not bool(os.getenv("VLLM_ORIN_TTS_MINIMAL"))
++        and (
++            USE_PRECOMPILED_EXTENSIONS
++            or (CUDA_HOME and get_nvcc_cuda_version() >= Version("12.3"))
++        )
++    ):
+         # FA3 requires CUDA 12.3 or later
+         ext_modules.append(CMakeExtension(name="vllm.vllm_flash_attn._vllm_fa3_C"))
+     # FA4 CuteDSL - Python-only component for FA4's cute DSL support
+@@ -1180,8 +1184,10 @@ if _build_custom_ops():
+         ext_modules.append(CMakeExtension(name="vllm._C"))
+     if _is_cuda() or _is_hip():
+         ext_modules.append(CMakeExtension(name="vllm._C_stable_libtorch"))
+-        ext_modules.append(CMakeExtension(name="vllm._moe_C_stable_libtorch"))
++        if not bool(os.getenv("VLLM_ORIN_TTS_MINIMAL")):
++            # Dense Qwen3-TTS does not import the separate MoE extension.
++            ext_modules.append(CMakeExtension(name="vllm._moe_C_stable_libtorch"))

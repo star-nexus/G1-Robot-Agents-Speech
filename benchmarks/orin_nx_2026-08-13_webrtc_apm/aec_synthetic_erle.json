@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-13",
+  "platform": "NVIDIA Jetson Orin NX 16GB",
+  "runtime": {
+    "binding": "aec-audio-processing 1.0.1",
+    "native_library": "WebRTC AudioProcessing 2.1 / AEC3",
+    "architecture": "aarch64",
+    "sample_rate_hz": 16000,
+    "frame_ms": 10
+  },
+  "signal": {
+    "duration_seconds": 30.0,
+    "simulated_echo_delay_ms": 80,
+    "evaluation_window_seconds": 5.0
+  },
+  "result": {
+    "erle_db": 17.542
+  },
+  "scope": "Synthetic convergence smoke test; not a physical robot acceptance result."
+}

@@ -7,6 +7,8 @@ from dataclasses import asdict
 from typing import Any
 
 from .audio import SoundDeviceSource
+from .audio_output import AlsaOutputPlayer
+from .audio_processing import create_audio_processor
 from .asr import create_asr_engine
 from .config import ServiceConfig
 from .contracts import SpeechTransport
@@ -14,6 +16,7 @@ from .gate import PlaybackGate
 from .pipeline import SpeechPipeline
 from .vad import SileroVadSegmenter
 from .transports import create_transport
+from .tts import TtsController, VllmOmniStreamingTts
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,11 @@ class SpeechService:
             resume_delay_ms=config.playback.resume_delay_ms,
             max_active_seconds=config.playback.max_active_seconds,
         )
-        source = SoundDeviceSource(settings=config.audio)
+        self.audio_processor = create_audio_processor(config.audio_processing)
+        source = SoundDeviceSource(
+            settings=config.audio,
+            processor=self.audio_processor,
+        )
         self.audio_source = source
         segmenter = SileroVadSegmenter(
             settings=config.vad,
@@ -48,6 +55,23 @@ class SpeechService:
             ros_lifecycle=ros_lifecycle,
         )
         self.sink = self.transport.sink
+        self.tts: TtsController | None = None
+        if config.tts.enabled:
+            register_tts = getattr(self.transport, "register_tts_handler", None)
+            publish_playback = getattr(self.transport, "publish_playback_state", None)
+            if register_tts is None or publish_playback is None:
+                raise RuntimeError("selected transport does not support streaming TTS")
+            player = AlsaOutputPlayer(
+                config.audio_output,
+                render_sink=self.audio_processor,
+            )
+            self.tts = TtsController(
+                config.tts,
+                engine=VllmOmniStreamingTts(config.tts),
+                player=player,
+                playback_state=publish_playback,
+            )
+            register_tts(self.tts.accept)
         self.pipeline = SpeechPipeline(
             source=source,
             segmenter=segmenter,
@@ -56,6 +80,12 @@ class SpeechService:
             playback_gate=self.gate,
             source_name=config.source_name,
             utterance_queue_capacity=config.utterance_queue_capacity,
+            on_speech_start=(
+                (lambda: self.tts.interrupt(reason="vad"))
+                if self.tts is not None and config.audio_processing.mode != "off"
+                else None
+            ),
+            suppress_during_playback=config.audio_processing.mode == "off",
         )
         self._started = False
         self._prepared = False
@@ -68,9 +98,13 @@ class SpeechService:
         if self._started:
             return
         try:
+            if self.tts is not None:
+                self.tts.start()
             self.transport.start()
             self.pipeline.start()
         except Exception:
+            if self.tts is not None:
+                self.tts.stop()
             self.transport.stop()
             raise
         self._started = True
@@ -79,6 +113,8 @@ class SpeechService:
     def stop(self) -> None:
         if not self._started:
             return
+        if self.tts is not None:
+            self.tts.stop()
         self.pipeline.close()
         self.transport.stop()
         self._started = False
@@ -90,11 +126,19 @@ class SpeechService:
         elif self._prepared:
             self.pipeline.close()
             self._prepared = False
+        if self.tts is not None:
+            self.tts.close()
         self.transport.close()
+        self.audio_processor.close()
 
     def metrics(self) -> dict[str, Any]:
         payload = asdict(self.pipeline.metrics())
         payload.update(self.transport.metrics())
+        payload.update(self.audio_processor.metrics())
+        if self.tts is not None:
+            payload.update(self.tts.metrics())
+        else:
+            payload["tts_enabled"] = False
         payload.update(
             {
                 "audio_input_backend": getattr(

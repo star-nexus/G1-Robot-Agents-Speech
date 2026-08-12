@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any
 
 from .config import Ros2Config
@@ -92,6 +93,8 @@ class Ros2Transport:
         self._owns_context = False
         self._executor = None
         self._executor_thread: threading.Thread | None = None
+        self._tts_subscription = None
+        self._playback_publisher = None
 
         if node is None:
             if not rclpy.ok():
@@ -149,6 +152,12 @@ class Ros2Transport:
         if self._subscription is not None:
             self._node.destroy_subscription(self._subscription)
             self._subscription = None
+        if self._tts_subscription is not None:
+            self._node.destroy_subscription(self._tts_subscription)
+            self._tts_subscription = None
+        if self._playback_publisher is not None:
+            self._node.destroy_publisher(self._playback_publisher)
+            self._playback_publisher = None
         if self._publisher is not None:
             if self._lifecycle and hasattr(self._node, "destroy_lifecycle_publisher"):
                 self._node.destroy_lifecycle_publisher(self._publisher)
@@ -174,3 +183,53 @@ class Ros2Transport:
             message.active,
             message.request_id,
         )
+
+    def register_tts_handler(self, callback: Any) -> None:
+        if self._tts_subscription is not None:
+            raise RuntimeError("TTS handler is already registered")
+        try:
+            from g1_speech_msgs.msg import PlaybackState, TtsTextChunk as RosTtsTextChunk
+        except ImportError as exc:
+            raise RuntimeError(
+                "TTS over ROS 2 requires rebuilding g1_speech_msgs with TtsTextChunk.msg"
+            ) from exc
+        from .tts import TtsTextChunk
+
+        def on_tts(message: Any) -> None:
+            callback(
+                TtsTextChunk(
+                    request_id=message.request_id,
+                    sequence=int(message.sequence),
+                    text=message.text,
+                    is_final=bool(message.is_final),
+                    interrupt=bool(message.interrupt),
+                    language=message.language,
+                    voice=message.voice,
+                    instructions=message.instructions,
+                    created_unix_ns=int(message.created_unix_ns),
+                    source=message.source,
+                )
+            )
+
+        self._tts_subscription = self._node.create_subscription(
+            RosTtsTextChunk,
+            self._config.tts_topic,
+            on_tts,
+            self._config.qos_depth,
+        )
+        self._playback_message_type = PlaybackState
+        self._playback_publisher = self._node.create_publisher(
+            PlaybackState,
+            self._config.playback_topic,
+            self._config.qos_depth,
+        )
+
+    def publish_playback_state(self, active: bool, request_id: str) -> None:
+        if self._playback_publisher is None:
+            return
+        message = self._playback_message_type()
+        message.request_id = request_id
+        message.active = active
+        message.created_unix_ns = time.time_ns()
+        message.source = "g1_speech_tts"
+        self._playback_publisher.publish(message)

@@ -1,16 +1,45 @@
 # Low-latency audio input on Jetson
 
-The speech service treats ALSA hardware capture as the preferred robot path and
-PulseAudio as an explicit fallback. This concerns microphone input only; TTS audio
-output and interruption are outside this repository.
+Robot production deployments use direct ALSA hardware capture. PulseAudio remains
+available for the desktop and for explicit diagnostics, but the speech service does
+not silently switch microphones when its selected hardware input is unavailable.
+Microphone ownership is independent of the optional full-duplex AEC/TTS path. See
+[`full_duplex_audio.md`](full_duplex_audio.md) for output, render reference, and
+barge-in behavior.
 
-## Why the configuration does not contain `hw:1,0`
+## Production policy
 
-ALSA card numbers change when USB devices are re-enumerated. The service therefore
-stores the stable card ID from `/proc/asound/card*/id`, then resolves that ID to the
-current PortAudio hardware device at startup.
+Use this baseline in `deploy.env`:
 
-List IDs and hardware capabilities:
+```bash
+AUDIO_INPUT_BACKEND="alsa"
+AUDIO_INPUT_FALLBACK=""
+
+# Set this to an ID printed by /proc/asound/card*/id on the target robot.
+ALSA_INPUT_CARD="your-card-id"
+ALSA_INPUT_DEVICE=0
+
+# The microphone's native format, not the ASR format.
+ALSA_INPUT_SAMPLE_RATE=48000
+ALSA_INPUT_CHANNELS=2
+ALSA_INPUT_DTYPE="int16"
+
+AUDIO_INPUT_BLOCK_MS=20
+AUDIO_INPUT_LATENCY="low"
+```
+
+Failing closed is intentional. A disconnected or busy robot microphone should
+produce an actionable error instead of silently changing to a webcam, monitor, or
+other PulseAudio default source.
+
+## Selecting a microphone
+
+The project never hard-codes a microphone manufacturer and does not infer quality
+from USB vendor names. ALSA and USB metadata provide capabilities, not a reliable
+measure of acoustic quality. A production robot should therefore select its tested
+microphone explicitly.
+
+List the stable ALSA card IDs and the corresponding capture hardware:
 
 ```bash
 for path in /proc/asound/card*/id; do
@@ -18,28 +47,26 @@ for path in /proc/asound/card*/id; do
 done
 
 arecord -l
-cat /proc/asound/card1/stream0  # use the current number only for inspection
 ```
 
-Example host policy:
+Copy the selected ID into `ALSA_INPUT_CARD`. Do not store `hw:1,0`: numeric ALSA
+card indices can change whenever USB devices are re-enumerated. At startup and after
+a reconnect, the service resolves the configured stable ID to the current PortAudio
+`hw:N,M` device.
+
+During interactive installation, `scripts/setup-cpu.sh` lists the available card
+IDs and asks the user to select one. `ALSA_INPUT_CARD=""` enables conservative
+auto-detection, but it succeeds only when exactly one ALSA hardware input matches
+the configured PCM device. Multiple candidates are treated as an error rather than
+guessed. This makes empty-card auto-detection convenient on simple hosts without
+making a robot's microphone choice unpredictable.
+
+Inspect the selected device's native formats before setting sample rate, channels,
+and dtype:
 
 ```bash
-# deploy.env
-AUDIO_INPUT_BACKEND="alsa"
-AUDIO_INPUT_FALLBACK="pulse"
-ALSA_INPUT_CARD="Microphone"
-ALSA_INPUT_DEVICE=0
-
-# Native USB microphone format, not the ASR format.
-ALSA_INPUT_SAMPLE_RATE=48000
-ALSA_INPUT_CHANNELS=2
-ALSA_INPUT_DTYPE="int16"
-
-PULSE_INPUT_DEVICE="pulse"
-# Optional: pin the Pulse source instead of following its default.
-PULSE_SOURCE="alsa_input.usb-...analog-stereo"
-AUDIO_INPUT_BLOCK_MS=20
-AUDIO_INPUT_LATENCY="low"
+arecord -l
+cat /proc/asound/cardN/stream0  # N is used only for inspection
 ```
 
 The ASR/VAD pipeline always receives 16 kHz mono float32. When the hardware exposes
@@ -48,88 +75,142 @@ consumer thread performs stereo downmix and FIR low-pass decimation to 16 kHz, s
 resampling work is not executed in PortAudio's real-time callback.
 
 `AUDIO_INPUT_BLOCK_MS=20` gives 960 native frames at 48 kHz and 320 pipeline samples
-at 16 kHz. Increase it only when logs show PortAudio overflow/underflow status.
+at 16 kHz. Increase it only when logs show PortAudio overflow or underflow status.
 
-## Fallback behavior
+## Reserving the selected microphone for ALSA
 
-At every initial open or reconnect, the service tries the configured ALSA hardware
-first. It falls back to PulseAudio only when all of the following are true:
+ALSA `hw` access is normally exclusive. PulseAudio can discover a USB microphone
+and later reopen its PCM even if its source currently says `SUSPENDED`. For a
+dedicated robot microphone, configure PulseAudio to ignore the selected card while
+continuing to manage all other desktop audio devices.
 
-- ALSA resolution or stream opening fails;
-- `AUDIO_INPUT_FALLBACK="pulse"`;
-- `PULSE_INPUT_DEVICE` is available.
+First resolve the selected ALSA ID to its current sysfs card and inspect its stable
+USB attributes:
 
-When `PULSE_INPUT_DEVICE="pulse"`, set `PULSE_SOURCE` to a name from
-`pactl list short sources` if the fallback must not follow PulseAudio's changing
-desktop default.
+```bash
+ALSA_CARD_ID="your-card-id"
 
-The fallback is never silent. Startup logs identify:
+for path in /proc/asound/card*/id; do
+  if [ "$(<"$path")" = "$ALSA_CARD_ID" ]; then
+    card_name="$(basename "$(dirname "$path")")"
+    udevadm info --attribute-walk --path="/sys/class/sound/$card_name"
+  fi
+done
+```
+
+From the USB device parent, record `idVendor`, `idProduct`, and `serial`. Then create
+a host-local rule using those values:
+
+```udev
+# /etc/udev/rules.d/91-g1-speech-pulseaudio-ignore.rules
+# Replace the placeholders with attributes from the selected microphone.
+ACTION=="add|change", SUBSYSTEM=="sound", KERNEL=="card*", SUBSYSTEMS=="usb", ATTRS{idVendor}=="vvvv", ATTRS{idProduct}=="pppp", ATTRS{serial}=="device-serial", ENV{PULSE_IGNORE}="1"
+```
+
+This is a user-selected device policy, not a vendor-specific project default. If a
+device exposes no serial number, omit the serial match only after accepting that all
+devices with the same vendor/product IDs will be reserved. Do not edit the packaged
+`/usr/lib/udev/rules.d/90-pulseaudio.rules`; package updates overwrite it.
+
+Load the host-local rule, stop speech capture, and unplug/replug the selected USB
+receiver so PulseAudio processes a fresh device event:
+
+```bash
+sudo udevadm control --reload-rules
+```
+
+If a stale PulseAudio card remains after replugging, restart only the current user's
+PulseAudio instance:
+
+```bash
+systemctl --user restart pulseaudio.service pulseaudio.socket
+```
+
+Verify that the selected microphone is absent from PulseAudio but still present in
+ALSA:
+
+```bash
+pactl list short cards
+pactl list short sources
+arecord -l
+sudo fuser -v /dev/snd/*
+```
+
+Before the speech service starts, the selected capture PCM should have no owner.
+After startup, the speech process should own it. Other PulseAudio cards and sources
+should remain available.
+
+Permanent `PULSE_IGNORE` and Pulse fallback through the same microphone are mutually
+exclusive. The production configuration therefore uses
+`AUDIO_INPUT_FALLBACK=""`. A deployment that deliberately needs fallback must use a
+different PulseAudio microphone and pin that source explicitly.
+
+## Understanding `SUSPENDED`
+
+`SUSPENDED` in `pactl list short sources` means PulseAudio still has a logical
+source for the card but has suspended it. With `module-suspend-on-idle`, the ALSA PCM
+is normally released while suspended. It does **not** by itself prove `Device busy`
+and it does not prove which backend the speech service opened.
+
+Use ownership and runtime evidence instead:
+
+```bash
+sudo fuser -v /dev/snd/*
+g1-speech-service logs
+```
+
+The definitive startup line is:
+
+```text
+Microphone started: backend=alsa device='... (hw:N,M)' ...
+```
+
+Periodic metrics must likewise report:
+
+```text
+"audio_input_backend": "alsa"
+```
+
+If ALSA opening fails and Pulse fallback was explicitly enabled, the transition is
+never silent:
 
 ```text
 Preferred audio input alsa failed; falling back to pulse: ...
 Microphone started: backend=pulse ...
 ```
 
-To require hardware capture and fail closed instead, use:
+In the measured ALSA Direct runs, the selected Pulse source was `SUSPENDED`, the PCM
+had no PulseAudio owner before startup, and both the startup log and metrics reported
+`backend=alsa`. Those runs therefore used ALSA Direct; they did not take the
+PulseAudio fallback path.
 
-```bash
-AUDIO_INPUT_FALLBACK=""
-```
+## Explicit PulseAudio mode
 
-To select PulseAudio deliberately:
+PulseAudio remains available for desktop testing or deployments that intentionally
+prefer it:
 
 ```bash
 AUDIO_INPUT_BACKEND="pulse"
 AUDIO_INPUT_FALLBACK=""
 PULSE_INPUT_DEVICE="pulse"
+
+# Optional: pin a source rather than following the desktop default.
+PULSE_SOURCE="alsa_input.usb-...analog-stereo"
 ```
 
-## PulseAudio ownership
+Do not enable this mode for a card hidden by `PULSE_IGNORE`.
 
-ALSA `hw` access is normally exclusive. A dedicated microphone still managed by
-PulseAudio can be unavailable to PortAudio even when its stable ALSA ID exists.
-Diagnose ownership without changing the system:
+## Final verification
+
+After changing `deploy.env` or the host audio policy:
 
 ```bash
-pactl list short sources
-fuser -v /dev/snd/*
 g1-speech doctor --config config.json
-```
-
-For guaranteed direct capture, configure PulseAudio not to claim the dedicated
-robot microphone. Keep a separate desktop/default input available if Pulse fallback
-is required. The project does not kill PulseAudio, unload modules, or rewrite user
-audio policy automatically because those actions affect unrelated desktop audio.
-
-## Verification
-
-After changing `deploy.env`:
-
-```bash
 sudo g1-speech-service restart
 g1-speech-service logs
 ```
 
-The definitive line is `Microphone started`. It reports the backend actually
-opened, resolved hardware name, native capture format, 16 kHz pipeline format,
-20 ms block size, and PortAudio's reported latency. Periodic metrics also include:
-
-```text
-audio_input_backend
-audio_input_device
-audio_input_latency_ms
-```
-
-Do not infer that ALSA is active merely because `AUDIO_INPUT_BACKEND=alsa` appears
-in the deployment file. Check the runtime log or metrics.
-
-## Current Orin NX observation
-
-On the measured host, the Hollyland card ID is `Microphone`; it currently maps to
-`hw:1,0` and exposes only 48 kHz, two-channel S16/S24 capture. PulseAudio currently
-owns that PCM, so the service correctly reports ALSA unavailable and selects the
-configured Pulse fallback until the dedicated card is released from PulseAudio.
-
-An independent smoke test against an available USB camera microphone verified the
-same ALSA path end to end: hardware capture opened directly, PortAudio reported
-20.0 ms input latency, and every 48 kHz block produced 320 samples at 16 kHz.
+Confirm the resolved device, native capture format, 16 kHz mono pipeline format,
+block size, and PortAudio latency in the `Microphone started` line. Do not infer
+that ALSA is active merely because `AUDIO_INPUT_BACKEND="alsa"` appears in
+`deploy.env`; always verify the runtime log or metrics.

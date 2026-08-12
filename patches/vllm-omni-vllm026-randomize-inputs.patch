@@ -1,0 +1,13 @@
+diff --git a/vllm_omni/worker/gpu_model_runner.py b/vllm_omni/worker/gpu_model_runner.py
+index 2edea7f..7f11d74 100644
+--- a/vllm_omni/worker/gpu_model_runner.py
++++ b/vllm_omni/worker/gpu_model_runner.py
+@@ -1135,7 +1135,7 @@ class OmniGPUModelRunner(GPUModelRunner):
+                     num_tokens_across_dp[:] = num_tokens_padded
+ 
+             with (
+-                self.maybe_randomize_inputs(input_ids, inputs_embeds, randomize_inputs=randomize_inputs),
++                self.maybe_randomize_inputs(input_ids, inputs_embeds),
+                 set_forward_context(
+                     attn_metadata,
+                     self.vllm_config,

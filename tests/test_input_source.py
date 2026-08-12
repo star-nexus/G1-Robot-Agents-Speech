@@ -117,7 +117,7 @@ def test_source_falls_back_to_pulse_when_hardware_is_busy(tmp_path, caplog):
     make_card(tmp_path, 7, "Microphone")
     sd = FakeSoundDevice(devices(), fail_devices=(1,))
     source = SoundDeviceSource(
-        settings=AudioConfig(alsa_card="Microphone"),
+        settings=AudioConfig(alsa_card="Microphone", fallback_backend="pulse"),
         sounddevice_module=sd,
         proc_asound_root=tmp_path,
     )
@@ -132,14 +132,11 @@ def test_source_falls_back_to_pulse_when_hardware_is_busy(tmp_path, caplog):
         source.close()
 
 
-def test_source_can_disable_pulse_fallback(tmp_path):
+def test_source_fails_closed_without_explicit_pulse_fallback(tmp_path):
     make_card(tmp_path, 7, "Microphone")
     sd = FakeSoundDevice(devices(), fail_devices=(1,))
     source = SoundDeviceSource(
-        settings=AudioConfig(
-            alsa_card="Microphone",
-            fallback_backend=None,
-        ),
+        settings=AudioConfig(alsa_card="Microphone"),
         sounddevice_module=sd,
         proc_asound_root=tmp_path,
     )

@@ -175,6 +175,46 @@ def test_playback_audio_is_suppressed_not_recognized():
     assert segmenter.reset_count >= 1
 
 
+def test_full_duplex_keeps_capture_open_and_emits_one_barge_in_edge():
+    class EdgeSegmenter(EveryChunkIsUtterance):
+        def __init__(self):
+            super().__init__()
+            self.speech_active = True
+
+        def accept(self, _chunk):
+            return []
+
+    source = FakeSource()
+    gate = PlaybackGate(resume_delay_ms=0)
+    segmenter = EdgeSegmenter()
+    edges = []
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=segmenter,
+        engine=FakeEngine(),
+        sink=CollectingSink(),
+        playback_gate=gate,
+        suppress_during_playback=False,
+        on_speech_start=lambda: edges.append("speech"),
+    )
+    pipeline.start()
+    gate.set_active(True)
+    source.items.put(chunk())
+    source.items.put(chunk())
+    wait_for(lambda: pipeline.metrics().audio_chunks_received == 2)
+
+    segmenter.speech_active = False
+    source.items.put(chunk())
+    wait_for(lambda: pipeline.metrics().audio_chunks_received == 3)
+    segmenter.speech_active = True
+    source.items.put(chunk())
+    wait_for(lambda: pipeline.metrics().audio_chunks_received == 4)
+    pipeline.close()
+
+    assert edges == ["speech", "speech"]
+    assert pipeline.metrics().playback_chunks_suppressed == 0
+
+
 def test_audio_reconnect_resets_vad_state():
     source = FakeSource()
     segmenter = EveryChunkIsUtterance()

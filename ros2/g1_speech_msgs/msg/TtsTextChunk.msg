@@ -1,0 +1,10 @@
+string request_id
+uint64 sequence
+string text
+bool is_final
+bool interrupt
+string language
+string voice
+string instructions
+uint64 created_unix_ns
+string source

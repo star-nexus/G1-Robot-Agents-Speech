@@ -6,12 +6,18 @@ from g1_speech.contracts import SpeechEvent
 from g1_speech.dds import (
     DdsPlaybackPublisher,
     DdsSpeechSubscriber,
+    DdsTtsPublisher,
+    DdsTtsSubscriber,
     EventDeduplicator,
     RetryingEventSink,
     event_to_message,
     message_to_event,
 )
-from g1_speech.dds_types import DDS_IDL_AVAILABLE, SpeechEventMessage
+from g1_speech.dds_types import (
+    DDS_IDL_AVAILABLE,
+    SpeechEventMessage,
+    TtsTextChunkMessage,
+)
 
 
 def make_event(event_id: str = "event-1") -> SpeechEvent:
@@ -126,3 +132,58 @@ def test_playback_does_not_start_until_gate_is_deliverable():
         retry_interval=0.01,
     )
     assert gate._publisher.calls == 3
+
+
+def test_tts_dds_contract_preserves_incremental_request_fields():
+    received = []
+    subscriber = DdsTtsSubscriber(received.append, topic="tts")
+    subscriber._on_message(
+        TtsTextChunkMessage(
+            request_id="answer-1",
+            sequence=7,
+            text="Hello,",
+            is_final=False,
+            interrupt=False,
+            language="English",
+            voice="Ryan",
+            instructions="Calm",
+            created_unix_ns=123,
+            source="agent",
+        )
+    )
+
+    chunk = received[0]
+    assert (chunk.request_id, chunk.sequence, chunk.text) == ("answer-1", 7, "Hello,")
+    assert (chunk.language, chunk.voice, chunk.instructions) == (
+        "English",
+        "Ryan",
+        "Calm",
+    )
+
+
+def test_tts_dds_publisher_sets_idempotency_and_interrupt_fields():
+    class CaptureWriter:
+        def __init__(self):
+            self.message = None
+
+        def write(self, message, timeout):
+            self.message = message
+            return timeout == 0.1
+
+    publisher = DdsTtsPublisher(topic="tts", source="brain")
+    writer = CaptureWriter()
+    publisher._publisher = writer
+
+    assert publisher.publish(
+        request_id="answer-2",
+        sequence=9,
+        text="",
+        is_final=True,
+        interrupt=True,
+        timeout=0.1,
+    )
+    assert writer.message.request_id == "answer-2"
+    assert writer.message.sequence == 9
+    assert writer.message.is_final is True
+    assert writer.message.interrupt is True
+    assert writer.message.source == "brain"

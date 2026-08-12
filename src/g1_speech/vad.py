@@ -186,6 +186,12 @@ class SileroVadSegmenter:
         while not self._vad.empty():
             self._vad.pop()
 
+    @property
+    def speech_active(self) -> bool:
+        """Expose the detector's early speech edge for full-duplex barge-in."""
+        detected = getattr(self._vad, "is_detected", False)
+        return bool(detected() if callable(detected) else detected)
+
     def _accept_window(self, window: np.ndarray) -> None:
         self._history.append(window)
         self._vad.accept_waveform(window)
