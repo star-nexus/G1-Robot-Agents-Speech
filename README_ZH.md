@@ -79,23 +79,28 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-机器人有多个音频输入时，应当固定语音服务使用的麦克风。USB 摄像头经常也会枚举出
-麦克风，PulseAudio 可能在摄像头接入时自动切换默认输入。先从设备列表中找到具有
-辨识度的名称，再写入本机的 `deploy.env`：
+机器人部署默认优先使用 ALSA 硬件直连，并保留显式的 PulseAudio 回退。配置稳定的
+ALSA card ID，不要写入 USB 重枚举后会变化的 `hw:1,0` 数字：
 
 ```bash
-.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+for path in /proc/asound/card*/id; do
+  printf '%s: %s\n' "$path" "$(<"$path")"
+done
 
-# deploy.env——仅为示例，请填写自己设备列表中出现的名称
-MICROPHONE_DEVICE="USB Microphone"
+# deploy.env——仅为示例，请使用本机输出的 ID
+AUDIO_INPUT_BACKEND="alsa"
+ALSA_INPUT_CARD="Microphone"
+AUDIO_INPUT_FALLBACK="pulse"
+AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
 g1-speech-service status
 ```
 
-推荐使用稳定的名称，而不是重启或 USB 重新枚举后可能变化的数字序号。`status` 和
-`logs` 都会显示当前配置的麦克风；使用 `pulse` 或 PortAudio 默认输入时，还会显示
-当前 PulseAudio 输入源，并提示热插拔可能改变它。
+服务用麦克风原生格式采集，并在实时 callback 之外转换成 ASR 所需的 16 kHz 单声道。
+ALSA 打开失败时会先明确告警，再使用配置的 Pulse fallback。`logs` 会报告实际打开的
+backend、解析后的设备、原生格式和 PortAudio latency。独占设备要求与完整验证方法见
+[低延迟输入指南](docs/audio_input.md)。
 
 DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
 相同的消息，Agent 无需修改。
@@ -285,7 +290,11 @@ GPU 部署会：
 | `SPEECH_PYTHON_GPU` | GPU 服务可选的隔离 Python runtime |
 | `SPEECH_GPU_LIBRARY_PATH` | 该 runtime 需要的冒号分隔 native library 路径 |
 | `DDS_NETWORK_INTERFACE` | DDS 使用的本机网卡；留空时自动选择 |
-| `MICROPHONE_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | 优先 `alsa`，可回退 `pulse` |
+| `ALSA_INPUT_*` | 稳定 ALSA card ID 与硬件原生设备/采样率/声道/dtype |
+| `PULSE_INPUT_DEVICE` | 主动选择或回退时使用的 PulseAudio 设备 |
+| `PULSE_SOURCE` | 回退客户端可选的稳定 PulseAudio source |
+| `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | callback 大小与 PortAudio latency 请求 |
 | `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |

@@ -42,7 +42,10 @@ def test_status_and_logs_report_the_effective_microphone():
     selector = (ROOT / "scripts" / "g1-speech-service").read_text()
     assert 'show_microphone "$unit"' in selector
     assert "pactl get-default-source" in selector
-    assert "MICROPHONE_DEVICE in deploy.env" in selector
+    assert "AUDIO_INPUT_BACKEND" in selector
+    assert "ALSA_INPUT_CARD" in selector
+    assert "PULSE_SOURCE" in selector
+    assert "Actual backend/device" in selector
     assert "(pinned)" in selector
 
 

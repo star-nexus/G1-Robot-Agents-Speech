@@ -59,6 +59,11 @@ def test_deployment_example_is_model_neutral_and_matches_local_schema_when_prese
     assert "SPEECH_CONFIG_CPU" in fields
     assert "SPEECH_CONFIG_GPU" in fields
     assert "SPEECH_GPU_LIBRARY_PATH" in fields
+    assert "AUDIO_INPUT_BACKEND" in fields
+    assert "ALSA_INPUT_CARD" in fields
+    assert "PULSE_INPUT_DEVICE" in fields
+    assert "PULSE_SOURCE" in fields
+    assert "MICROPHONE_DEVICE" not in fields
     assert "ASR_BACKEND" not in fields
     assert not any(name.startswith("SENSEVOICE_") for name in fields)
     assert not any(name.startswith("QWEN3_ASR_") for name in fields)

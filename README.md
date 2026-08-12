@@ -115,25 +115,31 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-Pin the microphone on robots that have more than one audio input. USB cameras
-often expose a microphone, and PulseAudio may automatically switch its default
-input when the camera is connected. Choose a distinctive device-name substring
-from the device list and set it in the host-local `deploy.env`:
+Robot deployments prefer direct ALSA hardware capture with an explicit PulseAudio
+fallback. Pin the stable ALSA card ID rather than a hot-plug-sensitive `hw:1,0`
+number:
 
 ```bash
-.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+for path in /proc/asound/card*/id; do
+  printf '%s: %s\n' "$path" "$(<"$path")"
+done
 
-# deploy.env — example only; use a name shown on your own machine
-MICROPHONE_DEVICE="USB Microphone"
+# deploy.env — example only; use an ID printed on your host
+AUDIO_INPUT_BACKEND="alsa"
+ALSA_INPUT_CARD="Microphone"
+AUDIO_INPUT_FALLBACK="pulse"
+AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
 g1-speech-service status
 ```
 
-Prefer a stable name over a numeric index, which may change after reboot or USB
-re-enumeration. `status` and `logs` show the configured microphone; when set to
-`pulse` or the PortAudio default, they also show the current PulseAudio source
-and warn that hot-plugging can change it.
+The service opens the microphone's native format and converts it to ASR's 16 kHz
+mono format outside the real-time callback. ALSA failures are logged before the
+configured Pulse fallback is used. `logs` reports the backend actually opened,
+resolved device, native format, and PortAudio latency. See the
+[low-latency input guide](docs/audio_input.md), including the exclusive-device
+ownership requirement.
 
 DDS is the default transport. Recognition results are published to
 `rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
@@ -312,7 +318,11 @@ Copy `deploy.env.example`; it has the same fields and ordering as a real
 | `SPEECH_PYTHON_GPU` | Optional isolated Python used by the GPU service |
 | `SPEECH_GPU_LIBRARY_PATH` | Optional colon-separated native-library paths for that runtime |
 | `DDS_NETWORK_INTERFACE` | Optional local interface used by DDS; leave empty for automatic selection |
-| `MICROPHONE_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | Prefer `alsa`; optionally fall back to `pulse` |
+| `ALSA_INPUT_*` | Stable ALSA card ID plus native capture device/rate/channels/dtype |
+| `PULSE_INPUT_DEVICE` | PulseAudio device used when selected or as fallback |
+| `PULSE_SOURCE` | Optional stable PulseAudio source selected by the fallback client |
+| `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | Capture callback size and PortAudio latency request |
 | `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |

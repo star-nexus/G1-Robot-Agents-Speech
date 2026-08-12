@@ -11,9 +11,17 @@ from typing import Any, Callable, Mapping, Sequence
 
 @dataclass(frozen=True)
 class AudioConfig:
+    input_backend: str = "alsa"
+    fallback_backend: str | None = "pulse"
+    alsa_card: str | None = None
+    alsa_device: int = 0
+    alsa_sample_rate: int = 48000
+    alsa_channels: int = 2
+    alsa_dtype: str = "int16"
+    pulse_device: int | str | None = "pulse"
     sample_rate: int = 16000
-    block_ms: int = 100
-    device: int | str | None = None
+    block_ms: int = 20
+    latency: str | float = "low"
     queue_seconds: float = 5.0
     heartbeat_timeout_seconds: float = 2.0
     reconnect_initial_seconds: float = 0.5
@@ -113,10 +121,43 @@ class ServiceConfig:
     playback: PlaybackConfig = field(default_factory=PlaybackConfig)
 
     def validate(self) -> None:
+        if self.audio.input_backend not in {"alsa", "pulse"}:
+            raise ValueError("audio.input_backend must be alsa or pulse")
+        if self.audio.fallback_backend not in {None, "pulse"}:
+            raise ValueError("audio.fallback_backend must be pulse or null")
+        if self.audio.alsa_card is not None:
+            if not self.audio.alsa_card.strip():
+                raise ValueError(
+                    "audio.alsa_card must be null or a non-empty ALSA card ID"
+                )
+            if self.audio.alsa_card.isdecimal():
+                raise ValueError(
+                    "audio.alsa_card must be a stable ALSA card ID, not a numeric card index"
+                )
+        if self.audio.alsa_device < 0:
+            raise ValueError("audio.alsa_device must not be negative")
+        if self.audio.alsa_sample_rate < self.audio.sample_rate:
+            raise ValueError(
+                "audio.alsa_sample_rate must be at least audio.sample_rate"
+            )
+        if self.audio.alsa_sample_rate % self.audio.sample_rate:
+            raise ValueError(
+                "audio.alsa_sample_rate must be an integer multiple of audio.sample_rate"
+            )
+        if self.audio.alsa_channels not in {1, 2}:
+            raise ValueError("audio.alsa_channels must be 1 or 2")
+        if self.audio.alsa_dtype != "int16":
+            raise ValueError("audio.alsa_dtype currently supports only int16")
         if self.audio.sample_rate != 16000:
             raise ValueError("The bundled ASR backends and Silero VAD require 16000 Hz audio")
         if self.audio.block_ms <= 0 or self.audio.block_ms > 500:
             raise ValueError("audio.block_ms must be between 1 and 500")
+        if self.audio.latency not in {"low", "high"}:
+            if (
+                not isinstance(self.audio.latency, (int, float))
+                or self.audio.latency <= 0
+            ):
+                raise ValueError("audio.latency must be low, high, or positive seconds")
         if self.audio.queue_seconds <= 0:
             raise ValueError("audio.queue_seconds must be greater than zero")
         if self.audio.heartbeat_timeout_seconds <= 0:
@@ -216,6 +257,7 @@ def write_config(
         raw = json.loads(base_path.read_text(encoding="utf-8"))
 
     raw = deepcopy(raw)
+    _migrate_legacy_config(raw)
     _fill_missing_section_defaults(raw)
     if environment is not None:
         _apply_environment_overrides(raw, environment)
@@ -252,6 +294,7 @@ def load_config(
     """
     config_path = Path(path).expanduser().resolve()
     raw = json.loads(config_path.read_text(encoding="utf-8"))
+    _migrate_legacy_config(raw)
     _fill_missing_section_defaults(raw)
     if runtime_environment is not None:
         _apply_environment_overrides(
@@ -270,6 +313,18 @@ def _fill_missing_section_defaults(raw: dict[str, Any]) -> None:
         target_section = raw.setdefault(section, {})
         for field_name, default_value in value.items():
             target_section.setdefault(field_name, deepcopy(default_value))
+
+
+def _migrate_legacy_config(raw: dict[str, Any]) -> None:
+    """Preserve the old PortAudio/Pulse behavior while upgrading audio.device."""
+    audio = raw.get("audio")
+    if not isinstance(audio, dict) or "device" not in audio:
+        return
+    if "pulse_device" in audio:
+        raise ValueError("audio.device and audio.pulse_device cannot both be set")
+    audio["pulse_device"] = audio.pop("device")
+    audio.setdefault("input_backend", "pulse")
+    audio.setdefault("fallback_backend", None)
 
 
 def _config_from_raw(raw: dict[str, Any], base: Path) -> ServiceConfig:
@@ -332,8 +387,31 @@ def _parse_optional_string(value: str) -> str | None:
     return value or None
 
 
+def _parse_optional_backend(value: str) -> str | None:
+    value = value.strip().lower()
+    return value or None
+
+
+def _parse_audio_latency(value: str) -> str | float:
+    normalized = value.strip().lower()
+    if normalized in {"low", "high"}:
+        return normalized
+    return float(normalized)
+
+
 _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
-    "MICROPHONE_DEVICE": ("audio", "device", _parse_optional_device),
+    "AUDIO_INPUT_BACKEND": ("audio", "input_backend", str),
+    "AUDIO_INPUT_FALLBACK": ("audio", "fallback_backend", _parse_optional_backend),
+    "ALSA_INPUT_CARD": ("audio", "alsa_card", _parse_optional_string),
+    "ALSA_INPUT_DEVICE": ("audio", "alsa_device", int),
+    "ALSA_INPUT_SAMPLE_RATE": ("audio", "alsa_sample_rate", int),
+    "ALSA_INPUT_CHANNELS": ("audio", "alsa_channels", int),
+    "ALSA_INPUT_DTYPE": ("audio", "alsa_dtype", str),
+    "PULSE_INPUT_DEVICE": ("audio", "pulse_device", _parse_optional_device),
+    "AUDIO_INPUT_BLOCK_MS": ("audio", "block_ms", int),
+    "AUDIO_INPUT_LATENCY": ("audio", "latency", _parse_audio_latency),
+    # Compatibility with deploy.env files created before the input-backend split.
+    "MICROPHONE_DEVICE": ("audio", "pulse_device", _parse_optional_device),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
     "ROS2_NODE_NAME": ("ros2", "node_name", str),
     "ROS2_SPEECH_TOPIC": ("ros2", "speech_topic", str),
@@ -361,6 +439,16 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
 _RUNTIME_ENV_OVERRIDE_NAMES = frozenset(
     {
         "MICROPHONE_DEVICE",
+        "AUDIO_INPUT_BACKEND",
+        "AUDIO_INPUT_FALLBACK",
+        "ALSA_INPUT_CARD",
+        "ALSA_INPUT_DEVICE",
+        "ALSA_INPUT_SAMPLE_RATE",
+        "ALSA_INPUT_CHANNELS",
+        "ALSA_INPUT_DTYPE",
+        "PULSE_INPUT_DEVICE",
+        "AUDIO_INPUT_BLOCK_MS",
+        "AUDIO_INPUT_LATENCY",
         "SPEECH_TRANSPORT",
         "ROS2_NODE_NAME",
         "ROS2_SPEECH_TOPIC",
@@ -389,6 +477,13 @@ def _apply_environment_overrides(
     *,
     allowed_names: frozenset[str] | None = None,
 ) -> None:
+    if (
+        "MICROPHONE_DEVICE" in environment
+        and "AUDIO_INPUT_BACKEND" not in environment
+        and (allowed_names is None or "MICROPHONE_DEVICE" in allowed_names)
+    ):
+        raw["audio"]["input_backend"] = "pulse"
+        raw["audio"]["fallback_backend"] = None
     for name, (section, field_name, parser) in _ENV_OVERRIDES.items():
         if allowed_names is not None and name not in allowed_names:
             continue

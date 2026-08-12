@@ -17,8 +17,9 @@ from pathlib import Path
 import numpy as np
 
 from .app import SpeechService
+from .audio import resolve_alsa_input_device
 from .asr import asr_diagnostic_checks, create_asr_engine
-from .config import load_config, write_config
+from .config import AudioConfig, load_config, write_config
 from .contracts import Utterance
 from .dds import DdsSpeechSubscriber, initialize_dds
 
@@ -167,7 +168,7 @@ def _doctor(
         check(name, callback)
     check("Silero VAD model", lambda: _require_file(config.vad.model))
     if not skip_audio:
-        check("sounddevice/microphone", _audio_devices)
+        check("audio input policy", lambda: _audio_input_policy(config.audio))
     if selected_transport == "dds":
         check("cyclonedds", lambda: _module_path("cyclonedds"))
     else:
@@ -253,14 +254,45 @@ def _require_file(path: str) -> str:
     return str(candidate)
 
 
-def _audio_devices() -> str:
+def _audio_input_policy(settings: AudioConfig) -> str:
     import sounddevice as sd
 
-    devices = sd.query_devices()
-    inputs = [device["name"] for device in devices if device["max_input_channels"] > 0]
-    if not inputs:
-        raise RuntimeError("no audio input device found")
-    return ", ".join(inputs)
+    if settings.input_backend == "alsa":
+        try:
+            index, name = resolve_alsa_input_device(
+                sd,
+                card_id=settings.alsa_card,
+                pcm_device=settings.alsa_device,
+            )
+            sd.check_input_settings(
+                device=index,
+                samplerate=settings.alsa_sample_rate,
+                channels=settings.alsa_channels,
+                dtype=settings.alsa_dtype,
+            )
+        except Exception as exc:  # noqa: BLE001
+            if settings.fallback_backend != "pulse":
+                raise
+            pulse = sd.query_devices(settings.pulse_device, "input")
+            sd.check_input_settings(
+                device=settings.pulse_device,
+                samplerate=settings.sample_rate,
+                channels=1,
+                dtype="float32",
+            )
+            return (
+                f"ALSA unavailable ({exc}); PulseAudio fallback available: "
+                f"{pulse['name']}"
+            )
+        return f"ALSA direct: {name}"
+    pulse = sd.query_devices(settings.pulse_device, "input")
+    sd.check_input_settings(
+        device=settings.pulse_device,
+        samplerate=settings.sample_rate,
+        channels=1,
+        dtype="float32",
+    )
+    return f"PulseAudio: {pulse['name']}"
 
 
 if __name__ == "__main__":

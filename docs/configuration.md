@@ -89,7 +89,10 @@ subscribers remain unchanged.
 
 The following `deploy.env` groups are deliberately shared by every ASR backend:
 
-- `MICROPHONE_DEVICE`: physical/system audio input.
+- `AUDIO_INPUT_*`: backend, callback block, latency request, and fallback policy.
+- `ALSA_INPUT_*`: stable physical card ID and native hardware capture format.
+- `PULSE_INPUT_DEVICE`, `PULSE_SOURCE`: PulseAudio fallback device and optional
+  pinned source.
 - `VAD_*`: utterance start/end segmentation before ASR inference.
 - `PLAYBACK_*`: recognition suppression while the robot is speaking.
 - `DDS_*`, `SPEECH_TOPIC`, `PLAYBACK_TOPIC`: DDS discovery and reliability.
@@ -100,6 +103,8 @@ policy for SenseVoice and Qwen3-ASR. It is not a model-specific tuning value.
 
 Backend-neutral values are applied both by `config init --from-env` during setup and
 again by the service at startup. Edit `deploy.env`, then restart the selected service.
+The complete Jetson input design and verification procedure is documented in
+[`audio_input.md`](audio_input.md).
 
 ## Creating the one local Qwen profile
 

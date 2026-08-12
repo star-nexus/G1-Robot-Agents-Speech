@@ -88,11 +88,26 @@ unit_working_directory() {
 }
 
 configured_microphone() {
-    local unit="$1" pid environment_line device root config python
+    local unit="$1" pid environment_dump backend card alsa_device fallback pulse_device
+    local pulse_source
+    local environment_line device root config python
     pid="$(systemctl show "$unit" --property=MainPID --value 2>/dev/null || true)"
     if [[ "$pid" =~ ^[1-9][0-9]*$ && -r "/proc/$pid/environ" ]]; then
+        environment_dump="$(tr '\0' '\n' <"/proc/$pid/environ")"
+        backend="$(sed -n 's/^AUDIO_INPUT_BACKEND=//p' <<<"$environment_dump" | head -n1)"
+        if [[ -n "$backend" ]]; then
+            card="$(sed -n 's/^ALSA_INPUT_CARD=//p' <<<"$environment_dump" | head -n1)"
+            alsa_device="$(sed -n 's/^ALSA_INPUT_DEVICE=//p' <<<"$environment_dump" | head -n1)"
+            fallback="$(sed -n 's/^AUDIO_INPUT_FALLBACK=//p' <<<"$environment_dump" | head -n1)"
+            pulse_device="$(sed -n 's/^PULSE_INPUT_DEVICE=//p' <<<"$environment_dump" | head -n1)"
+            pulse_source="$(sed -n 's/^PULSE_SOURCE=//p' <<<"$environment_dump" | head -n1)"
+            printf '%s|%s|%s|%s|%s|%s\n' \
+                "$backend" "$card" "${alsa_device:-0}" "$fallback" \
+                "${pulse_device:-pulse}" "$pulse_source"
+            return
+        fi
         environment_line="$(
-            tr '\0' '\n' <"/proc/$pid/environ" \
+            printf '%s\n' "$environment_dump" \
                 | sed -n '/^MICROPHONE_DEVICE=/{p;q;}' || true
         )"
         if [[ "$environment_line" == MICROPHONE_DEVICE=* ]]; then
@@ -130,16 +145,29 @@ PY
 }
 
 show_microphone() {
-    local unit="$1" device pulse_source
+    local unit="$1" device pulse_source backend card alsa_device fallback pulse_device
     device="$(configured_microphone "$unit")"
+    if [[ "$device" == *"|"* ]]; then
+        IFS='|' read -r backend card alsa_device fallback pulse_device pulse_source \
+            <<<"$device"
+        if [[ "$backend" == "alsa" ]]; then
+            echo "Microphone policy: ALSA direct card=${card:-auto} device=$alsa_device fallback=${fallback:-disabled}"
+            [[ -z "${pulse_source:-}" ]] || echo "Pulse fallback source: $pulse_source"
+            echo "Actual backend/device: see the latest 'Microphone started' service log."
+            return
+        fi
+        device="$pulse_device"
+    fi
     case "$device" in
         pulse|default)
-            echo "Microphone: $device (follows the system default input)"
-            if command -v pactl >/dev/null 2>&1; then
+            echo "Microphone policy: PulseAudio device=$device"
+            if [[ -n "${pulse_source:-}" ]]; then
+                echo "Audio source: $pulse_source (pinned)"
+            elif command -v pactl >/dev/null 2>&1; then
                 pulse_source="$(pactl get-default-source 2>/dev/null || true)"
                 [[ -n "$pulse_source" ]] && echo "Audio source: $pulse_source"
             fi
-            echo "Warning: USB cameras may change the default input; pin MICROPHONE_DEVICE in deploy.env."
+            echo "Warning: pin ALSA_INPUT_CARD for the low-latency hardware path."
             ;;
         unknown)
             echo "Microphone: unknown"

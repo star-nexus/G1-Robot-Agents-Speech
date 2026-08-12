@@ -34,6 +34,7 @@ class SpeechService:
             max_active_seconds=config.playback.max_active_seconds,
         )
         source = SoundDeviceSource(settings=config.audio)
+        self.audio_source = source
         segmenter = SileroVadSegmenter(
             settings=config.vad,
             sample_rate=config.audio.sample_rate,
@@ -94,4 +95,20 @@ class SpeechService:
     def metrics(self) -> dict[str, Any]:
         payload = asdict(self.pipeline.metrics())
         payload.update(self.transport.metrics())
+        payload.update(
+            {
+                "audio_input_backend": getattr(
+                    self.audio_source, "active_backend", None
+                ),
+                "audio_input_device": getattr(
+                    self.audio_source, "active_device", None
+                ),
+                "audio_input_latency_ms": (
+                    None
+                    if getattr(self.audio_source, "actual_latency_seconds", None)
+                    is None
+                    else round(self.audio_source.actual_latency_seconds * 1000, 3)
+                ),
+            }
+        )
         return payload

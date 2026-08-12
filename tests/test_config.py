@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from g1_speech.config import (
+    AudioConfig,
     Qwen3AsrConfig,
     ServiceConfig,
     default_config_dict,
@@ -25,7 +26,13 @@ def test_write_config_applies_only_explicit_environment_overrides(tmp_path):
 
     write_config(
         config_path,
-        environment={"VAD_THRESHOLD": "0.42", "MICROPHONE_DEVICE": "7"},
+        environment={
+            "VAD_THRESHOLD": "0.42",
+            "AUDIO_INPUT_BACKEND": "pulse",
+            "PULSE_INPUT_DEVICE": "7",
+            "AUDIO_INPUT_BLOCK_MS": "20",
+            "AUDIO_INPUT_LATENCY": "0.015",
+        },
     )
     config = load_config(config_path)
 
@@ -33,7 +40,10 @@ def test_write_config_applies_only_explicit_environment_overrides(tmp_path):
     assert config.vad.speech_pre_roll_seconds == default_config_dict()["vad"][
         "speech_pre_roll_seconds"
     ]
-    assert config.audio.device == 7
+    assert config.audio.input_backend == "pulse"
+    assert config.audio.pulse_device == 7
+    assert config.audio.block_ms == 20
+    assert config.audio.latency == 0.015
 
 
 def test_write_config_derives_gpu_config_without_copying_defaults(tmp_path):
@@ -136,7 +146,13 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
             "ASR_BACKEND": "sensevoice",
             "QWEN3_ASR_MODEL_DIR": "/models/should-not-win",
             "QWEN3_ASR_DTYPE": "bfloat16",
-            "MICROPHONE_DEVICE": "USB Microphone",
+            "AUDIO_INPUT_BACKEND": "alsa",
+            "ALSA_INPUT_CARD": "Microphone",
+            "ALSA_INPUT_DEVICE": "2",
+            "ALSA_INPUT_SAMPLE_RATE": "48000",
+            "ALSA_INPUT_CHANNELS": "2",
+            "ALSA_INPUT_DTYPE": "int16",
+            "PULSE_INPUT_DEVICE": "pulse",
             "VAD_THRESHOLD": "0.42",
             "DDS_DOMAIN_ID": "7",
             "PLAYBACK_RESUME_DELAY_MS": "175",
@@ -146,7 +162,13 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
     assert config.asr.backend == "qwen3_asr"
     assert config.qwen3_asr.model_dir == "/models/selected-qwen"
     assert config.qwen3_asr.dtype == "float16"
-    assert config.audio.device == "USB Microphone"
+    assert config.audio.input_backend == "alsa"
+    assert config.audio.alsa_card == "Microphone"
+    assert config.audio.alsa_device == 2
+    assert config.audio.alsa_sample_rate == 48000
+    assert config.audio.alsa_channels == 2
+    assert config.audio.alsa_dtype == "int16"
+    assert config.audio.pulse_device == "pulse"
     assert config.vad.threshold == 0.42
     assert config.dds.domain_id == 7
     assert config.playback.resume_delay_ms == 175
@@ -160,6 +182,37 @@ def test_qwen3_asr_defaults_to_sdpa_attention():
     assert ServiceConfig().qwen3_asr.cache_implementation is None
     assert ServiceConfig().qwen3_asr.quantization is None
     assert ServiceConfig().qwen3_asr.log_profile is False
+
+
+def test_legacy_audio_device_is_migrated_to_pulse_selector(tmp_path):
+    path = tmp_path / "legacy.json"
+    path.write_text('{"audio": {"device": "pulse"}}', encoding="utf-8")
+
+    config = load_config(path)
+
+    assert config.audio.pulse_device == "pulse"
+    assert config.audio.input_backend == "pulse"
+    assert config.audio.fallback_backend is None
+
+
+def test_legacy_microphone_environment_keeps_pulse_behavior(tmp_path):
+    path = write_config(tmp_path / "config.json")
+
+    config = load_config(
+        path,
+        runtime_environment={"MICROPHONE_DEVICE": "USB Microphone"},
+    )
+
+    assert config.audio.input_backend == "pulse"
+    assert config.audio.fallback_backend is None
+    assert config.audio.pulse_device == "USB Microphone"
+
+
+def test_numeric_alsa_card_index_is_rejected():
+    config = ServiceConfig(audio=AudioConfig(alsa_card="1"))
+
+    with pytest.raises(ValueError, match="stable ALSA card ID"):
+        config.validate()
 
 
 def test_qwen3_asr_rejects_unknown_attention_backend():
