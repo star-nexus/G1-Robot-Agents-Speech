@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 
 
-if os.environ.get("VLLM_OMNI_DISABLE_TORCHVISION", "1") == "1":
+if os.environ.get("STAR_TTS_DISABLE_TORCHVISION", "1") == "1":
     import transformers.utils as transformers_utils
     import transformers.utils.import_utils as transformers_import_utils
 

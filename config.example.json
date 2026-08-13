@@ -112,7 +112,7 @@
     "instructions": "",
     "reference_audio": null,
     "reference_text": null,
-    "max_new_tokens": 2048,
+    "max_new_tokens": 512,
     "initial_codec_chunk_frames": null,
     "connect_timeout_seconds": 5.0,
     "receive_timeout_seconds": 0.1,

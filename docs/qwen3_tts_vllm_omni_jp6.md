@@ -6,24 +6,36 @@ The speech service now contains a transport-neutral streaming TTS client, senten
 scheduler, ALSA player, render-reference tee, and hard barge-in path. The server
 runtime remains isolated from the stable ASR environments.
 
-The JetPack 6.2 server experiment is **not yet a runnable production baseline**.
-The native build, import, CLI, SM87 FlashAttention 2 selection, Qwen talker weight
-load, and vLLM graph compilation all succeed. Startup then stops at a second
-vLLM-Omni/vLLM internal API mismatch before the HTTP/WebSocket port becomes ready.
-No TTS latency or audio-quality result is claimed from this experiment.
+The official **vLLM-Omni v0.26.0 release tag is now a runnable functional
+baseline** on JetPack 6.2. Both talker and Code2Wav stages start, the official
+WebSocket endpoint becomes ready, and the speech service client receives
+incremental 24 kHz PCM over one reusable connection. This is not yet the final
+performance baseline: the safe Orin profile runs eagerly because native SM87 FA2
+stalled for more than three minutes during vLLM's full decode CUDA Graph capture.
 
 The JetPack 6.2 source-build experiment uses:
 
 | Component | Selection |
 |---|---|
 | Platform | Jetson Orin NX 16 GB, SM 8.7, CUDA 12.6 |
-| vLLM-Omni | upstream `main`, commit `72a02b492a6957acc4659fde09be85c00ad0f90b` |
+| vLLM-Omni | official `v0.26.0` tag, commit `a4ea67a21b20054dacc6e83952f9bd407e8ee4e7` |
 | vLLM | source commit `568afb3a1`, reported as `0.26.1.dev0`, source build for SM 8.7 |
 | Python environment | separate host-local virtual environment |
 | PyTorch | Jetson ARM64 2.11.0, CUDA 12.6 |
 | Triton | 3.5.1 |
 | torchaudio | matching 2.11.0 source build, isolated environment only |
-| Model | local Qwen3-TTS-12Hz-0.6B-CustomVoice |
+| Model | local Qwen3-TTS-12Hz-0.6B-CustomVoice, preset voice Ryan |
+
+Pinning the release is essential. The previously tested upstream `main` commit
+`72a02b4` called APIs from a newer, unreleased vLLM line and failed against the
+0.26 runtime at `MemoryProfilingResult.total_consumed`. vLLM-Omni is the
+multistage orchestration and serving layer **on top of** vLLM, so a WebSocket
+between mismatched copies would not repair that in-process Python API boundary.
+The correct boundary is instead:
+
+```text
+speech service --WebSocket--> vLLM-Omni 0.26.0 --Python API--> vLLM 0.26.x
+```
 
 This combination is substantially newer than the project's sealed ASR PyTorch 2.5
 environment. It must not be installed into `.venv-gpu`. Latest vLLM's ordinary
@@ -33,7 +45,18 @@ builds the CUDA extensions locally with `CUDA_HOME=/usr/local/cuda` and
 
 ## Reproducing the isolated build
 
-Use a separate root and a Jetson-native PyTorch wheel. The important source-build
+Use a separate root and a Jetson-native PyTorch wheel. Check out the release in
+its own directory; do not reuse a dirty `main` checkout:
+
+```bash
+git -C /path/to/vllm-omni fetch origin tag v0.26.0
+git -C /path/to/vllm-omni worktree add /path/to/runtime/source-v0.26.0 v0.26.0
+/path/to/runtime/.venv/bin/python -m pip install \
+  --no-deps --no-build-isolation -e /path/to/runtime/source-v0.26.0
+```
+
+The launcher checks `vllm-omni==0.26.0` and vLLM `0.26.x` before loading either
+model. The important vLLM source-build
 settings are:
 
 ```bash
@@ -60,8 +83,11 @@ export LD_LIBRARY_PATH=/path/to/libcudss/12${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 An environment created with JetPack system packages visible can also see the
 old system `torchvision`, whose compiled operators do not match PyTorch 2.11.
 Qwen3-TTS is text/audio-only, so the provided launcher marks torchvision as an
-unavailable optional Transformers feature before importing vLLM-Omni. Set
-`VLLM_OMNI_DISABLE_TORCHVISION=0` only after installing a Jetson-native
+unavailable optional Transformers feature before importing vLLM-Omni. vLLM's
+model-independent warm-up also imports a MiniMax vision processor directly; a
+minimal `InterpolationMode` shim prevents that import from loading binary system
+vision operators in child processes. Set
+`STAR_TTS_DISABLE_TORCHVISION=0` only after installing a Jetson-native
 torchvision that exactly matches the isolated PyTorch.
 
 The source checkout configured successfully for CUDA 12.6 and native SM 8.7. Some
@@ -84,33 +110,18 @@ were rejected during import testing: one removed symbols from vLLM's common ABI,
 and another left unresolved FA2 head-dimension templates. No ASR environment is
 modified if this experiment fails.
 
-Latest vLLM-Omni main also contains one stale call to vLLM's input-randomization
-context manager. Apply `patches/vllm-omni-vllm026-randomize-inputs.patch` to the
-vLLM-Omni checkout. It removes the obsolete keyword argument and matches the call
-already used by vLLM-Omni's generation runner. With that compatibility patch the
-Orin run progresses through talker model loading and graph compilation.
-
-The next reproducible blocker is:
-
-```text
-AttributeError: 'MemoryProfilingResult' object has no attribute 'total_consumed'
-```
-
-It occurs in `vllm_omni/worker/base.py` after the stage-0 profiling/warm-up run.
-Installed vLLM 0.26 exposes `non_kv_cache_memory`, `torch_peak_increase`,
-`non_torch_increase`, and `weights_memory`; current vLLM-Omni main reads the newer
-`total_consumed` field. This is an upstream API-version mismatch, not an OOM: the
-talker loaded 619 weights, used 1.91 GiB, selected `FLASH_ATTN` version 2, and
-completed a 57.24-second first-run `torch.compile` pass before failing. Do not
-blindly derive or inject the missing field in a robot deployment; pin a confirmed
-vLLM/vLLM-Omni pair or carry a tested upstream compatibility fix first.
+Do not apply the former `main`-branch `randomize_inputs` workaround to the release.
+The v0.26.0 tag already uses the correct call and does not read
+`MemoryProfilingResult.total_consumed`.
 
 ## Orin launch profile
 
 `profiles/qwen3-tts-orin-nx.yaml` preserves upstream async PCM chunking and Code2Wav
-correctness limits, but reduces `max_num_seqs` to 1 and uses conservative stage
-reservations of 0.22 and 0.18 for 16 GB bring-up. These values are not a performance
-claim. Once the compatibility gate above is resolved, start the isolated server with:
+correctness limits, reduces `max_num_seqs` to 1, and uses conservative stage
+reservations of 0.23 and 0.18 for 16 GB. The talker limit is 1024 semantic tokens,
+about 80 seconds at 12.5 Hz and far above a normal robot response. Both stages use
+`enforce_eager: true`: this is the verified correctness profile, not a claim that
+eager is fastest. Start the isolated server with:
 
 ```bash
 bash scripts/run-qwen3-tts-vllm-omni.sh
@@ -120,6 +131,7 @@ All paths can be overridden without editing the script:
 
 ```bash
 VLLM_OMNI_RUNTIME_ROOT=/path/to/runtime \
+VLLM_OMNI_SOURCE_DIR=/path/to/runtime/source-v0.26.0 \
 QWEN3_TTS_MODEL=/path/to/Qwen3-TTS-12Hz-0.6B-CustomVoice \
 QWEN3_TTS_CUDSS_DIR=/path/to/libcudss/12 \
 QWEN3_TTS_ALLOWED_MEDIA_PATH=/path/to/reference-audio-directory \
@@ -131,6 +143,29 @@ The speech service connects to
 and starts ALSA playback on the first 24 kHz PCM chunk. The `tts.model` value sent
 by the client must match the server's served model identifier; for a local model,
 put the same absolute path in the selected host-local JSON profile.
+
+## Measured release validation
+
+The first request after a clean launch incurred runtime JIT and is deliberately
+reported rather than hidden. It produced 4.32 seconds of valid PCM in four chunks,
+but first playable PCM took 103.09 seconds. The service logged JIT compilation for
+multimodal RoPE, the code predictor, and Code2Wav kernels.
+
+After warm-up, the same sentence produced 4.40 seconds of PCM with a 560.0 ms first
+chunk and 8.72 s total generation time. A stronger persistent-connection test then
+generated two utterances on one WebSocket:
+
+| Utterance | First PCM | Total generation | Audio | Chunks |
+|---|---:|---:|---:|---:|
+| `Welcome to STAR.` | 568.8 ms | 3375.6 ms | 1.52 s | 2 |
+| `How may I help you?` | 511.7 ms | 4736.6 ms | 2.32 s | 3 |
+
+These results establish endpoint, PCM streaming, and connection-reuse correctness.
+They also show that this eager profile is slower than real time end-to-end even
+though first audio arrives in about 0.5-0.6 seconds. Treat it as a functional
+baseline while CUDA Graph/FA2 capture on SM87 is investigated independently.
+Raw values and the rejected `main` experiment are retained under
+`benchmarks/orin_nx_2026-08-13_vllm_omni/`.
 
 ## Voice-model semantics
 
@@ -151,7 +186,8 @@ community user cannot unknowingly test a preset voice while believing it was clo
 
 ## Acceptance gate
 
-Do not call this a production TTS baseline until a server run on the 16 GB Orin records:
+Do not call this a production TTS performance baseline until a server run on the
+16 GB Orin records:
 
 - startup and peak unified-memory use without starving ASR or robot workloads;
 - time to first playable PCM, audio RTF, underruns, and stop-to-silence latency;

@@ -10,10 +10,35 @@ so hide that optional capability before Transformers/vLLM imports it.
 from __future__ import annotations
 
 import os
+from importlib.metadata import PackageNotFoundError, version
+
+
+def _require_release_pair() -> None:
+    required_omni = os.environ.get("STAR_VLLM_OMNI_REQUIRED_VERSION", "0.26.0")
+    required_vllm_minor = os.environ.get("STAR_VLLM_REQUIRED_MINOR", "0.26")
+    try:
+        omni_version = version("vllm-omni")
+        vllm_version = version("vllm")
+    except PackageNotFoundError as exc:
+        raise SystemExit(f"[FAIL] isolated runtime package is missing: {exc.name}") from exc
+
+    if omni_version != required_omni:
+        raise SystemExit(
+            f"[FAIL] vLLM-Omni {required_omni} is required; found {omni_version}. "
+            "Use the official v0.26.0 tag, not an unpinned main checkout."
+        )
+    if not (
+        vllm_version == required_vllm_minor
+        or vllm_version.startswith(required_vllm_minor + ".")
+    ):
+        raise SystemExit(
+            f"[FAIL] vLLM {required_vllm_minor}.x is required; found {vllm_version}."
+        )
 
 
 def main() -> None:
-    if os.environ.get("VLLM_OMNI_DISABLE_TORCHVISION", "1") == "1":
+    _require_release_pair()
+    if os.environ.get("STAR_TTS_DISABLE_TORCHVISION", "1") == "1":
         import transformers.utils as transformers_utils
         import transformers.utils.import_utils as import_utils
 

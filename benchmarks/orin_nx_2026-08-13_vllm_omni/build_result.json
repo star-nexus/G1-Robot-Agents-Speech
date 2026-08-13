@@ -1,5 +1,6 @@
 {
   "date": "2026-08-13",
+  "experiment": "rejected_unpinned_main_compatibility_attempt",
   "platform": {
     "device": "NVIDIA Jetson Orin NX 16GB",
     "jetpack": "6.2",
@@ -44,9 +45,9 @@
   },
   "compatibility_patches": [
     "patches/vllm-0.26-orin-tts-minimal.patch",
-    "patches/vllm-flash-attn-sm87-qwen3-tts.patch",
-    "patches/vllm-omni-vllm026-randomize-inputs.patch"
+    "patches/vllm-flash-attn-sm87-qwen3-tts.patch"
   ],
+  "historical_main_workaround": "The deleted randomize_inputs patch was used only to diagnose this rejected main-branch combination; v0.26.0 does not need it.",
   "service_validation": {
     "websocket_endpoint_ready": false,
     "audio_generated": false,
@@ -55,7 +56,8 @@
     "final_blocker": "AttributeError: 'MemoryProfilingResult' object has no attribute 'total_consumed'",
     "final_blocker_location": "vllm_omni/worker/base.py:128",
     "failure_phase": "stage-0 KV-cache memory profiling after model load and graph compilation",
-    "oom_observed": false
+    "oom_observed": false,
+    "superseded_by": "release_validation.json"
   },
   "conclusion": "JetPack 6.2 native compilation is feasible and the Qwen3-TTS talker reaches SM87 FA2 model load and graph compilation, but this unpinned upstream vLLM-Omni main plus vLLM 0.26 source pair is not API-compatible enough to serve requests. No TTS latency claim is valid yet."
 }

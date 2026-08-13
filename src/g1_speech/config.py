@@ -150,7 +150,7 @@ class TtsConfig:
     instructions: str = ""
     reference_audio: str | None = None
     reference_text: str | None = None
-    max_new_tokens: int = 2048
+    max_new_tokens: int = 512
     initial_codec_chunk_frames: int | None = None
     connect_timeout_seconds: float = 5.0
     receive_timeout_seconds: float = 0.1
