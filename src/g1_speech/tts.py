@@ -19,8 +19,15 @@ from .config import TtsConfig
 logger = logging.getLogger(__name__)
 
 _STYLE_TOKEN = re.compile(r"\[([A-Za-z0-9_-]+)\]")
-_STRONG_BOUNDARY = re.compile(r".*?[。！？!?；;\n]+", re.DOTALL)
-_SOFT_BOUNDARY = re.compile(r".*?[,，:：]+", re.DOTALL)
+_STRONG_BOUNDARY = re.compile(r"[。！？!?；;\n]+|\.+(?!\d)")
+_SOFT_BOUNDARY = re.compile(r"[,，:：、—–]+")
+_WRAP_BOUNDARY = re.compile(r"\s+")
+_WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
+_SYLLABIC_CHAR = re.compile(
+    r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
+    r"\u3040-\u30ff\uac00-\ud7af]"
+)
+_TRAILING_CLOSERS = frozenset("\"'”’）)]】》」』")
 
 
 @dataclass(frozen=True)
@@ -94,7 +101,10 @@ class SentenceAssembler:
 
         text = self._consume_style_tokens(chunk.text)
         self._buffer += text
-        sentences = self._drain_boundaries()
+        # A complete response already paid the Agent generation latency. Preserve
+        # its clauses as one prosodic unit unless it contains a true sentence end.
+        # Adaptive comma/wrap flushing is reserved for still-streaming responses.
+        sentences = self._drain_boundaries(allow_adaptive=not chunk.is_final)
         if chunk.is_final and self._buffer.strip():
             sentences.append(self._make_request(self._buffer.strip(), True))
             self._buffer = ""
@@ -123,24 +133,96 @@ class SentenceAssembler:
 
         return _STYLE_TOKEN.sub(replace, text)
 
-    def _drain_boundaries(self) -> list[TtsSynthesisRequest]:
+    def _drain_boundaries(
+        self,
+        *,
+        allow_adaptive: bool,
+    ) -> list[TtsSynthesisRequest]:
         result: list[TtsSynthesisRequest] = []
         while self._buffer:
-            match = _STRONG_BOUNDARY.match(self._buffer)
-            if match is None and len(self._buffer) >= 12:
-                match = _SOFT_BOUNDARY.match(self._buffer)
-            if match is None and len(self._buffer) >= self._settings.max_buffer_characters:
-                split = self._settings.max_buffer_characters
-                result.append(self._make_request(self._buffer[:split].strip(), False))
-                self._buffer = self._buffer[split:]
-                continue
-            if match is None:
+            split = self._strong_boundary()
+            if split is None and allow_adaptive:
+                split = self._soft_boundary()
+            if split is None and (
+                len(self._buffer) >= self._settings.max_buffer_characters
+                or (
+                    allow_adaptive
+                    and self._speech_units(self._buffer)
+                    >= self._settings.max_chunk_speech_units
+                )
+            ):
+                split = self._wrap_boundary()
+            if split is None:
                 break
-            text = match.group(0).strip()
-            self._buffer = self._buffer[match.end() :]
+            text = self._buffer[:split].strip()
+            self._buffer = self._buffer[split:]
             if text:
                 result.append(self._make_request(text, False))
         return result
+
+    def _strong_boundary(self) -> int | None:
+        match = _STRONG_BOUNDARY.search(self._buffer)
+        if match is None:
+            return None
+        end = match.end()
+        while end < len(self._buffer) and self._buffer[end] in _TRAILING_CLOSERS:
+            end += 1
+        return end
+
+    def _soft_boundary(self) -> int | None:
+        total_units = self._speech_units(self._buffer)
+        if total_units < self._settings.preferred_chunk_speech_units:
+            return None
+        candidates: list[tuple[float, int]] = []
+        for match in _SOFT_BOUNDARY.finditer(self._buffer):
+            units = self._speech_units(self._buffer[: match.end()])
+            if not (
+                self._settings.min_chunk_speech_units
+                <= units
+                <= self._settings.max_chunk_speech_units
+            ):
+                continue
+            distance = abs(units - self._settings.preferred_chunk_speech_units)
+            candidates.append((distance, match.end()))
+        if not candidates:
+            return None
+        # On an equal score, keep more context in the emitted clause.
+        return min(candidates, key=lambda item: (item[0], -item[1]))[1]
+
+    def _wrap_boundary(self) -> int:
+        limit = min(len(self._buffer), self._settings.max_buffer_characters)
+        candidates: list[tuple[float, int]] = []
+        for pattern in (_SOFT_BOUNDARY, _WRAP_BOUNDARY):
+            for match in pattern.finditer(self._buffer[:limit]):
+                units = self._speech_units(self._buffer[: match.end()])
+                if not (
+                    self._settings.min_chunk_speech_units
+                    <= units
+                    <= self._settings.max_chunk_speech_units
+                ):
+                    continue
+                distance = abs(units - self._settings.preferred_chunk_speech_units)
+                candidates.append((distance, match.end()))
+        if candidates:
+            return min(candidates, key=lambda item: (item[0], -item[1]))[1]
+
+        # CJK text may contain no whitespace at all. Split at the preferred
+        # estimated spoken length only after the maximum threshold forced a flush.
+        for index in range(1, limit + 1):
+            if (
+                self._speech_units(self._buffer[:index])
+                >= self._settings.preferred_chunk_speech_units
+            ):
+                return index
+        return limit
+
+    @staticmethod
+    def _speech_units(text: str) -> float:
+        """Estimate spoken length across CJK characters and Unicode words."""
+        syllabic = len(_SYLLABIC_CHAR.findall(text))
+        without_syllabic = _SYLLABIC_CHAR.sub(" ", text)
+        words = len(_WORD.findall(without_syllabic))
+        return syllabic + words * 1.5
 
     def _make_request(self, text: str, final: bool) -> TtsSynthesisRequest:
         assert self._request_id is not None
@@ -386,20 +468,25 @@ class TtsController:
                 for audio in self._engine.stream(request, self._cancel):
                     if self._cancel.is_set():
                         break
-                    if not output_started:
-                        self._player.begin(audio.sample_rate)
-                        output_started = True
                     if first_audio:
                         self.first_audio_latency_ms = (
                             time.monotonic_ns() - started_ns
                         ) / 1_000_000
                         first_audio = False
-                    if not self._player.write(audio.pcm16_mono):
+                    if not self._player.enqueue(
+                        audio.pcm16_mono,
+                        audio.sample_rate,
+                        cancel=self._cancel,
+                    ):
                         break
-                if output_started and not self._cancel.is_set():
-                    self._player.finish()
+                    output_started = True
                 if not self._cancel.is_set():
                     self.sentences_synthesized += 1
+                    # Only the final sentence closes the response timeline. All
+                    # preceding sentences remain buffered while generation runs
+                    # ahead independently of real-time ALSA playback.
+                    if request.final_sentence and output_started:
+                        self._player.wait_until_idle(cancel=self._cancel)
             except Exception:  # noqa: BLE001
                 self.synthesis_errors += 1
                 logger.exception(
@@ -408,7 +495,7 @@ class TtsController:
                     request.text,
                 )
             finally:
-                if request.final_sentence or self._cancel.is_set() or self._queue.empty():
+                if request.final_sentence or self._cancel.is_set():
                     publish_inactive = False
                     with self._state_lock:
                         if self._active_request_id == request.request_id:

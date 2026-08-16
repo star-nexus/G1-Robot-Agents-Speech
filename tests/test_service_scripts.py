@@ -110,3 +110,11 @@ def test_ros2_systemd_installation_preserves_the_selected_domain():
     runner = (ROOT / "scripts" / "run-speech-service").read_text()
     assert "Environment=ROS_DOMAIN_ID=$domain_id" in installer
     assert 'export ROS_DOMAIN_ID="$ROS2_DOMAIN_ID"' in runner
+
+
+def test_orin_tts_launcher_uses_graph_safe_attention_and_forwards_overrides():
+    launcher = (ROOT / "scripts" / "run-qwen3-tts-vllm-omni.sh").read_text()
+
+    assert 'QWEN3_TTS_ATTENTION_BACKEND:-TRITON_ATTN' in launcher
+    assert '--attention-backend "$ATTENTION_BACKEND"' in launcher
+    assert '"$@"' in launcher

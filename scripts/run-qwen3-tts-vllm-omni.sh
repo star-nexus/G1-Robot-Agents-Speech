@@ -10,6 +10,7 @@ DEPLOY_CONFIG="${QWEN3_TTS_DEPLOY_CONFIG:-$ROOT/profiles/qwen3-tts-orin-nx.yaml}
 PORT="${QWEN3_TTS_PORT:-8091}"
 CUDSS_DIR="${QWEN3_TTS_CUDSS_DIR:-}"
 ALLOWED_MEDIA_PATH="${QWEN3_TTS_ALLOWED_MEDIA_PATH:-$(dirname "$MODEL")}"
+ATTENTION_BACKEND="${QWEN3_TTS_ATTENTION_BACKEND:-TRITON_ATTN}"
 
 fail() { echo "[FAIL] $*" >&2; exit 1; }
 
@@ -45,4 +46,6 @@ exec "$PYTHON" "$ROOT/scripts/vllm-omni-orin-launcher.py" serve "$MODEL" \
     --port "$PORT" \
     --deploy-config "$DEPLOY_CONFIG" \
     --trust-remote-code \
-    --allowed-local-media-path "$ALLOWED_MEDIA_PATH"
+    --allowed-local-media-path "$ALLOWED_MEDIA_PATH" \
+    --attention-backend "$ATTENTION_BACKEND" \
+    "$@"

@@ -163,6 +163,7 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
             "WEBRTC_NS_ENABLED": "1",
             "WEBRTC_NS_LEVEL": "3",
             "WEBRTC_AGC_ENABLED": "0",
+            "AUDIO_OUTPUT_BUFFER_SECONDS": "6.5",
             "TTS_ENABLED": "1",
             "TTS_WEBSOCKET_URL": "ws://localhost:9000/v1/audio/speech/stream",
         },
@@ -187,6 +188,7 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
     assert config.audio_processing.noise_suppression is True
     assert config.audio_processing.noise_suppression_level == 3
     assert config.audio_processing.automatic_gain_control is False
+    assert config.audio_output.buffer_seconds == 6.5
     assert config.tts.enabled is True
     assert config.tts.websocket_url.startswith("ws://localhost:9000/")
 

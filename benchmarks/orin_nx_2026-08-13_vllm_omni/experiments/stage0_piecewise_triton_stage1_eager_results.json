@@ -1,0 +1,75 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [],
+  "runs": [
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 447.4816779838875,
+      "total_ms": 2858.852773963008,
+      "pcm_bytes": 80640,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.68,
+      "audio_rtf": 1.7016980797398857
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 413.1102809915319,
+      "total_ms": 6017.261282016989,
+      "pcm_bytes": 184320,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 3.84,
+      "audio_rtf": 1.5669951255252577
+    },
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 400.6023450056091,
+      "total_ms": 2614.3748509930447,
+      "pcm_bytes": 76800,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.6,
+      "audio_rtf": 1.633984281870653
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 423.6400899826549,
+      "total_ms": 3540.0244789780118,
+      "pcm_bytes": 103680,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 2.16,
+      "audio_rtf": 1.6389002217490793
+    },
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 398.37326103588566,
+      "total_ms": 2843.5156080522574,
+      "pcm_bytes": 84480,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.76,
+      "audio_rtf": 1.61563386821151
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 441.8606309918687,
+      "total_ms": 2793.219611980021,
+      "pcm_bytes": 80640,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.68,
+      "audio_rtf": 1.6626307214166793
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 420.8447143319063,
+    "first_pcm_median_ms": 418.3751854870934,
+    "first_pcm_p95_ms": 446.0764162358828,
+    "total_mean_ms": 3444.541434330555,
+    "audio_rtf_mean": 1.6366403830855107,
+    "audio_rtf_median": 1.636442251809866
+  }
+}

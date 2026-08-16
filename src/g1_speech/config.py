@@ -55,6 +55,7 @@ class AudioOutputConfig:
     block_ms: int = 10
     latency: str | float = "low"
     volume: float = 1.0
+    buffer_seconds: float = 8.0
 
 
 @dataclass(frozen=True)
@@ -155,6 +156,9 @@ class TtsConfig:
     connect_timeout_seconds: float = 5.0
     receive_timeout_seconds: float = 0.1
     request_queue_capacity: int = 16
+    min_chunk_speech_units: float = 8.0
+    preferred_chunk_speech_units: float = 14.0
+    max_chunk_speech_units: float = 24.0
     max_buffer_characters: int = 240
     style_tokens: dict[str, str] = field(
         default_factory=lambda: {
@@ -269,6 +273,8 @@ class ServiceConfig:
             raise ValueError("audio_output.block_ms must be 10 or 20")
         if not 0 < self.audio_output.volume <= 1:
             raise ValueError("audio_output.volume must be greater than 0 and at most 1")
+        if not 0.1 <= self.audio_output.buffer_seconds <= 60:
+            raise ValueError("audio_output.buffer_seconds must be between 0.1 and 60")
         if self.utterance_queue_capacity < 1:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
@@ -352,6 +358,15 @@ class ServiceConfig:
             raise ValueError("tts.max_new_tokens must be greater than zero")
         if self.tts.request_queue_capacity < 1:
             raise ValueError("tts.request_queue_capacity must be greater than zero")
+        chunk_units = (
+            self.tts.min_chunk_speech_units,
+            self.tts.preferred_chunk_speech_units,
+            self.tts.max_chunk_speech_units,
+        )
+        if not 0 < chunk_units[0] <= chunk_units[1] <= chunk_units[2]:
+            raise ValueError(
+                "tts chunk speech units must satisfy 0 < min <= preferred <= max"
+            )
         if self.tts.max_buffer_characters < 8:
             raise ValueError("tts.max_buffer_characters must be at least 8")
 
@@ -581,6 +596,7 @@ _ENV_OVERRIDES: dict[str, tuple[str, str, Callable[[str], Any]]] = {
     "AUDIO_OUTPUT_BLOCK_MS": ("audio_output", "block_ms", int),
     "AUDIO_OUTPUT_LATENCY": ("audio_output", "latency", _parse_audio_latency),
     "AUDIO_OUTPUT_VOLUME": ("audio_output", "volume", float),
+    "AUDIO_OUTPUT_BUFFER_SECONDS": ("audio_output", "buffer_seconds", float),
     # Compatibility with deploy.env files created before the input-backend split.
     "MICROPHONE_DEVICE": ("audio", "pulse_device", _parse_optional_device),
     "SPEECH_TRANSPORT": ("transport", "backend", str),
@@ -639,6 +655,7 @@ _RUNTIME_ENV_OVERRIDE_NAMES = frozenset(
         "AUDIO_OUTPUT_BLOCK_MS",
         "AUDIO_OUTPUT_LATENCY",
         "AUDIO_OUTPUT_VOLUME",
+        "AUDIO_OUTPUT_BUFFER_SECONDS",
         "SPEECH_TRANSPORT",
         "ROS2_NODE_NAME",
         "ROS2_SPEECH_TOPIC",

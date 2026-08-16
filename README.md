@@ -14,7 +14,7 @@ service to any robot brand with that name.
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
 - **Production full duplex**: selectable hardware-DSP or native WebRTC APM/AEC3 processing with VAD barge-in
-- **Streaming robot voice client**: Qwen3-TTS/vLLM-Omni 0.26 functional baseline streams WebSocket PCM through low-latency direct ALSA
+- **Streaming robot voice client**: measured Qwen3-TTS/vLLM-Omni 0.26 baseline uses adaptive multilingual text chunking and a continuous low-latency ALSA PCM timeline
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
@@ -151,6 +151,7 @@ stable ALSA speaker card as well:
 # Ordinary USB microphone: software AEC3/NS with actual speaker PCM reference.
 AUDIO_PROCESSING_MODE="webrtc"
 ALSA_OUTPUT_CARD="your-speaker-card-id"
+AUDIO_OUTPUT_BUFFER_SECONDS=8.0
 TTS_ENABLED=1
 
 # Or, for a verified DSP microphone array (never stack both AECs):

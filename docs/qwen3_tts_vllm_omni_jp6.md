@@ -6,12 +6,13 @@ The speech service now contains a transport-neutral streaming TTS client, senten
 scheduler, ALSA player, render-reference tee, and hard barge-in path. The server
 runtime remains isolated from the stable ASR environments.
 
-The official **vLLM-Omni v0.26.0 release tag is now a runnable functional
-baseline** on JetPack 6.2. Both talker and Code2Wav stages start, the official
-WebSocket endpoint becomes ready, and the speech service client receives
-incremental 24 kHz PCM over one reusable connection. This is not yet the final
-performance baseline: the safe Orin profile runs eagerly because native SM87 FA2
-stalled for more than three minutes during vLLM's full decode CUDA Graph capture.
+The official **vLLM-Omni v0.26.0 release tag is now a runnable, measured
+low-latency baseline** on JetPack 6.2. Both talker and Code2Wav stages start, the
+official WebSocket endpoint becomes ready, and the speech service client receives
+incremental 24 kHz PCM over one reusable connection. The selected Orin profile
+uses `TRITON_ATTN` with Stage-0 `FULL_AND_PIECEWISE` CUDA Graphs; this avoids the
+native SM87 FA2 full-graph capture stall and runs faster than real time in the
+controlled streaming benchmark.
 
 The JetPack 6.2 source-build experiment uses:
 
@@ -119,9 +120,11 @@ The v0.26.0 tag already uses the correct call and does not read
 `profiles/qwen3-tts-orin-nx.yaml` preserves upstream async PCM chunking and Code2Wav
 correctness limits, reduces `max_num_seqs` to 1, and uses conservative stage
 reservations of 0.23 and 0.18 for 16 GB. The talker limit is 1024 semantic tokens,
-about 80 seconds at 12.5 Hz and far above a normal robot response. Both stages use
-`enforce_eager: true`: this is the verified correctness profile, not a claim that
-eager is fastest. Start the isolated server with:
+about 80 seconds at 12.5 Hz and far above a normal robot response. Stage 0 uses
+`FULL_AND_PIECEWISE` graph mode for capture sizes 1 and 2. Stage 1 remains eager:
+its separate Code2Wav graph path consumed substantially more reserved memory and
+did not improve first-PCM latency in this robot workload. Start the isolated
+server with:
 
 ```bash
 bash scripts/run-qwen3-tts-vllm-omni.sh
@@ -138,11 +141,41 @@ QWEN3_TTS_ALLOWED_MEDIA_PATH=/path/to/reference-audio-directory \
 bash scripts/run-qwen3-tts-vllm-omni.sh
 ```
 
+The launcher defaults `QWEN3_TTS_ATTENTION_BACKEND=TRITON_ATTN`. It also forwards
+extra vLLM arguments, so a diagnostic fallback can be requested without editing
+the script. Do not select `FLASH_ATTN_2` with the default FULL graph profile on
+this SM87 build; that is the reproduced stall combination.
+
 The speech service connects to
 `ws://127.0.0.1:8091/v1/audio/speech/stream`, retains the WebSocket across sentences,
-and starts ALSA playback on the first 24 kHz PCM chunk. The `tts.model` value sent
-by the client must match the server's served model identifier; for a local model,
-put the same absolute path in the selected host-local JSON profile.
+and appends every 24 kHz PCM chunk to one bounded continuous playback timeline.
+Generation and playback run on separate threads: the WebSocket reader may generate
+subsequent sentences ahead of real-time playback, while a dedicated ALSA worker
+consumes fixed 10/20 ms blocks. Sentence/request boundaries are not exposed to the
+player, and backpressure reaches generation only when `audio_output.buffer_seconds`
+is full. A barge-in atomically cancels generation, clears buffered PCM, and aborts
+the hardware stream. The `tts.model` value sent by the client must match the
+server's served model identifier; for a local model, put the same absolute path in
+the selected host-local JSON profile.
+
+### Robot-dialogue text chunking
+
+The client does not equate a comma with a sentence. Its balanced robot policy is:
+
+- complete (`is_final`) text keeps comma-separated clauses in one prosodic request;
+- true sentence endings (`。.!?！？；;`) are safe low-latency boundaries while text
+  is still streaming;
+- commas, colons, enumeration commas, and dashes become candidates only after a
+  minimum amount of speakable context exists;
+- long text without punctuation is wrapped before it can delay speech indefinitely;
+- a decimal point such as `3.14` is not treated as a sentence ending.
+
+Length uses language-neutral approximate speech units rather than raw bytes: one
+CJK/Kana/Hangul character is one unit and one Unicode word is 1.5 units. The model
+profile exposes `tts.min_chunk_speech_units` (8),
+`tts.preferred_chunk_speech_units` (14), and `tts.max_chunk_speech_units` (24).
+`tts.max_buffer_characters` remains an absolute malformed-input safety limit. These
+are model/dialogue policy fields in JSON, not hardware fields in `deploy.env`.
 
 ## Measured release validation
 
@@ -160,12 +193,16 @@ generated two utterances on one WebSocket:
 | `Welcome to STAR.` | 568.8 ms | 3375.6 ms | 1.52 s | 2 |
 | `How may I help you?` | 511.7 ms | 4736.6 ms | 2.32 s | 3 |
 
-These results establish endpoint, PCM streaming, and connection-reuse correctness.
-They also show that this eager profile is slower than real time end-to-end even
-though first audio arrives in about 0.5-0.6 seconds. Treat it as a functional
-baseline while CUDA Graph/FA2 capture on SM87 is investigated independently.
-Raw values and the rejected `main` experiment are retained under
-`benchmarks/orin_nx_2026-08-13_vllm_omni/`.
+Those values establish the original eager functional baseline. A controlled
+follow-up isolated the two graph layers and the attention backend. The selected
+TRITON + Stage-0 FULL profile completed the formerly stalled FULL decode capture
+in 2.08 seconds (all Stage-0 captures in about 5 seconds) and then completed six
+steady streaming requests with 244.8 ms mean first PCM and 0.716 mean audio RTF.
+
+The complete attribution, caveats, and comparison table are in
+[Qwen3-TTS CUDA Graph attribution on Orin NX](qwen3_tts_cuda_graph_orin.md).
+Machine-readable summaries and per-run responses are retained under
+`benchmarks/orin_nx_2026-08-13_vllm_omni/experiments/`.
 
 ## Voice-model semantics
 

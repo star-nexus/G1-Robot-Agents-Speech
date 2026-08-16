@@ -38,7 +38,8 @@
     "dtype": "int16",
     "block_ms": 10,
     "latency": "low",
-    "volume": 1.0
+    "volume": 1.0,
+    "buffer_seconds": 8.0
   },
   "vad": {
     "model": "models/silero_vad.onnx",
@@ -117,6 +118,9 @@
     "connect_timeout_seconds": 5.0,
     "receive_timeout_seconds": 0.1,
     "request_queue_capacity": 16,
+    "min_chunk_speech_units": 8.0,
+    "preferred_chunk_speech_units": 14.0,
+    "max_chunk_speech_units": 24.0,
     "max_buffer_characters": 240,
     "style_tokens": {
       "happy": "Speak in a bright, delighted and energetic tone.",

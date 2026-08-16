@@ -13,7 +13,7 @@ NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **ASR 模型可插拔**：内置 SenseVoice 与 Qwen3-ASR，切换模型不影响 VAD、DDS/ROS 2 或 Agent
 - **生产级全双工**：硬件 DSP / WebRTC APM(AEC3) 可插拔，支持 VAD 打断机器人发声
-- **流式机器人语音客户端**：实验性 Qwen3-TTS/vLLM-Omni PCM 分块通过低延迟 ALSA 直连播放
+- **流式机器人语音客户端**：经 Orin NX 实测，采用多语言自适应文本分块与连续低延迟 ALSA PCM 时间线
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
 - **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
@@ -111,6 +111,7 @@ g1-speech-service status
 # 普通 USB 麦克风：软件 AEC3/NS，使用实际扬声器 PCM 作为参考。
 AUDIO_PROCESSING_MODE="webrtc"
 ALSA_OUTPUT_CARD="your-speaker-card-id"
+AUDIO_OUTPUT_BUFFER_SECONDS=8.0
 TTS_ENABLED=1
 
 # 已验证带 DSP/AEC 的麦克风阵列（不得重复叠加软件 AEC）：
