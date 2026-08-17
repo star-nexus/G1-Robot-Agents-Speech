@@ -103,6 +103,22 @@ def test_sentence_assembler_deduplicates_retried_dds_sequence():
     assert [request.text for request in requests] == ["Hello!"]
 
 
+def test_empty_final_marker_closes_a_sentence_already_emitted_by_punctuation():
+    assembler = SentenceAssembler(TtsConfig())
+
+    spoken = assembler.feed(TtsTextChunk("answer-final", 0, "我在这里。"))
+    finalized = assembler.feed(
+        TtsTextChunk("answer-final", 1, "", is_final=True)
+    )
+
+    assert [request.text for request in spoken] == ["我在这里。"]
+    assert spoken[0].final_sentence is False
+    assert len(finalized) == 1
+    assert finalized[0].text == ""
+    assert finalized[0].final_sentence is True
+    assert finalized[0].finalize_only is True
+
+
 class FakeSocket:
     def __init__(self):
         self.sent = []
@@ -327,3 +343,61 @@ def test_controller_generates_all_sentences_before_waiting_for_playback_drain():
 
     player.release_drain.set()
     controller.close()
+
+
+class ImmediateTimelinePlayer:
+    def __init__(self):
+        self.drain_count = 0
+        self.two_drains = threading.Event()
+
+    def start(self):
+        pass
+
+    def enqueue(self, pcm, sample_rate, *, cancel=None):
+        del pcm, sample_rate, cancel
+        return True
+
+    def wait_until_idle(self, *, cancel=None, timeout=None):
+        del cancel, timeout
+        self.drain_count += 1
+        if self.drain_count == 2:
+            self.two_drains.set()
+        return True
+
+    def abort(self):
+        pass
+
+    def close(self):
+        pass
+
+    def metrics(self):
+        return {}
+
+
+def test_empty_stream_finals_restore_playback_gate_across_two_turns():
+    engine = RecordingEngine()
+    player = ImmediateTimelinePlayer()
+    states = []
+    controller = TtsController(
+        TtsConfig(),
+        engine=engine,
+        player=player,
+        playback_state=lambda active, request_id: states.append((active, request_id)),
+    )
+    controller.start()
+
+    controller.accept(TtsTextChunk("turn-1", 0, "第一轮。"))
+    controller.accept(TtsTextChunk("turn-1", 1, "", is_final=True))
+    controller.accept(TtsTextChunk("turn-2", 0, "第二轮。"))
+    controller.accept(TtsTextChunk("turn-2", 1, "", is_final=True))
+
+    assert player.two_drains.wait(1.0)
+    controller.close()
+
+    assert engine.requests == ["第一轮。", "第二轮。"]
+    assert states == [
+        (True, "turn-1"),
+        (False, "turn-1"),
+        (True, "turn-2"),
+        (False, "turn-2"),
+    ]

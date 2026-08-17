@@ -52,6 +52,7 @@ class TtsSynthesisRequest:
     voice: str
     instructions: str
     final_sentence: bool
+    finalize_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,8 @@ class SentenceAssembler:
         self._language = settings.language
         self._voice = settings.voice
         self._last_sequence = -1
+        self._emitted_for_request = False
+        self._finalized = False
 
     def feed(self, chunk: TtsTextChunk) -> list[TtsSynthesisRequest]:
         if chunk.interrupt:
@@ -89,6 +92,8 @@ class SentenceAssembler:
         if self._request_id != chunk.request_id:
             self.reset()
             self._request_id = chunk.request_id
+        if self._finalized:
+            return []
         if chunk.sequence <= self._last_sequence:
             return []
         self._last_sequence = chunk.sequence
@@ -113,6 +118,17 @@ class SentenceAssembler:
             sentences[-1] = TtsSynthesisRequest(
                 **{**vars(last), "final_sentence": True}
             )
+        elif chunk.is_final and self._emitted_for_request:
+            # Streaming Agents commonly emit terminal punctuation as an ordinary
+            # delta and then close the request with an empty final marker. The
+            # punctuation may already have produced a synthesis request, but the
+            # final marker must still drain the shared PCM timeline and publish
+            # playback inactive. It is a control event, not an empty TTS call.
+            sentences.append(self._make_request("", True, finalize_only=True))
+        if sentences:
+            self._emitted_for_request = True
+        if chunk.is_final:
+            self._finalized = True
         return sentences
 
     def reset(self) -> None:
@@ -122,6 +138,8 @@ class SentenceAssembler:
         self._language = self._settings.language
         self._voice = self._settings.voice
         self._last_sequence = -1
+        self._emitted_for_request = False
+        self._finalized = False
 
     def _consume_style_tokens(self, text: str) -> str:
         def replace(match: re.Match[str]) -> str:
@@ -224,7 +242,13 @@ class SentenceAssembler:
         words = len(_WORD.findall(without_syllabic))
         return syllabic + words * 1.5
 
-    def _make_request(self, text: str, final: bool) -> TtsSynthesisRequest:
+    def _make_request(
+        self,
+        text: str,
+        final: bool,
+        *,
+        finalize_only: bool = False,
+    ) -> TtsSynthesisRequest:
         assert self._request_id is not None
         return TtsSynthesisRequest(
             request_id=self._request_id,
@@ -233,6 +257,7 @@ class SentenceAssembler:
             voice=self._voice,
             instructions=self._instructions,
             final_sentence=final,
+            finalize_only=finalize_only,
         )
 
 
@@ -440,6 +465,8 @@ class TtsController:
         self._player.close()
 
     def metrics(self) -> dict[str, Any]:
+        with self._state_lock:
+            active_request_id = self._active_request_id
         payload = {
             "tts_enabled": True,
             "tts_queue_size": self._queue.qsize(),
@@ -447,6 +474,8 @@ class TtsController:
             "tts_synthesis_errors": self.synthesis_errors,
             "tts_interruptions": self.interruptions,
             "tts_first_audio_latency_ms": self.first_audio_latency_ms,
+            "tts_playback_active": active_request_id is not None,
+            "tts_active_request_id": active_request_id,
         }
         payload.update(self._player.metrics())
         return payload
@@ -459,34 +488,40 @@ class TtsController:
                 continue
             self._cancel.clear()
             with self._state_lock:
+                publish_active = self._active_request_id != request.request_id
                 self._active_request_id = request.request_id
-            self._playback_state(True, request.request_id)
+            if publish_active:
+                self._playback_state(True, request.request_id)
             started_ns = time.monotonic_ns()
             first_audio = True
             output_started = False
             try:
-                for audio in self._engine.stream(request, self._cancel):
-                    if self._cancel.is_set():
-                        break
-                    if first_audio:
-                        self.first_audio_latency_ms = (
-                            time.monotonic_ns() - started_ns
-                        ) / 1_000_000
-                        first_audio = False
-                    if not self._player.enqueue(
-                        audio.pcm16_mono,
-                        audio.sample_rate,
-                        cancel=self._cancel,
-                    ):
-                        break
-                    output_started = True
-                if not self._cancel.is_set():
-                    self.sentences_synthesized += 1
-                    # Only the final sentence closes the response timeline. All
-                    # preceding sentences remain buffered while generation runs
-                    # ahead independently of real-time ALSA playback.
-                    if request.final_sentence and output_started:
+                if request.finalize_only:
+                    if not self._cancel.is_set():
                         self._player.wait_until_idle(cancel=self._cancel)
+                else:
+                    for audio in self._engine.stream(request, self._cancel):
+                        if self._cancel.is_set():
+                            break
+                        if first_audio:
+                            self.first_audio_latency_ms = (
+                                time.monotonic_ns() - started_ns
+                            ) / 1_000_000
+                            first_audio = False
+                        if not self._player.enqueue(
+                            audio.pcm16_mono,
+                            audio.sample_rate,
+                            cancel=self._cancel,
+                        ):
+                            break
+                        output_started = True
+                    if not self._cancel.is_set():
+                        self.sentences_synthesized += 1
+                        # Only the final sentence closes the response timeline. All
+                        # preceding sentences remain buffered while generation runs
+                        # ahead independently of real-time ALSA playback.
+                        if request.final_sentence and output_started:
+                            self._player.wait_until_idle(cancel=self._cancel)
             except Exception:  # noqa: BLE001
                 self.synthesis_errors += 1
                 logger.exception(
@@ -505,6 +540,10 @@ class TtsController:
                     # synchronously, so the worker must not publish it twice.
                     if publish_inactive:
                         self._playback_state(False, request.request_id)
+                        logger.info(
+                            "TTS response playback completed: request_id=%s",
+                            request.request_id,
+                        )
 
     def _drain_queue(self) -> None:
         while True:

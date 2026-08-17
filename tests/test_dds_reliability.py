@@ -10,6 +10,7 @@ from g1_speech.dds import (
     DdsTtsSubscriber,
     EventDeduplicator,
     RetryingEventSink,
+    _DdsReader,
     event_to_message,
     message_to_event,
 )
@@ -187,3 +188,22 @@ def test_tts_dds_publisher_sets_idempotency_and_interrupt_fields():
     assert writer.message.is_final is True
     assert writer.message.interrupt is True
     assert writer.message.source == "brain"
+
+
+def test_dds_listener_drains_coalesced_streaming_samples_in_one_notification():
+    class BatchReader:
+        def __init__(self):
+            self.calls = 0
+
+        def take(self, capacity):
+            assert capacity == 4
+            self.calls += 1
+            return ["delta", "final"] if self.calls == 1 else []
+
+    reader = _DdsReader("tts", str, lambda _sample: None, queue_len=4)
+    source = BatchReader()
+
+    reader._on_data_available(source)
+
+    assert list(reader._queue) == ["delta", "final"]
+    assert source.calls == 1

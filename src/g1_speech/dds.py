@@ -226,20 +226,37 @@ class _DdsReader:
         from cyclonedds.internal import InvalidSample
 
         try:
-            samples = reader.take(1)
+            samples: list[Any] = []
+            while True:
+                batch = reader.take(self._capacity)
+                if not batch:
+                    break
+                samples.extend(batch)
+                if len(batch) < self._capacity:
+                    break
         except Exception:  # noqa: BLE001
             logger.exception("DDS read failed on topic %s", self._topic_name)
             return
-        if not samples or isinstance(samples[0], InvalidSample):
+        if not samples:
             return
+        dropped = 0
         with self._condition:
             if self._stop:
                 return
-            if len(self._queue) >= self._capacity:
-                logger.warning("DDS reader queue is full; dropping a sample from %s", self._topic_name)
-                return
-            self._queue.append(samples[0])
-            self._condition.notify()
+            for sample in samples:
+                if isinstance(sample, InvalidSample):
+                    continue
+                if len(self._queue) >= self._capacity:
+                    dropped += 1
+                    continue
+                self._queue.append(sample)
+            self._condition.notify_all()
+        if dropped:
+            logger.warning(
+                "DDS reader queue is full; dropped %d sample(s) from %s",
+                dropped,
+                self._topic_name,
+            )
 
     def _dispatch(self) -> None:
         while True:
