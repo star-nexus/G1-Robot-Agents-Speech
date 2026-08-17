@@ -1,0 +1,25 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [],
+  "runs": [
+    {
+      "text": "从入口直走，过桥后左转即可。",
+      "first_pcm_ms": 323.40068899998187,
+      "total_ms": 2623.5175249998974,
+      "pcm_bytes": 180480,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 3.76,
+      "audio_rtf": 0.6977440226063557
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 323.40068899998187,
+    "first_pcm_median_ms": 323.40068899998187,
+    "first_pcm_p95_ms": 323.40068899998187,
+    "total_mean_ms": 2623.5175249998974,
+    "audio_rtf_mean": 0.6977440226063557,
+    "audio_rtf_median": 0.6977440226063557
+  }
+}

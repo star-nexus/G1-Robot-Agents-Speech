@@ -1,0 +1,439 @@
+{
+  "schema_version": 2,
+  "label": "asr_tts_after_full_stack_test",
+  "timestamp_unix": 1786911991.6943393,
+  "hostname": "nvidia-desktop",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "python": {
+    "executable": "/usr/bin/python3",
+    "version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]"
+  },
+  "patterns": [
+    "vllm",
+    "g1-speech",
+    "omni",
+    "llama"
+  ],
+  "system_memory": {
+    "meminfo": {
+      "MemTotal_kib": 16031236,
+      "MemFree_kib": 1568816,
+      "MemAvailable_kib": 3637284,
+      "Buffers_kib": 12012,
+      "Cached_kib": 2251340,
+      "SwapCached_kib": 464,
+      "Active_kib": 1300736,
+      "Inactive_kib": 5491632,
+      "Active(anon)_kib": 48788,
+      "Inactive(anon)_kib": 4528136,
+      "Active(file)_kib": 1251948,
+      "Inactive(file)_kib": 963496,
+      "Unevictable_kib": 35396,
+      "Mlocked_kib": 0,
+      "SwapTotal_kib": 8015584,
+      "SwapFree_kib": 7326944,
+      "Dirty_kib": 1396,
+      "Writeback_kib": 0,
+      "AnonPages_kib": 4540708,
+      "Mapped_kib": 396020,
+      "Shmem_kib": 12512,
+      "KReclaimable_kib": 91976,
+      "Slab_kib": 201464,
+      "SReclaimable_kib": 91976,
+      "SUnreclaim_kib": 109488,
+      "KernelStack_kib": 11504,
+      "PageTables_kib": 29576,
+      "NFS_Unstable_kib": 0,
+      "Bounce_kib": 0,
+      "WritebackTmp_kib": 0,
+      "CommitLimit_kib": 16031200,
+      "Committed_AS_kib": 14967400,
+      "VmallocTotal_kib": 133143592960,
+      "VmallocUsed_kib": 95880,
+      "VmallocChunk_kib": 0,
+      "Percpu_kib": 5376,
+      "HardwareCorrupted_kib": 0,
+      "AnonHugePages_kib": 1425408,
+      "ShmemHugePages_kib": 0,
+      "ShmemPmdMapped_kib": 0,
+      "FileHugePages_kib": 0,
+      "FilePmdMapped_kib": 0,
+      "CmaTotal_kib": 262144,
+      "CmaFree_kib": 14424,
+      "HugePages_Total": 0,
+      "HugePages_Free": 0,
+      "HugePages_Rsvd": 0,
+      "HugePages_Surp": 0,
+      "Hugepagesize_kib": 2048,
+      "Hugetlb_kib": 0
+    },
+    "used_excluding_available_kib": 12393952
+  },
+  "processes": [
+    {
+      "pid": 4824,
+      "ppid": 1,
+      "name": "g1-speech",
+      "cmdline": [
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/g1-speech",
+        "serve",
+        "--config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/config.tts-demo.local.json",
+        "--transport",
+        "dds"
+      ],
+      "rss_kib": 173820,
+      "rss_anon_kib": 119308,
+      "rss_file_kib": 54504,
+      "rss_shmem_kib": 8,
+      "vm_size_kib": 19096848,
+      "swap_kib": 141684,
+      "pss_kib": 138212,
+      "private_clean_kib": 6200,
+      "private_dirty_kib": 120076,
+      "shared_clean_kib": 44572,
+      "shared_dirty_kib": 6028
+    },
+    {
+      "pid": 5479,
+      "ppid": 2329,
+      "name": "python",
+      "cmdline": [
+        "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/scripts/vllm-omni-orin-launcher.py",
+        "serve",
+        "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+        "--omni",
+        "--port",
+        "8091",
+        "--deploy-config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/profiles/qwen3-tts-orin-nx.yaml",
+        "--trust-remote-code",
+        "--allowed-local-media-path",
+        "/home/nvidia/Developer/llama",
+        "--attention-backend",
+        "TRITON_ATTN"
+      ],
+      "rss_kib": 915396,
+      "rss_anon_kib": 783432,
+      "rss_file_kib": 131964,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 23023172,
+      "swap_kib": 379876,
+      "pss_kib": 816007,
+      "private_clean_kib": 3604,
+      "private_dirty_kib": 781968,
+      "shared_clean_kib": 130784,
+      "shared_dirty_kib": 0
+    },
+    {
+      "pid": 5561,
+      "ppid": 5479,
+      "name": "python",
+      "cmdline": [
+        "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+        "-c",
+        "from multiprocessing.resource_tracker import main;main(25)"
+      ],
+      "rss_kib": 470028,
+      "rss_anon_kib": 350704,
+      "rss_file_kib": 119324,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 2750436,
+      "swap_kib": 0,
+      "pss_kib": 378001,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 350944,
+      "shared_clean_kib": 119912,
+      "shared_dirty_kib": 0
+    },
+    {
+      "pid": 5562,
+      "ppid": 5479,
+      "name": "VLLM::StageEngi",
+      "cmdline": [
+        "VLLM::StageEngineCoreProc_stage0_replica0_DP0"
+      ],
+      "rss_kib": 1747276,
+      "rss_anon_kib": 1555680,
+      "rss_file_kib": 191592,
+      "rss_shmem_kib": 4,
+      "vm_size_kib": 26007724,
+      "swap_kib": 8,
+      "pss_kib": 1636706,
+      "private_clean_kib": 29932,
+      "private_dirty_kib": 1556688,
+      "shared_clean_kib": 153020,
+      "shared_dirty_kib": 18992
+    },
+    {
+      "pid": 5787,
+      "ppid": 5479,
+      "name": "VLLM::StageEngi",
+      "cmdline": [
+        "VLLM::StageEngineCoreProc_stage1_replica0_DP0"
+      ],
+      "rss_kib": 1517460,
+      "rss_anon_kib": 1329668,
+      "rss_file_kib": 187788,
+      "rss_shmem_kib": 4,
+      "vm_size_kib": 25186264,
+      "swap_kib": 8,
+      "pss_kib": 1409383,
+      "private_clean_kib": 29088,
+      "private_dirty_kib": 1330676,
+      "shared_clean_kib": 153304,
+      "shared_dirty_kib": 17768
+    },
+    {
+      "pid": 11046,
+      "ppid": 2965,
+      "name": "python3",
+      "cmdline": [
+        "python3",
+        "scripts/measure-jetson-memory.py",
+        "--label",
+        "asr_tts_after_full_stack_test",
+        "--output",
+        "benchmarks/orin_nx_2026-08-17_full_stack_capacity/asr_tts_after_full_stack_test.json",
+        "--match",
+        "vllm",
+        "--match",
+        "g1-speech",
+        "--match",
+        "omni",
+        "--match",
+        "llama"
+      ],
+      "rss_kib": 11860,
+      "rss_anon_kib": 6568,
+      "rss_file_kib": 5292,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 26368,
+      "swap_kib": 0,
+      "pss_kib": 7237,
+      "private_clean_kib": 144,
+      "private_dirty_kib": 6708,
+      "shared_clean_kib": 5148,
+      "shared_dirty_kib": 0
+    }
+  ],
+  "selected_process_totals": {
+    "rss_kib": 4835840,
+    "pss_kib": 4385546,
+    "swap_kib": 521576
+  },
+  "timeseries": [
+    {
+      "timestamp_unix": 1786911991.5616157,
+      "used_excluding_available_kib": 12394024,
+      "mem_available_kib": 3637212,
+      "selected_rss_kib": 4835840,
+      "selected_pss_kib": null,
+      "selected_swap_kib": 521576
+    }
+  ],
+  "timeseries_peaks": {
+    "used_excluding_available_kib": 12394024,
+    "selected_rss_kib": 4835840
+  },
+  "jtop": {
+    "available": true,
+    "stats": {
+      "time": "2026-08-17 04:26:32.614365",
+      "uptime": "0:20:21.940000",
+      "CPU1": 41,
+      "CPU2": 8,
+      "CPU3": 19,
+      "CPU4": 19,
+      "CPU5": 12,
+      "CPU6": 19,
+      "CPU7": 14,
+      "CPU8": 18,
+      "RAM": 0.7610522357727127,
+      "SWAP": 0.08591264217304691,
+      "EMC": 0,
+      "GPU": 0.0,
+      "APE": "OFF",
+      "DLA0_CORE": "OFF",
+      "DLA0_FALCON": "OFF",
+      "DLA1_CORE": "OFF",
+      "DLA1_FALCON": "OFF",
+      "NVDEC": "OFF",
+      "NVENC": "OFF",
+      "NVJPG": "OFF",
+      "NVJPG1": "OFF",
+      "OFA": "OFF",
+      "PVA0_CPU_AXI": "OFF",
+      "PVA0_VPS": "OFF",
+      "SE": "OFF",
+      "VIC": "OFF",
+      "Fan pwmfan0": 34.11764705882353,
+      "Temp cpu": 54.125,
+      "Temp cv0": 50.593,
+      "Temp cv1": 50.218,
+      "Temp cv2": 47.5,
+      "Temp gpu": 53.125,
+      "Temp soc0": 51.375,
+      "Temp soc1": 50.718,
+      "Temp soc2": 48.281,
+      "Temp tj": 54.125,
+      "Power VDD_CPU_GPU_CV": 1277,
+      "Power VDD_SOC": 1670,
+      "Power TOT": 5898,
+      "jetson_clocks": "OFF",
+      "nvp model": "MAXN_SUPER"
+    },
+    "memory": {
+      "RAM": {
+        "tot": 16031236,
+        "used": 12200608,
+        "free": 1567212,
+        "buffers": 12012,
+        "cached": 2343380,
+        "shared": 4828196,
+        "lfb": 3
+      },
+      "SWAP": {
+        "tot": 8015584,
+        "used": 688640,
+        "cached": 464,
+        "table": {
+          "/dev/zram0": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 85816,
+            "boot": false
+          },
+          "/dev/zram1": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 87208,
+            "boot": false
+          },
+          "/dev/zram2": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 86252,
+            "boot": false
+          },
+          "/dev/zram3": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 86032,
+            "boot": false
+          },
+          "/dev/zram4": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 86020,
+            "boot": false
+          },
+          "/dev/zram5": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 85360,
+            "boot": false
+          },
+          "/dev/zram6": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 86232,
+            "boot": false
+          },
+          "/dev/zram7": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 85720,
+            "boot": false
+          }
+        }
+      },
+      "EMC": {
+        "cur": 2133000,
+        "max": 3199000,
+        "min": 204000,
+        "override": 0,
+        "val": 0,
+        "online": true
+      }
+    },
+    "processes": [
+      [
+        5787,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        6.181004891700852,
+        379365,
+        1376988,
+        "VLLM::StageEngi"
+      ],
+      [
+        5562,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        9.763775935029827,
+        436819,
+        2321412,
+        "VLLM::StageEngi"
+      ],
+      [
+        5561,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        0.6786736777269564,
+        117507,
+        0,
+        "python"
+      ],
+      [
+        5479,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        21.663766564047652,
+        228849,
+        0,
+        "python"
+      ],
+      [
+        4824,
+        "root",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        6.588311726663321,
+        43455,
+        1129796,
+        "g1-speech"
+      ]
+    ]
+  },
+  "notes": [
+    "PSS is preferred for process-tree attribution because RSS double-counts shared pages.",
+    "Jetson GPU memory uses unified physical RAM and overlaps process/system memory; do not add it to PSS.",
+    "System used_excluding_available is MemTotal minus MemAvailable, not a TTS-only measurement.",
+    "High-frequency timeseries PSS is null because reading smaps_rollup on every sample would perturb the workload; use selected_process_totals.pss_kib from the final snapshot."
+  ]
+}

@@ -12,6 +12,7 @@ acceptance/*.local.jsonl
 /tests/test_audio_*
 !/tests/test_audio_*.py
 .deps/
+.runtime/
 build/
 .build/
 dist/

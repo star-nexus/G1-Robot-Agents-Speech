@@ -187,6 +187,27 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+For a completely local ASR → Qwen3-4B → Qwen3-TTS loop, start the llama.cpp
+server and the DDS bridge in separate terminals:
+
+```bash
+scripts/run-qwen3-agent-llama.sh
+scripts/run-local-voice-agent.sh
+```
+
+The bridge streams Agent text deltas instead of waiting for the whole answer, so
+Agent generation, TTS generation, and continuous PCM playback overlap. See the
+[local offline voice Agent guide](docs/local_offline_voice_agent.md) for startup
+order, prompt overrides, and timing-log definitions.
+
+Versioned character Role Packages live under `roles/`. To run the bundled short-answer
+Olaf persona, replace the generic bridge command with
+`scripts/run-olaf-voice-agent.sh`. The Japanese Tifa profile is available through
+`scripts/run-tifa-voice-agent.sh` and pins the `Ono_Anna` TTS voice per request.
+The runtime/adapter architecture and package schema are documented in the
+[local Agent guide](docs/local_offline_voice_agent.md) and
+[Role Package specification](docs/role_packages.md).
+
 ### Select SenseVoice or Qwen3-ASR
 
 The pipeline depends only on the `AsrEngine` contract. Prepare a host-local Qwen config,

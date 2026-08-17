@@ -23,6 +23,14 @@ from .asr import asr_diagnostic_checks, create_asr_engine
 from .config import AudioConfig, load_config, write_config
 from .contracts import Utterance
 from .dds import DdsSpeechSubscriber, DdsTtsPublisher, initialize_dds
+from .agent_runtime import load_role_package
+from .local_agent import (
+    DEFAULT_REASONING_BUDGET_MESSAGE,
+    DEFAULT_SYSTEM_PROMPT,
+    LocalAgentSettings,
+    load_role_prompt,
+    run_local_voice_agent,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,6 +89,65 @@ def build_parser() -> argparse.ArgumentParser:
     speak.add_argument("--instructions", default="")
     speak.add_argument("--request-id")
     speak.add_argument("text")
+
+    agent = sub.add_parser(
+        "agent",
+        help="Bridge DDS ASR results through local llama.cpp into streaming TTS",
+    )
+    agent.add_argument("--config", required=True)
+    agent.add_argument(
+        "--url",
+        default="http://127.0.0.1:8080/v1/chat/completions",
+    )
+    agent.add_argument("--model", default="local-qwen3-4b")
+    persona = agent.add_mutually_exclusive_group()
+    persona.add_argument("--system-prompt")
+    persona.add_argument(
+        "--role-file",
+        help="Legacy UTF-8 role prompt file",
+    )
+    persona.add_argument(
+        "--role-package",
+        help="Versioned Role Package directory or role.json manifest",
+    )
+    agent.add_argument("--max-tokens", type=int)
+    agent.add_argument("--temperature", type=float)
+    agent.add_argument("--history-turns", type=int)
+    agent.add_argument(
+        "--thinking",
+        dest="enable_thinking",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Qwen3 reasoning; reasoning text is not sent to TTS",
+    )
+    agent.add_argument(
+        "--thinking-budget-tokens",
+        type=int,
+        default=None,
+        help="Maximum reasoning tokens when thinking is enabled (-1 is unlimited)",
+    )
+    agent.add_argument(
+        "--thinking-budget-message",
+        default=None,
+        help="Instruction inserted when llama.cpp exhausts the thinking budget",
+    )
+    agent.add_argument("--request-timeout", type=float, default=120.0)
+    agent.add_argument("--max-speech-age", type=float, default=5.0)
+    agent.add_argument(
+        "--tts-voice",
+        default=None,
+        help="Override the TTS preset voice for this Agent character",
+    )
+    agent.add_argument(
+        "--tts-language",
+        default=None,
+        help="Override the TTS language for this Agent character",
+    )
+    agent.add_argument(
+        "--tts-instructions",
+        default=None,
+        help="Optional TTS delivery/style instructions",
+    )
     return parser
 
 
@@ -115,6 +182,85 @@ def main(argv: list[str] | None = None) -> int:
             args.language,
             args.voice,
             args.instructions,
+        )
+    if args.command == "agent":
+        config = load_config(args.config, runtime_environment=os.environ)
+        role_package = (
+            load_role_package(args.role_package) if args.role_package else None
+        )
+        if role_package:
+            system_prompt = role_package.prompt
+            role_model = role_package.model
+            role_voice = role_package.voice
+            role_history = (
+                role_package.memory.max_turns
+                if role_package.memory.provider == "window"
+                else 0
+            )
+        else:
+            system_prompt = (
+                load_role_prompt(args.role_file)
+                if args.role_file
+                else args.system_prompt or DEFAULT_SYSTEM_PROMPT
+            )
+            role_model = None
+            role_voice = None
+            role_history = 4
+        return run_local_voice_agent(
+            config,
+            LocalAgentSettings(
+                url=args.url,
+                model=args.model,
+                system_prompt=system_prompt,
+                max_tokens=(
+                    args.max_tokens
+                    if args.max_tokens is not None
+                    else role_model.max_tokens if role_model else 64
+                ),
+                temperature=(
+                    args.temperature
+                    if args.temperature is not None
+                    else role_model.temperature if role_model else 0.2
+                ),
+                history_turns=(
+                    args.history_turns
+                    if args.history_turns is not None
+                    else role_history
+                ),
+                enable_thinking=(
+                    args.enable_thinking
+                    if args.enable_thinking is not None
+                    else role_model.thinking if role_model else False
+                ),
+                reasoning_budget_tokens=(
+                    args.thinking_budget_tokens
+                    if args.thinking_budget_tokens is not None
+                    else role_model.thinking_budget_tokens if role_model else -1
+                ),
+                reasoning_budget_message=(
+                    args.thinking_budget_message
+                    if args.thinking_budget_message is not None
+                    else DEFAULT_REASONING_BUDGET_MESSAGE
+                ),
+                request_timeout_seconds=args.request_timeout,
+                max_speech_age_seconds=args.max_speech_age,
+                tts_voice=(
+                    args.tts_voice
+                    if args.tts_voice is not None
+                    else role_voice.voice if role_voice else ""
+                ),
+                tts_language=(
+                    args.tts_language
+                    if args.tts_language is not None
+                    else role_voice.language if role_voice else ""
+                ),
+                tts_instructions=(
+                    args.tts_instructions
+                    if args.tts_instructions is not None
+                    else role_voice.instructions if role_voice else ""
+                ),
+            ),
+            role_package=role_package,
         )
     parser.error("unknown command")
     return 2
