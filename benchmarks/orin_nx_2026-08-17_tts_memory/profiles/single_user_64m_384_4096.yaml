@@ -1,10 +1,4 @@
-# Validated low-latency, low-memory single-request profile for Jetson Orin NX 16 GB.
-#
-# This is derived from vLLM-Omni's qwen3_tts.yaml. It preserves the upstream
-# streaming/correctness constraints while sizing runtime state for one robot
-# utterance of at most about 30 Chinese characters. The launcher selects
-# TRITON_ATTN because the
-# native SM87 FA2 extension stalls during Stage-0 FULL decode graph capture.
+# Experimental single-user profile. Derived from profiles/qwen3-tts-orin-nx.yaml.
 async_chunk: true
 
 connectors:
@@ -23,14 +17,11 @@ connectors:
 stages:
   - stage_id: 0
     max_num_seqs: 1
-    # Keep the validated utilization guard, but reserve KV explicitly. The old
-    # utilization-only profile allocated 1.96 GiB / 18,352 tokens despite
-    # max_num_seqs=1. 64 MiB gives 576 tokens on this model: 1.5x the 384-token
-    # request bound and over 3x the measured 181-token 30-character workload.
     gpu_memory_utilization: 0.23
+    # Explicit reservation prevents a serving-oriented utilization target from
+    # consuming all otherwise available RAM. Measured batch-1 384-token demand
+    # is about 44 MiB; 64 MiB retains allocator/block headroom.
     kv_cache_memory_bytes: 67108864
-    # FULL captures the batch-1 decode step; PIECEWISE covers mixed
-    # prefill/decode. This combination is validated with TRITON_ATTN on SM87.
     enforce_eager: false
     compilation_config:
       cudagraph_mode: FULL_AND_PIECEWISE
@@ -63,10 +54,8 @@ stages:
     trust_remote_code: true
     enable_prefix_caching: false
     async_scheduling: true
-    # An approximately 30-Chinese-character reply measured at 134 semantic
-    # frames. Q=16 gives about
-    # 2,144 flattened codec tokens; 4,096 retains roughly 1.9x headroom. Stage 1
-    # has no KV cache, so this is principally a correctness/scheduler bound.
+    # The measured approximately 30-Chinese-character request emitted 134 semantic frames,
+    # or about 2,144 flattened Q=16 codec tokens. 4,096 keeps ~1.9x headroom.
     max_num_batched_tokens: 4096
     max_model_len: 4096
     devices: "0"

@@ -1,0 +1,9 @@
+profile,state,system_used_kib,system_delta_vs_tts_off_kib,selected_pss_kib,stage0_gpu_mapping_kib,stage1_gpu_mapping_kib,first_pcm_mean_ms,rtf_mean,notes
+tts_off,before,5839288,0,531192,,,,,
+baseline_1024_65536,idle,12847504,7008216,4602486,,,,,"Stage-0 KV 1.96 GiB; GPU mapping was sampled reliably after workload"
+baseline_1024_65536,after_workload,14525452,8686164,5081990,4365684,833428,239.348,0.717095,
+single_user_64m_384_4096,idle,10774636,4935348,4641347,,,,,
+single_user_64m_384_4096,workload_peak,12250912,6411624,5217640,2331652,587668,231.625,0.711742,"system_used is sampled peak; GPU mappings are post-workload"
+single_user_64m_stage1_65536,idle,10886756,5047468,4621831,,,,,"Stage-1 bounds alone changed idle system memory by only about 0.1 GiB, within cache/process variation"
+native_qwen_tts,loaded,6767936,928648,1270542,,,,,"native process CUDA reserved 2.133 GiB; selected PSS includes ASR service"
+tts_off,after,5720816,0,425609,,,,,

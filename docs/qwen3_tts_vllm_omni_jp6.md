@@ -204,6 +204,13 @@ The complete attribution, caveats, and comparison table are in
 Machine-readable summaries and per-run responses are retained under
 `benchmarks/orin_nx_2026-08-13_vllm_omni/experiments/`.
 
+For the concurrency-one robot deployment, the production profile now explicitly
+limits Stage-0 KV cache to 64 MiB instead of allowing vLLM to fill the general
+serving memory budget. This saves about 2 GiB while retaining the same attention
+and CUDA Graph baseline. The measurements, short-reply token envelope, native
+runtime lower bound, rollback profile, and stopping decisions are documented in
+[Qwen3-TTS single-user memory profile on Jetson Orin NX](qwen3_tts_memory_orin_nx.md).
+
 ## Voice-model semantics
 
 The downloaded **CustomVoice** checkpoint provides preset speakers such as Ryan and

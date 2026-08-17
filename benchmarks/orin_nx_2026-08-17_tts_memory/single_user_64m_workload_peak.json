@@ -1,0 +1,5011 @@
+{
+  "schema_version": 1,
+  "label": "single_user_64m_workload_peak",
+  "timestamp_unix": 1786907703.4078336,
+  "hostname": "nvidia-desktop",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "python": {
+    "executable": "/usr/bin/python3",
+    "version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]"
+  },
+  "patterns": [
+    "vllm",
+    "qwen3-tts",
+    "g1-speech",
+    "omni"
+  ],
+  "system_memory": {
+    "meminfo": {
+      "MemTotal_kib": 16031236,
+      "MemFree_kib": 521144,
+      "MemAvailable_kib": 3887496,
+      "Buffers_kib": 51136,
+      "Cached_kib": 3474724,
+      "SwapCached_kib": 1136,
+      "Active_kib": 1696592,
+      "Inactive_kib": 7595964,
+      "Active(anon)_kib": 303612,
+      "Inactive(anon)_kib": 5515016,
+      "Active(file)_kib": 1392980,
+      "Inactive(file)_kib": 2080948,
+      "Unevictable_kib": 35412,
+      "Mlocked_kib": 16,
+      "SwapTotal_kib": 8015584,
+      "SwapFree_kib": 7280608,
+      "Dirty_kib": 4,
+      "Writeback_kib": 0,
+      "AnonPages_kib": 5777216,
+      "Mapped_kib": 590268,
+      "Shmem_kib": 16528,
+      "KReclaimable_kib": 146444,
+      "Slab_kib": 286496,
+      "SReclaimable_kib": 146444,
+      "SUnreclaim_kib": 140052,
+      "KernelStack_kib": 16992,
+      "PageTables_kib": 47292,
+      "NFS_Unstable_kib": 0,
+      "Bounce_kib": 0,
+      "WritebackTmp_kib": 0,
+      "CommitLimit_kib": 16031200,
+      "Committed_AS_kib": 20183620,
+      "VmallocTotal_kib": 133143592960,
+      "VmallocUsed_kib": 121144,
+      "VmallocChunk_kib": 0,
+      "Percpu_kib": 7584,
+      "HardwareCorrupted_kib": 0,
+      "AnonHugePages_kib": 1755136,
+      "ShmemHugePages_kib": 0,
+      "ShmemPmdMapped_kib": 0,
+      "FileHugePages_kib": 0,
+      "FilePmdMapped_kib": 0,
+      "CmaTotal_kib": 262144,
+      "CmaFree_kib": 20,
+      "HugePages_Total": 0,
+      "HugePages_Free": 0,
+      "HugePages_Rsvd": 0,
+      "HugePages_Surp": 0,
+      "Hugepagesize_kib": 2048,
+      "Hugetlb_kib": 0
+    },
+    "used_excluding_available_kib": 12143740
+  },
+  "processes": [
+    {
+      "pid": 24686,
+      "ppid": 1,
+      "name": "g1-speech",
+      "cmdline": [
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/g1-speech",
+        "serve",
+        "--config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/config.tts-demo.local.json",
+        "--transport",
+        "dds"
+      ],
+      "rss_kib": 442152,
+      "rss_anon_kib": 338388,
+      "rss_file_kib": 103756,
+      "rss_shmem_kib": 8,
+      "vm_size_kib": 19934300,
+      "swap_kib": 103372,
+      "pss_kib": 378482,
+      "private_clean_kib": 18700,
+      "private_dirty_kib": 339224,
+      "shared_clean_kib": 77976,
+      "shared_dirty_kib": 8020
+    },
+    {
+      "pid": 33662,
+      "ppid": 4848,
+      "name": "python",
+      "cmdline": [
+        "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/scripts/vllm-omni-orin-launcher.py",
+        "serve",
+        "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+        "--omni",
+        "--port",
+        "8091",
+        "--deploy-config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/benchmarks/orin_nx_2026-08-17_tts_memory/profiles/single_user_64m_384_4096.yaml",
+        "--trust-remote-code",
+        "--allowed-local-media-path",
+        "/home/nvidia/Developer/llama",
+        "--attention-backend",
+        "TRITON_ATTN"
+      ],
+      "rss_kib": 1396036,
+      "rss_anon_kib": 1143316,
+      "rss_file_kib": 252720,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 23025568,
+      "swap_kib": 0,
+      "pss_kib": 1209019,
+      "private_clean_kib": 1396,
+      "private_dirty_kib": 1144288,
+      "shared_clean_kib": 252744,
+      "shared_dirty_kib": 0
+    },
+    {
+      "pid": 33708,
+      "ppid": 33662,
+      "name": "python",
+      "cmdline": [
+        "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+        "-c",
+        "from multiprocessing.resource_tracker import main;main(25)"
+      ],
+      "rss_kib": 541800,
+      "rss_anon_kib": 350684,
+      "rss_file_kib": 191116,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 2750784,
+      "swap_kib": 0,
+      "pss_kib": 394113,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 350920,
+      "shared_clean_kib": 191580,
+      "shared_dirty_kib": 0
+    },
+    {
+      "pid": 33709,
+      "ppid": 33662,
+      "name": "VLLM::StageEngi",
+      "cmdline": [
+        "VLLM::StageEngineCoreProc_stage0_replica0_DP0"
+      ],
+      "rss_kib": 1969264,
+      "rss_anon_kib": 1648276,
+      "rss_file_kib": 320984,
+      "rss_shmem_kib": 4,
+      "vm_size_kib": 26061744,
+      "swap_kib": 0,
+      "pss_kib": 1780468,
+      "private_clean_kib": 47940,
+      "private_dirty_kib": 1648968,
+      "shared_clean_kib": 276108,
+      "shared_dirty_kib": 19400
+    },
+    {
+      "pid": 34717,
+      "ppid": 33662,
+      "name": "VLLM::StageEngi",
+      "cmdline": [
+        "VLLM::StageEngineCoreProc_stage1_replica0_DP0"
+      ],
+      "rss_kib": 1661156,
+      "rss_anon_kib": 1328056,
+      "rss_file_kib": 333096,
+      "rss_shmem_kib": 4,
+      "vm_size_kib": 25186968,
+      "swap_kib": 0,
+      "pss_kib": 1455558,
+      "private_clean_kib": 41808,
+      "private_dirty_kib": 1329272,
+      "shared_clean_kib": 279576,
+      "shared_dirty_kib": 17768
+    }
+  ],
+  "selected_process_totals": {
+    "rss_kib": 6010408,
+    "pss_kib": 5217640,
+    "swap_kib": 103372
+  },
+  "timeseries": [
+    {
+      "timestamp_unix": 1786907637.7773046,
+      "used_excluding_available_kib": 10781892,
+      "mem_available_kib": 5249344,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907637.8873744,
+      "used_excluding_available_kib": 10781784,
+      "mem_available_kib": 5249452,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907637.9966464,
+      "used_excluding_available_kib": 10781604,
+      "mem_available_kib": 5249632,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.1075697,
+      "used_excluding_available_kib": 10781604,
+      "mem_available_kib": 5249632,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.2177973,
+      "used_excluding_available_kib": 10781604,
+      "mem_available_kib": 5249632,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.3294046,
+      "used_excluding_available_kib": 10780948,
+      "mem_available_kib": 5250288,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.4400675,
+      "used_excluding_available_kib": 10781036,
+      "mem_available_kib": 5250200,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.5521488,
+      "used_excluding_available_kib": 10780976,
+      "mem_available_kib": 5250260,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.6596928,
+      "used_excluding_available_kib": 10780976,
+      "mem_available_kib": 5250260,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.7667477,
+      "used_excluding_available_kib": 10780976,
+      "mem_available_kib": 5250260,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.8769515,
+      "used_excluding_available_kib": 10781236,
+      "mem_available_kib": 5250000,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907638.987483,
+      "used_excluding_available_kib": 10792332,
+      "mem_available_kib": 5238904,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.0975394,
+      "used_excluding_available_kib": 10781860,
+      "mem_available_kib": 5249376,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.2062771,
+      "used_excluding_available_kib": 10781860,
+      "mem_available_kib": 5249376,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.3152192,
+      "used_excluding_available_kib": 10781848,
+      "mem_available_kib": 5249388,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.4231436,
+      "used_excluding_available_kib": 10781848,
+      "mem_available_kib": 5249388,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.5313506,
+      "used_excluding_available_kib": 10781848,
+      "mem_available_kib": 5249388,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.6396313,
+      "used_excluding_available_kib": 10781848,
+      "mem_available_kib": 5249388,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.749413,
+      "used_excluding_available_kib": 10781848,
+      "mem_available_kib": 5249388,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.8582697,
+      "used_excluding_available_kib": 10781856,
+      "mem_available_kib": 5249380,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907639.966354,
+      "used_excluding_available_kib": 10781856,
+      "mem_available_kib": 5249380,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.075658,
+      "used_excluding_available_kib": 10781968,
+      "mem_available_kib": 5249268,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.1853828,
+      "used_excluding_available_kib": 10781968,
+      "mem_available_kib": 5249268,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.2933812,
+      "used_excluding_available_kib": 10781968,
+      "mem_available_kib": 5249268,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.402429,
+      "used_excluding_available_kib": 10781968,
+      "mem_available_kib": 5249268,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.5126214,
+      "used_excluding_available_kib": 10782112,
+      "mem_available_kib": 5249124,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.6220145,
+      "used_excluding_available_kib": 10782112,
+      "mem_available_kib": 5249124,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.7305577,
+      "used_excluding_available_kib": 10782112,
+      "mem_available_kib": 5249124,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.8387945,
+      "used_excluding_available_kib": 10782112,
+      "mem_available_kib": 5249124,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907640.9471798,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.0557058,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.1652124,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.274849,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.3835993,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.4920478,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.60103,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.7094626,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.817817,
+      "used_excluding_available_kib": 10782048,
+      "mem_available_kib": 5249188,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907641.9264069,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.0350232,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.1444657,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.2533898,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.362799,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.4714801,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.5807154,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.6903715,
+      "used_excluding_available_kib": 10781988,
+      "mem_available_kib": 5249248,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.799925,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907642.9095912,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.0182295,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.1272807,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.2360227,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.3455606,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.4541569,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.5625107,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.6711109,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.779733,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.889565,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907643.9989095,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.1082096,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.218621,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.3271978,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.4369142,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.5461142,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.654753,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.7635133,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.8722184,
+      "used_excluding_available_kib": 10782240,
+      "mem_available_kib": 5248996,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907644.9815662,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.0910084,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.2003732,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.3091824,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.4185452,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.5271916,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.6358783,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.745851,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.8547454,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907645.9632754,
+      "used_excluding_available_kib": 10782220,
+      "mem_available_kib": 5249016,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.0720427,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.181654,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.290154,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.3985481,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.5070965,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.6152408,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.7238445,
+      "used_excluding_available_kib": 10782472,
+      "mem_available_kib": 5248764,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.8334522,
+      "used_excluding_available_kib": 10782488,
+      "mem_available_kib": 5248748,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907646.9426103,
+      "used_excluding_available_kib": 10782236,
+      "mem_available_kib": 5249000,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.050769,
+      "used_excluding_available_kib": 10782236,
+      "mem_available_kib": 5249000,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.1599376,
+      "used_excluding_available_kib": 10782236,
+      "mem_available_kib": 5249000,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.2722387,
+      "used_excluding_available_kib": 10787132,
+      "mem_available_kib": 5244104,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.3811514,
+      "used_excluding_available_kib": 10776728,
+      "mem_available_kib": 5254508,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.4903417,
+      "used_excluding_available_kib": 10776728,
+      "mem_available_kib": 5254508,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.5984995,
+      "used_excluding_available_kib": 10776728,
+      "mem_available_kib": 5254508,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.7065134,
+      "used_excluding_available_kib": 10776728,
+      "mem_available_kib": 5254508,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.8160706,
+      "used_excluding_available_kib": 10778272,
+      "mem_available_kib": 5252964,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907647.9261074,
+      "used_excluding_available_kib": 10778272,
+      "mem_available_kib": 5252964,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.035324,
+      "used_excluding_available_kib": 10777768,
+      "mem_available_kib": 5253468,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.144399,
+      "used_excluding_available_kib": 10777768,
+      "mem_available_kib": 5253468,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.254117,
+      "used_excluding_available_kib": 10777768,
+      "mem_available_kib": 5253468,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.3626084,
+      "used_excluding_available_kib": 10777768,
+      "mem_available_kib": 5253468,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.4720056,
+      "used_excluding_available_kib": 10777968,
+      "mem_available_kib": 5253268,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.5824442,
+      "used_excluding_available_kib": 10778076,
+      "mem_available_kib": 5253160,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.6909623,
+      "used_excluding_available_kib": 10778076,
+      "mem_available_kib": 5253160,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.7998216,
+      "used_excluding_available_kib": 10778076,
+      "mem_available_kib": 5253160,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907648.909545,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.01852,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.1272128,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.2361023,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.3453865,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.4542432,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.5641332,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.6736145,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.7826302,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.8910842,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907649.9997306,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.1104364,
+      "used_excluding_available_kib": 10778300,
+      "mem_available_kib": 5252936,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.2215605,
+      "used_excluding_available_kib": 10778728,
+      "mem_available_kib": 5252508,
+      "selected_rss_kib": 5421592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.3333414,
+      "used_excluding_available_kib": 10788400,
+      "mem_available_kib": 5242836,
+      "selected_rss_kib": 5438800,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.4441047,
+      "used_excluding_available_kib": 10794228,
+      "mem_available_kib": 5237008,
+      "selected_rss_kib": 5450592,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.5546122,
+      "used_excluding_available_kib": 10812824,
+      "mem_available_kib": 5218412,
+      "selected_rss_kib": 5465376,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.6645217,
+      "used_excluding_available_kib": 10833228,
+      "mem_available_kib": 5198008,
+      "selected_rss_kib": 5493088,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.7745445,
+      "used_excluding_available_kib": 10833228,
+      "mem_available_kib": 5198008,
+      "selected_rss_kib": 5493612,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.8850806,
+      "used_excluding_available_kib": 10834992,
+      "mem_available_kib": 5196244,
+      "selected_rss_kib": 5494932,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907650.99558,
+      "used_excluding_available_kib": 10847600,
+      "mem_available_kib": 5183636,
+      "selected_rss_kib": 5495124,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.1059313,
+      "used_excluding_available_kib": 10848104,
+      "mem_available_kib": 5183132,
+      "selected_rss_kib": 5495392,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.2170854,
+      "used_excluding_available_kib": 10846856,
+      "mem_available_kib": 5184380,
+      "selected_rss_kib": 5496016,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.3285854,
+      "used_excluding_available_kib": 10839800,
+      "mem_available_kib": 5191436,
+      "selected_rss_kib": 5496032,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.441497,
+      "used_excluding_available_kib": 10855240,
+      "mem_available_kib": 5175996,
+      "selected_rss_kib": 5496028,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.5516782,
+      "used_excluding_available_kib": 10873076,
+      "mem_available_kib": 5158160,
+      "selected_rss_kib": 5507132,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.6622791,
+      "used_excluding_available_kib": 10872140,
+      "mem_available_kib": 5159096,
+      "selected_rss_kib": 5516316,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.7727036,
+      "used_excluding_available_kib": 10873352,
+      "mem_available_kib": 5157884,
+      "selected_rss_kib": 5517636,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.8842876,
+      "used_excluding_available_kib": 10881720,
+      "mem_available_kib": 5149516,
+      "selected_rss_kib": 5525200,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907651.9947863,
+      "used_excluding_available_kib": 10881516,
+      "mem_available_kib": 5149720,
+      "selected_rss_kib": 5525636,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.1050506,
+      "used_excluding_available_kib": 10882524,
+      "mem_available_kib": 5148712,
+      "selected_rss_kib": 5526568,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.2158828,
+      "used_excluding_available_kib": 10883016,
+      "mem_available_kib": 5148220,
+      "selected_rss_kib": 5527444,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.3275867,
+      "used_excluding_available_kib": 10883016,
+      "mem_available_kib": 5148220,
+      "selected_rss_kib": 5530756,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.438736,
+      "used_excluding_available_kib": 10884656,
+      "mem_available_kib": 5146580,
+      "selected_rss_kib": 5530756,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.5502446,
+      "used_excluding_available_kib": 10888956,
+      "mem_available_kib": 5142280,
+      "selected_rss_kib": 5558644,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.660477,
+      "used_excluding_available_kib": 10882424,
+      "mem_available_kib": 5148812,
+      "selected_rss_kib": 5553936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.7712018,
+      "used_excluding_available_kib": 10891488,
+      "mem_available_kib": 5139748,
+      "selected_rss_kib": 5570628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.8816204,
+      "used_excluding_available_kib": 10889716,
+      "mem_available_kib": 5141520,
+      "selected_rss_kib": 5573160,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907652.9917676,
+      "used_excluding_available_kib": 10892660,
+      "mem_available_kib": 5138576,
+      "selected_rss_kib": 5576304,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.101614,
+      "used_excluding_available_kib": 10873840,
+      "mem_available_kib": 5157396,
+      "selected_rss_kib": 5531044,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.2130747,
+      "used_excluding_available_kib": 10877440,
+      "mem_available_kib": 5153796,
+      "selected_rss_kib": 5536196,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.3242905,
+      "used_excluding_available_kib": 10888352,
+      "mem_available_kib": 5142884,
+      "selected_rss_kib": 5554676,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.4359014,
+      "used_excluding_available_kib": 10980464,
+      "mem_available_kib": 5050772,
+      "selected_rss_kib": 5662412,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.545918,
+      "used_excluding_available_kib": 11036704,
+      "mem_available_kib": 4994532,
+      "selected_rss_kib": 5743524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.6550236,
+      "used_excluding_available_kib": 11054532,
+      "mem_available_kib": 4976704,
+      "selected_rss_kib": 5786620,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.7659383,
+      "used_excluding_available_kib": 11108240,
+      "mem_available_kib": 4922996,
+      "selected_rss_kib": 5852256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.8758023,
+      "used_excluding_available_kib": 11162400,
+      "mem_available_kib": 4868836,
+      "selected_rss_kib": 5915852,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907653.9858572,
+      "used_excluding_available_kib": 11218984,
+      "mem_available_kib": 4812252,
+      "selected_rss_kib": 5927008,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.09515,
+      "used_excluding_available_kib": 11273648,
+      "mem_available_kib": 4757588,
+      "selected_rss_kib": 5986800,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.2046258,
+      "used_excluding_available_kib": 11274048,
+      "mem_available_kib": 4757188,
+      "selected_rss_kib": 5987228,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.3149292,
+      "used_excluding_available_kib": 11357208,
+      "mem_available_kib": 4674028,
+      "selected_rss_kib": 5991568,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.4235504,
+      "used_excluding_available_kib": 11361152,
+      "mem_available_kib": 4670084,
+      "selected_rss_kib": 5994824,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.5326998,
+      "used_excluding_available_kib": 11361216,
+      "mem_available_kib": 4670020,
+      "selected_rss_kib": 5994824,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.6439443,
+      "used_excluding_available_kib": 11361632,
+      "mem_available_kib": 4669604,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.7539186,
+      "used_excluding_available_kib": 11361632,
+      "mem_available_kib": 4669604,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.8638682,
+      "used_excluding_available_kib": 11362512,
+      "mem_available_kib": 4668724,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907654.9737976,
+      "used_excluding_available_kib": 11362200,
+      "mem_available_kib": 4669036,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.0868711,
+      "used_excluding_available_kib": 11362200,
+      "mem_available_kib": 4669036,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.19657,
+      "used_excluding_available_kib": 11362452,
+      "mem_available_kib": 4668784,
+      "selected_rss_kib": 5994828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.3060765,
+      "used_excluding_available_kib": 11362452,
+      "mem_available_kib": 4668784,
+      "selected_rss_kib": 5994832,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.41613,
+      "used_excluding_available_kib": 11363104,
+      "mem_available_kib": 4668132,
+      "selected_rss_kib": 5995692,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.5250502,
+      "used_excluding_available_kib": 11363356,
+      "mem_available_kib": 4667880,
+      "selected_rss_kib": 5995776,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.6346178,
+      "used_excluding_available_kib": 11363356,
+      "mem_available_kib": 4667880,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.7447343,
+      "used_excluding_available_kib": 11363356,
+      "mem_available_kib": 4667880,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.8543985,
+      "used_excluding_available_kib": 11363356,
+      "mem_available_kib": 4667880,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907655.9638803,
+      "used_excluding_available_kib": 11363608,
+      "mem_available_kib": 4667628,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.0731306,
+      "used_excluding_available_kib": 11363856,
+      "mem_available_kib": 4667380,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.1827414,
+      "used_excluding_available_kib": 11363856,
+      "mem_available_kib": 4667380,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.292332,
+      "used_excluding_available_kib": 11363856,
+      "mem_available_kib": 4667380,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.4016414,
+      "used_excluding_available_kib": 11363856,
+      "mem_available_kib": 4667380,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.5110786,
+      "used_excluding_available_kib": 11363844,
+      "mem_available_kib": 4667392,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.6202967,
+      "used_excluding_available_kib": 11363844,
+      "mem_available_kib": 4667392,
+      "selected_rss_kib": 5995780,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.7298775,
+      "used_excluding_available_kib": 11363844,
+      "mem_available_kib": 4667392,
+      "selected_rss_kib": 5995784,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.8393734,
+      "used_excluding_available_kib": 11364348,
+      "mem_available_kib": 4666888,
+      "selected_rss_kib": 5996576,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907656.9497957,
+      "used_excluding_available_kib": 11364976,
+      "mem_available_kib": 4666260,
+      "selected_rss_kib": 5997096,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.0588374,
+      "used_excluding_available_kib": 11364976,
+      "mem_available_kib": 4666260,
+      "selected_rss_kib": 5997096,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.16974,
+      "used_excluding_available_kib": 11364976,
+      "mem_available_kib": 4666260,
+      "selected_rss_kib": 5997100,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.2802527,
+      "used_excluding_available_kib": 11366552,
+      "mem_available_kib": 4664684,
+      "selected_rss_kib": 5997892,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.3897257,
+      "used_excluding_available_kib": 11366552,
+      "mem_available_kib": 4664684,
+      "selected_rss_kib": 5997928,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.4991384,
+      "used_excluding_available_kib": 11368152,
+      "mem_available_kib": 4663084,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.6086066,
+      "used_excluding_available_kib": 11368400,
+      "mem_available_kib": 4662836,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.7189105,
+      "used_excluding_available_kib": 11368400,
+      "mem_available_kib": 4662836,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.8289688,
+      "used_excluding_available_kib": 11368592,
+      "mem_available_kib": 4662644,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907657.9394734,
+      "used_excluding_available_kib": 11368592,
+      "mem_available_kib": 4662644,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.0501752,
+      "used_excluding_available_kib": 11368592,
+      "mem_available_kib": 4662644,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.161699,
+      "used_excluding_available_kib": 11368592,
+      "mem_available_kib": 4662644,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.272038,
+      "used_excluding_available_kib": 11368592,
+      "mem_available_kib": 4662644,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.3834293,
+      "used_excluding_available_kib": 11372640,
+      "mem_available_kib": 4658596,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.4933033,
+      "used_excluding_available_kib": 11372640,
+      "mem_available_kib": 4658596,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.6035404,
+      "used_excluding_available_kib": 11372612,
+      "mem_available_kib": 4658624,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.713952,
+      "used_excluding_available_kib": 11372612,
+      "mem_available_kib": 4658624,
+      "selected_rss_kib": 5997936,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.823512,
+      "used_excluding_available_kib": 11373092,
+      "mem_available_kib": 4658144,
+      "selected_rss_kib": 5998572,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907658.934024,
+      "used_excluding_available_kib": 11374808,
+      "mem_available_kib": 4656428,
+      "selected_rss_kib": 5998584,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.0453153,
+      "used_excluding_available_kib": 11375060,
+      "mem_available_kib": 4656176,
+      "selected_rss_kib": 5998584,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.1576545,
+      "used_excluding_available_kib": 11375060,
+      "mem_available_kib": 4656176,
+      "selected_rss_kib": 5998584,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.271984,
+      "used_excluding_available_kib": 11375060,
+      "mem_available_kib": 4656176,
+      "selected_rss_kib": 5998584,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.3853533,
+      "used_excluding_available_kib": 11375060,
+      "mem_available_kib": 4656176,
+      "selected_rss_kib": 5998584,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.4955711,
+      "used_excluding_available_kib": 11375060,
+      "mem_available_kib": 4656176,
+      "selected_rss_kib": 5998596,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.6052084,
+      "used_excluding_available_kib": 11453208,
+      "mem_available_kib": 4578028,
+      "selected_rss_kib": 5999084,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.7151008,
+      "used_excluding_available_kib": 11454428,
+      "mem_available_kib": 4576808,
+      "selected_rss_kib": 5999288,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.8241343,
+      "used_excluding_available_kib": 11454492,
+      "mem_available_kib": 4576744,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907659.9339137,
+      "used_excluding_available_kib": 11454492,
+      "mem_available_kib": 4576744,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.0465202,
+      "used_excluding_available_kib": 11454492,
+      "mem_available_kib": 4576744,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.1591396,
+      "used_excluding_available_kib": 11456300,
+      "mem_available_kib": 4574936,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.2713025,
+      "used_excluding_available_kib": 11456552,
+      "mem_available_kib": 4574684,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.3837166,
+      "used_excluding_available_kib": 11456552,
+      "mem_available_kib": 4574684,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.4932752,
+      "used_excluding_available_kib": 11456552,
+      "mem_available_kib": 4574684,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.6019466,
+      "used_excluding_available_kib": 11456552,
+      "mem_available_kib": 4574684,
+      "selected_rss_kib": 5999296,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.7112474,
+      "used_excluding_available_kib": 11458568,
+      "mem_available_kib": 4572668,
+      "selected_rss_kib": 6000364,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.8209124,
+      "used_excluding_available_kib": 11458568,
+      "mem_available_kib": 4572668,
+      "selected_rss_kib": 6000364,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907660.930194,
+      "used_excluding_available_kib": 11459024,
+      "mem_available_kib": 4572212,
+      "selected_rss_kib": 6000364,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.0394,
+      "used_excluding_available_kib": 11459024,
+      "mem_available_kib": 4572212,
+      "selected_rss_kib": 6000364,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.14899,
+      "used_excluding_available_kib": 11459024,
+      "mem_available_kib": 4572212,
+      "selected_rss_kib": 6000364,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.2578726,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.3692374,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.480496,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.5896163,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.6987936,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.8075128,
+      "used_excluding_available_kib": 11459496,
+      "mem_available_kib": 4571740,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907661.916947,
+      "used_excluding_available_kib": 11459720,
+      "mem_available_kib": 4571516,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.025438,
+      "used_excluding_available_kib": 11459712,
+      "mem_available_kib": 4571524,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.1343148,
+      "used_excluding_available_kib": 11459712,
+      "mem_available_kib": 4571524,
+      "selected_rss_kib": 6000628,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.243445,
+      "used_excluding_available_kib": 11459712,
+      "mem_available_kib": 4571524,
+      "selected_rss_kib": 6000644,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.3526032,
+      "used_excluding_available_kib": 11542388,
+      "mem_available_kib": 4488848,
+      "selected_rss_kib": 6000908,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.4618652,
+      "used_excluding_available_kib": 11542760,
+      "mem_available_kib": 4488476,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.571013,
+      "used_excluding_available_kib": 11542760,
+      "mem_available_kib": 4488476,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.6799586,
+      "used_excluding_available_kib": 11530928,
+      "mem_available_kib": 4500308,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.7896135,
+      "used_excluding_available_kib": 11531508,
+      "mem_available_kib": 4499728,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907662.8991747,
+      "used_excluding_available_kib": 11531544,
+      "mem_available_kib": 4499692,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.0119479,
+      "used_excluding_available_kib": 11531544,
+      "mem_available_kib": 4499692,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.1243372,
+      "used_excluding_available_kib": 11531544,
+      "mem_available_kib": 4499692,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.2367194,
+      "used_excluding_available_kib": 11531796,
+      "mem_available_kib": 4499440,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.348842,
+      "used_excluding_available_kib": 11531796,
+      "mem_available_kib": 4499440,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.4611769,
+      "used_excluding_available_kib": 11531796,
+      "mem_available_kib": 4499440,
+      "selected_rss_kib": 6001436,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.5716374,
+      "used_excluding_available_kib": 11553812,
+      "mem_available_kib": 4477424,
+      "selected_rss_kib": 6024444,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.6833792,
+      "used_excluding_available_kib": 11733688,
+      "mem_available_kib": 4297548,
+      "selected_rss_kib": 6025236,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.792711,
+      "used_excluding_available_kib": 11937104,
+      "mem_available_kib": 4094132,
+      "selected_rss_kib": 6025236,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907663.9010532,
+      "used_excluding_available_kib": 11937104,
+      "mem_available_kib": 4094132,
+      "selected_rss_kib": 6025236,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.0120409,
+      "used_excluding_available_kib": 11937796,
+      "mem_available_kib": 4093440,
+      "selected_rss_kib": 6025500,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.1263437,
+      "used_excluding_available_kib": 11944836,
+      "mem_available_kib": 4086400,
+      "selected_rss_kib": 6025496,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.2394555,
+      "used_excluding_available_kib": 11948628,
+      "mem_available_kib": 4082608,
+      "selected_rss_kib": 6025496,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.3514771,
+      "used_excluding_available_kib": 11948628,
+      "mem_available_kib": 4082608,
+      "selected_rss_kib": 6026304,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.4635565,
+      "used_excluding_available_kib": 12238396,
+      "mem_available_kib": 3792840,
+      "selected_rss_kib": 6026304,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.5729992,
+      "used_excluding_available_kib": 12238644,
+      "mem_available_kib": 3792592,
+      "selected_rss_kib": 6027252,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.682173,
+      "used_excluding_available_kib": 12240552,
+      "mem_available_kib": 3790684,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.792029,
+      "used_excluding_available_kib": 12240552,
+      "mem_available_kib": 3790684,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907664.9013052,
+      "used_excluding_available_kib": 12241032,
+      "mem_available_kib": 3790204,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.0105367,
+      "used_excluding_available_kib": 12241032,
+      "mem_available_kib": 3790204,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.1193876,
+      "used_excluding_available_kib": 12241284,
+      "mem_available_kib": 3789952,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.2286627,
+      "used_excluding_available_kib": 12241284,
+      "mem_available_kib": 3789952,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.3380265,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.4476671,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027256,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.5573418,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.6667645,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.7758267,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.8858025,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907665.994942,
+      "used_excluding_available_kib": 12241524,
+      "mem_available_kib": 3789712,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.1043408,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.214827,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.3241534,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.4334435,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.5429082,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.6520443,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.7612753,
+      "used_excluding_available_kib": 12242000,
+      "mem_available_kib": 3789236,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.8702226,
+      "used_excluding_available_kib": 12242252,
+      "mem_available_kib": 3788984,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907666.9794197,
+      "used_excluding_available_kib": 12242252,
+      "mem_available_kib": 3788984,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.0920208,
+      "used_excluding_available_kib": 12242252,
+      "mem_available_kib": 3788984,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.2043324,
+      "used_excluding_available_kib": 12242252,
+      "mem_available_kib": 3788984,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.3169897,
+      "used_excluding_available_kib": 12242252,
+      "mem_available_kib": 3788984,
+      "selected_rss_kib": 6027260,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.429311,
+      "used_excluding_available_kib": 12242700,
+      "mem_available_kib": 3788536,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.5418582,
+      "used_excluding_available_kib": 12242952,
+      "mem_available_kib": 3788284,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.6521153,
+      "used_excluding_available_kib": 12243456,
+      "mem_available_kib": 3787780,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.761396,
+      "used_excluding_available_kib": 12243456,
+      "mem_available_kib": 3787780,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.8717186,
+      "used_excluding_available_kib": 12243456,
+      "mem_available_kib": 3787780,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907667.9807649,
+      "used_excluding_available_kib": 12243456,
+      "mem_available_kib": 3787780,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.0896027,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.198207,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.3066545,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.4151437,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.523881,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.6353347,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.743803,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027524,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.8525257,
+      "used_excluding_available_kib": 12243708,
+      "mem_available_kib": 3787528,
+      "selected_rss_kib": 6027788,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907668.961543,
+      "used_excluding_available_kib": 12243700,
+      "mem_available_kib": 3787536,
+      "selected_rss_kib": 6027788,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.074294,
+      "used_excluding_available_kib": 12243700,
+      "mem_available_kib": 3787536,
+      "selected_rss_kib": 6028076,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.1869466,
+      "used_excluding_available_kib": 12243772,
+      "mem_available_kib": 3787464,
+      "selected_rss_kib": 6028340,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.2993064,
+      "used_excluding_available_kib": 12237504,
+      "mem_available_kib": 3793732,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.4104884,
+      "used_excluding_available_kib": 12237404,
+      "mem_available_kib": 3793832,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.5205925,
+      "used_excluding_available_kib": 12237400,
+      "mem_available_kib": 3793836,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.6306777,
+      "used_excluding_available_kib": 12237400,
+      "mem_available_kib": 3793836,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.7401724,
+      "used_excluding_available_kib": 12237400,
+      "mem_available_kib": 3793836,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.8506083,
+      "used_excluding_available_kib": 12237400,
+      "mem_available_kib": 3793836,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907669.9600565,
+      "used_excluding_available_kib": 12237388,
+      "mem_available_kib": 3793848,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.0701416,
+      "used_excluding_available_kib": 12237388,
+      "mem_available_kib": 3793848,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.1801882,
+      "used_excluding_available_kib": 12237388,
+      "mem_available_kib": 3793848,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.2915738,
+      "used_excluding_available_kib": 12237388,
+      "mem_available_kib": 3793848,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.4033146,
+      "used_excluding_available_kib": 12237388,
+      "mem_available_kib": 3793848,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.5155215,
+      "used_excluding_available_kib": 12237128,
+      "mem_available_kib": 3794108,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.6235464,
+      "used_excluding_available_kib": 12237128,
+      "mem_available_kib": 3794108,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.7311447,
+      "used_excluding_available_kib": 12237128,
+      "mem_available_kib": 3794108,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.8390098,
+      "used_excluding_available_kib": 12237128,
+      "mem_available_kib": 3794108,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907670.9473586,
+      "used_excluding_available_kib": 12237128,
+      "mem_available_kib": 3794108,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.0556867,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.163651,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.2721732,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.3803246,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.489034,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.5970082,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.7057192,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.8148956,
+      "used_excluding_available_kib": 12237016,
+      "mem_available_kib": 3794220,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907671.9235148,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.0321836,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.1403737,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.2489743,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.3573892,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.4676962,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.5775137,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.6863909,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.7951064,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907672.9039757,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.013226,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.121241,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.2290454,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.337061,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.4457848,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.55323,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.6608584,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.7701,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.8791542,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907673.988157,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.0966358,
+      "used_excluding_available_kib": 12237004,
+      "mem_available_kib": 3794232,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.207101,
+      "used_excluding_available_kib": 12238012,
+      "mem_available_kib": 3793224,
+      "selected_rss_kib": 6008960,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.3178573,
+      "used_excluding_available_kib": 12250912,
+      "mem_available_kib": 3780324,
+      "selected_rss_kib": 6008856,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.4270754,
+      "used_excluding_available_kib": 12130148,
+      "mem_available_kib": 3901088,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.5367203,
+      "used_excluding_available_kib": 12130396,
+      "mem_available_kib": 3900840,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.645212,
+      "used_excluding_available_kib": 12130396,
+      "mem_available_kib": 3900840,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.7542932,
+      "used_excluding_available_kib": 12130396,
+      "mem_available_kib": 3900840,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.8635921,
+      "used_excluding_available_kib": 12132676,
+      "mem_available_kib": 3898560,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907674.9750736,
+      "used_excluding_available_kib": 12130100,
+      "mem_available_kib": 3901136,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.0838168,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.1920826,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.3004498,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.4092045,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.5172613,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.624758,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.732891,
+      "used_excluding_available_kib": 12130340,
+      "mem_available_kib": 3900896,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.840965,
+      "used_excluding_available_kib": 12130344,
+      "mem_available_kib": 3900892,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907675.9494858,
+      "used_excluding_available_kib": 12130344,
+      "mem_available_kib": 3900892,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.0589836,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.1672757,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.2755098,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.3839564,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.492005,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.6022747,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.710383,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.8183396,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907676.9269154,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.0355086,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.143967,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.25239,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.360921,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.4690328,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.5773356,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.687343,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.7953577,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907677.9038503,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.0126731,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.121382,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.2304842,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.3396938,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.4497452,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.5580769,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.6666932,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.775463,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.8840196,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907678.9933624,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.1019359,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.2102458,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.3185558,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.4268281,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.5348651,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.643154,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.7512715,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.8595746,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907679.9684892,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.0771897,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.1854272,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.2937477,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.401622,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.509658,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.6181626,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.7268393,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.8355355,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907680.9443188,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.053281,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.1619394,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.2707806,
+      "used_excluding_available_kib": 12130584,
+      "mem_available_kib": 3900652,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.3794026,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.4877493,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.5967734,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.706057,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.8148017,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907681.9236276,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.0326028,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.1413405,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.2498338,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.3582835,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.4672089,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.5755873,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.6841588,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.7936544,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907682.902464,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.011415,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.120065,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.2294524,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.3379521,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.4464953,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.5551226,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.6635277,
+      "used_excluding_available_kib": 12130836,
+      "mem_available_kib": 3900400,
+      "selected_rss_kib": 6008828,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.7743366,
+      "used_excluding_available_kib": 12131844,
+      "mem_available_kib": 3899392,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.8848596,
+      "used_excluding_available_kib": 12131844,
+      "mem_available_kib": 3899392,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907683.993715,
+      "used_excluding_available_kib": 12132096,
+      "mem_available_kib": 3899140,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.1023238,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.2104523,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.3182402,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.4259243,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.5337653,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.6415234,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.749465,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.856984,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907684.9648259,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.0710402,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.1773324,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.2863073,
+      "used_excluding_available_kib": 12132320,
+      "mem_available_kib": 3898916,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.3946884,
+      "used_excluding_available_kib": 12134336,
+      "mem_available_kib": 3896900,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.5023332,
+      "used_excluding_available_kib": 12134336,
+      "mem_available_kib": 3896900,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.6097524,
+      "used_excluding_available_kib": 12134336,
+      "mem_available_kib": 3896900,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.7166812,
+      "used_excluding_available_kib": 12134336,
+      "mem_available_kib": 3896900,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.8247879,
+      "used_excluding_available_kib": 12134336,
+      "mem_available_kib": 3896900,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907685.934696,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.0426521,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.1500218,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.2573035,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.3647323,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.47303,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.5811808,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.6879947,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.794769,
+      "used_excluding_available_kib": 12135040,
+      "mem_available_kib": 3896196,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907686.9008894,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.007242,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.114243,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.2210455,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.3278997,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.435137,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.5419993,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.6491764,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.7564452,
+      "used_excluding_available_kib": 12135544,
+      "mem_available_kib": 3895692,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.864854,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907687.9722424,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.0794716,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.1866782,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.294202,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.401532,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.5089617,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.6163545,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.724369,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.8318355,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907688.9392338,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.0465596,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.1540446,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.2622194,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.3701246,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.4780703,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.5858638,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.6939955,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.801533,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907689.9094734,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.0169394,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.1249475,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.2327507,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.3401744,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.4476566,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.5554056,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.6629813,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.7701662,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.877175,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907690.984637,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.0930967,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.2005508,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.3085556,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.4164963,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.5241182,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.6325634,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.7408094,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.8484159,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907691.9564972,
+      "used_excluding_available_kib": 12136048,
+      "mem_available_kib": 3895188,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.0642903,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.1723013,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.281347,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.389272,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.4984422,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.606125,
+      "used_excluding_available_kib": 12135992,
+      "mem_available_kib": 3895244,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.7144992,
+      "used_excluding_available_kib": 12137504,
+      "mem_available_kib": 3893732,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.824047,
+      "used_excluding_available_kib": 12141816,
+      "mem_available_kib": 3889420,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907692.9338202,
+      "used_excluding_available_kib": 12142032,
+      "mem_available_kib": 3889204,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.0423303,
+      "used_excluding_available_kib": 12142032,
+      "mem_available_kib": 3889204,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.1506774,
+      "used_excluding_available_kib": 12142032,
+      "mem_available_kib": 3889204,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.259038,
+      "used_excluding_available_kib": 12142032,
+      "mem_available_kib": 3889204,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.3671384,
+      "used_excluding_available_kib": 12142032,
+      "mem_available_kib": 3889204,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.4756057,
+      "used_excluding_available_kib": 12142272,
+      "mem_available_kib": 3888964,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.5847135,
+      "used_excluding_available_kib": 12142272,
+      "mem_available_kib": 3888964,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.694114,
+      "used_excluding_available_kib": 12142272,
+      "mem_available_kib": 3888964,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.8027167,
+      "used_excluding_available_kib": 12142272,
+      "mem_available_kib": 3888964,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907693.9115388,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.019978,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.1294563,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.2379532,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.3462162,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.4545438,
+      "used_excluding_available_kib": 12142512,
+      "mem_available_kib": 3888724,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.5636806,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.6723425,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.780829,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.8891528,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907694.9979045,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.1076927,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.2175624,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.3257952,
+      "used_excluding_available_kib": 12143016,
+      "mem_available_kib": 3888220,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.4337375,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.5414543,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.6488545,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.756578,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.863861,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907695.9714854,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.0786843,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.186162,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.2938986,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.401823,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.5096567,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.6174202,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.7251303,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.8331947,
+      "used_excluding_available_kib": 12143012,
+      "mem_available_kib": 3888224,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907696.9404407,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.0480323,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.1553485,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.2627978,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.3708587,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.4792674,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.5873203,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.6952417,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.803001,
+      "used_excluding_available_kib": 12143236,
+      "mem_available_kib": 3888000,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907697.910818,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.0181575,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.125345,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.232736,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.3410735,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.4494774,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.5572243,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.6658995,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.773416,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.8812182,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907698.9888957,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.0966327,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.2039592,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.3116207,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.4195797,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.5271616,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.6352308,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.742633,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.8500614,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907699.9574633,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.0663517,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.1743882,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.2872138,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.3963306,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.5040684,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.6121814,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.7189083,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.8262467,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907700.9332683,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.0406194,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.148462,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.2562883,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.363699,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.47149,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.5786996,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.6858692,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.792886,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907701.9000537,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.0070095,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.114608,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.222087,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.3309577,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.4378438,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.5452187,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.6521983,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.7589726,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.8659508,
+      "used_excluding_available_kib": 12143488,
+      "mem_available_kib": 3887748,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907702.9732275,
+      "used_excluding_available_kib": 12143740,
+      "mem_available_kib": 3887496,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    },
+    {
+      "timestamp_unix": 1786907703.08031,
+      "used_excluding_available_kib": 12143740,
+      "mem_available_kib": 3887496,
+      "selected_rss_kib": 6010408,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103372
+    }
+  ],
+  "timeseries_peaks": {
+    "used_excluding_available_kib": 12250912,
+    "selected_rss_kib": 6028340,
+    "selected_pss_kib": 0
+  },
+  "jtop": {
+    "available": false,
+    "skipped": true
+  },
+  "notes": [
+    "PSS is preferred for process-tree attribution because RSS double-counts shared pages.",
+    "Jetson GPU memory uses unified physical RAM and overlaps process/system memory; do not add it to PSS.",
+    "System used_excluding_available is MemTotal minus MemAvailable, not a TTS-only measurement."
+  ]
+}
