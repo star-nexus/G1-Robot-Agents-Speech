@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import Protocol, TypeAlias
+from typing import Any, Protocol, TypeAlias, TypedDict
 
-ChatMessage: TypeAlias = dict[str, str]
+ChatContentPart: TypeAlias = dict[str, Any]
+ChatContent: TypeAlias = str | list[ChatContentPart]
+
+
+class ChatMessage(TypedDict):
+    """OpenAI-compatible message shared by text and multimodal providers."""
+
+    role: str
+    content: ChatContent
 
 
 class ChatModelProvider(Protocol):

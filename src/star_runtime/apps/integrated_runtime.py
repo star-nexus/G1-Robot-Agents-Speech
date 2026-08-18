@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from ..agent.role import RolePackage
 from ..capabilities import CapabilityRegistry
 from ..robots import ActiveRobot, RobotAdapterCatalog
+from ..perception import VisionInput
 from ..speech.config import ServiceConfig
 from ..speech.playback import PlaybackGate
 from ..speech.service import SpeechService
@@ -93,6 +94,7 @@ def build_integrated_runtime(
     robot_adapter_id: str | None = None,
     robot_catalog: RobotAdapterCatalog | None = None,
     client: object | None = None,
+    vision: VisionInput | None = None,
 ) -> IntegratedRuntime:
     """Compose the default zero-middleware runtime without loading vendor SDKs early."""
 
@@ -121,6 +123,7 @@ def build_integrated_runtime(
             subscriber=transport.voice,
             role_package=role_package,
             capabilities=capabilities,
+            vision=vision,
         )
     except Exception:
         if robot is not None:
