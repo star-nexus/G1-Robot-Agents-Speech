@@ -180,7 +180,15 @@ class _DdsReader:
             self._thread = None
 
     def _on_data_available(self, reader: Any) -> None:
-        from cyclonedds.internal import InvalidSample
+        # A listener can only be created when Cyclone DDS is installed, but
+        # keeping the callback dependency-optional lets the queueing policy be
+        # tested and reused without importing the vendor runtime.
+        try:
+            from cyclonedds.internal import InvalidSample
+        except ImportError:
+            invalid_sample_type: type[Any] | tuple[type[Any], ...] = ()
+        else:
+            invalid_sample_type = InvalidSample
 
         try:
             samples: list[Any] = []
@@ -201,7 +209,7 @@ class _DdsReader:
             if self._stop:
                 return
             for sample in samples:
-                if isinstance(sample, InvalidSample):
+                if isinstance(sample, invalid_sample_type):
                     continue
                 if len(self._queue) >= self._capacity:
                     dropped += 1
@@ -227,4 +235,3 @@ class _DdsReader:
                 self._callback(sample)
             except Exception:  # noqa: BLE001
                 logger.exception("DDS subscriber callback failed on topic %s", self._topic_name)
-

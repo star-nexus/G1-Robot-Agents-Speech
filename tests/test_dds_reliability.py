@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 
 from g1_speech.contracts import SpeechEvent
@@ -190,7 +191,9 @@ def test_tts_dds_publisher_sets_idempotency_and_interrupt_fields():
     assert writer.message.source == "brain"
 
 
-def test_dds_listener_drains_coalesced_streaming_samples_in_one_notification():
+def test_dds_listener_drains_coalesced_streaming_samples_in_one_notification(
+    monkeypatch,
+):
     class BatchReader:
         def __init__(self):
             self.calls = 0
@@ -202,6 +205,7 @@ def test_dds_listener_drains_coalesced_streaming_samples_in_one_notification():
 
     reader = _DdsReader("tts", str, lambda _sample: None, queue_len=4)
     source = BatchReader()
+    monkeypatch.setitem(sys.modules, "cyclonedds.internal", None)
 
     reader._on_data_available(source)
 
