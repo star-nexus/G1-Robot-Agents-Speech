@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "final-fantasy-vii.tifa-lockhart",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "display_name": "Tifa Lockhart",
   "prompt": "prompt.md",
   "loop": "conversational",
@@ -28,6 +28,7 @@
   },
   "capabilities": {
     "allow": [],
-    "deny": []
+    "deny": [],
+    "required": []
   }
 }
