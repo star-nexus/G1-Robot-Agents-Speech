@@ -31,7 +31,9 @@ def test_orin_qwen_example_selects_the_sealed_configuration():
         (BASELINE_DIR / "stable_baseline.json").read_text(encoding="utf-8")
     )
     example = json.loads(
-        (ROOT / "config.qwen3-asr.example.json").read_text(encoding="utf-8")
+        (ROOT / "configs/examples/config.qwen3-asr.example.json").read_text(
+            encoding="utf-8"
+        )
     )
 
     assert example["qwen3_asr"]["dtype"] == baseline["configuration"]["dtype"]

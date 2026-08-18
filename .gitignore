@@ -5,9 +5,9 @@ config.json
 config.gpu.json
 config.*.local.json
 deploy.env
-acceptance/data/
-acceptance/results/
-acceptance/*.local.jsonl
+tests/acceptance/data/
+tests/acceptance/results/
+tests/acceptance/*.local.jsonl
 /tests/test_audio.*
 /tests/test_audio_*
 !/tests/test_audio_*.py
@@ -22,3 +22,6 @@ dist/
 ros2_ws/
 __pycache__/
 *.pyc
+.codegraph/
+artifacts/
+configs/local/

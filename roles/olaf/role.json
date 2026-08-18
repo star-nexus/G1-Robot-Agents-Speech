@@ -22,6 +22,7 @@
   },
   "capabilities": {
     "allow": [],
-    "deny": []
+    "deny": [],
+    "required": []
   }
 }

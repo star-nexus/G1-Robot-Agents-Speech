@@ -184,7 +184,7 @@ log "Running SenseVoice file test"
 
 if [[ "$RUN_LATENCY_TEST" == "1" ]]; then
     log "Running 800ms latency acceptance"
-    "$PY" "$ROOT/acceptance/e2e_latency.py" \
+    "$PY" "$ROOT/tests/acceptance/e2e_latency.py" \
         --config "$ROOT/config.json" --wav "$TEST_WAV" --target-ms 800
 fi
 

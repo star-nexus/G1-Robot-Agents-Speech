@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "g1-speech"
 version = "0.1.0"
-description = "Offline speech recognition service for robot agents with DDS and ROS 2 transports"
+description = "Offline STAR robot intelligence runtime with speech, roles, and embodiment ports"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -38,10 +38,11 @@ tts = [
   "sounddevice>=0.4.6",
   "websocket-client>=1.8",
 ]
-dev = ["pytest>=7.4"]
+dev = ["pytest>=8.4,<9"]
 
 [project.scripts]
 g1-speech = "g1_speech.cli:main"
+star-runtime = "star_runtime.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

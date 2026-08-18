@@ -1,14 +1,16 @@
-# G1 Speech Service — 机器人 Agent 离线语音识别
+# STAR 灵魂下载 Runtime — 离线语音与 Agent 内核
 
 [English](README.md) | 简体中文
 
-面向机器人 Agent 的可插拔离线语音识别服务，针对 NVIDIA Jetson 优化。
-为机器人提供快速、私密的语音输入，支持与人实时互动，无需依赖云端。
+STAR Runtime 将身份、性格、记忆、知识和能力权限组成的可迁移“灵魂”，与语音传输和
+机器人本体解耦。本仓库同时包含针对 NVIDIA Jetson 优化的生产级离线 ASR/TTS 链路。
 
-项目不依赖任何机器人厂商 SDK，通过标准音频设备、DDS 或 ROS 2 接入机器人系统。
+项目核心不依赖任何机器人厂商 SDK；同机模块默认可走进程内通路，也可通过 DDS 或 ROS 2
+扩展到多 GPU、多机器或既有机器人系统。
 当前主要性能验证平台为 NVIDIA Jetson Orin NX，同样适用于其他 Jetson 机器人计算平台、
 NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
-仓库中的 `G1` 仅作为现有项目和协议命名空间，不表示绑定任何同名机器人品牌。
+`star_runtime` 是正式实现命名空间；`g1_speech` 只保留部署和旧代码兼容入口。
+角色不再绑定 DDS、ROS 2 或任何机器人品牌。
 
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **ASR 模型可插拔**：内置 SenseVoice 与 Qwen3-ASR，切换模型不影响 VAD、DDS/ROS 2 或 Agent
@@ -16,8 +18,14 @@ NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
 - **流式机器人语音客户端**：经 Orin NX 实测，采用多语言自适应文本分块与连续低延迟 ALSA PCM 时间线
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
+- **低开销集成 Runtime**：ASR → Agent → TTS 直接传递内存对象，无中间服务和序列化
 - **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
+- **版本化灵魂包**：统一封装身份、Prompt、知识、记忆、声音与能力要求
+- **本体适配器惰性加载**：先检查能力兼容性，再加载 Galbot、Unitree 等厂商 SDK
 - **高性能**：识别速度 0.01–0.2 秒，准确度高
+
+模块边界和面向 Orin NX 的本体适配器生命周期见
+[Runtime 架构](docs/runtime_architecture.md)。
 
 ## 已验证平台
 
@@ -123,13 +131,23 @@ TTS_ENABLED=1
 [全双工音频指南](docs/full_duplex_audio.md)和
 [JetPack 6 vLLM-Omni 隔离环境记录](docs/qwen3_tts_vllm_omni_jp6.md)。
 
-DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
-相同的消息，Agent 无需修改。
+单机 Orin NX 优先使用完整集成入口；它不启动 DDS/ROS 2，也不把中间推理过程暴露成服务：
+
+```bash
+# 当前 llama.cpp 和 vLLM-Omni 推理提供方仍需先启动；配置中需启用 TTS。
+.venv/bin/g1-speech runtime \
+  --config config.tts-demo.local.json \
+  --role-package roles/tifa-lockhart
+```
+
+DDS 是现有 systemd 分布式部署的默认传输。识别结果发布到
+`rt/g1/hri/speech/final`；需要拆到第二块 GPU、另一台机器或独立调试 Agent 时，再分别运行
+`serve` 与 `agent`。CPU/GPU 后端使用相同的消息，Agent 无需修改。
 
 ### Agent 订阅
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
+from star_runtime.transports.dds.voice import DdsSpeechSubscriber, initialize_dds
 
 # 每个 Agent 进程只初始化一次 Cyclone DDS。
 initialize_dds(domain_id=0)
@@ -154,7 +172,7 @@ Hugging Face 模型目录；以 `.local.json` 结尾的配置和模型文件均�
 
 ```bash
 bash scripts/setup-qwen3-asr.sh
-cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+cp configs/examples/config.qwen3-asr.example.json config.qwen3-asr.local.json
 # 修改 model_dir 后验证 CUDA 模型加载
 .venv-gpu/bin/g1-speech doctor \
   --config config.qwen3-asr.local.json --load-model --skip-audio
@@ -188,12 +206,12 @@ FlashAttention 2 仍可用于受控实验，但不再作为部署 profile：在�
 每次识别日志都会报告音频时长和 RTF。固定 WAV 的可复现基准命令：
 
 ```bash
-PYTHONPATH=src .venv-gpu/bin/python acceptance/benchmark_engine.py \
+PYTHONPATH=src .venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.qwen3-asr.local.json --wav /path/to/fixed.wav \
   --warmup 3 --runs 10
 ```
 
-公平比较准确率时，使用 `acceptance/compare_asr.py` 对同一份人工标注 JSONL 串行测试
+公平比较准确率时，使用 `tests/acceptance/compare_asr.py` 对同一份人工标注 JSONL 串行测试
 SenseVoice、Qwen3-ASR 0.6B、1.7B 或外部 `g1_speech.asr_backends` 插件。
 
 ### ROS 2
@@ -229,7 +247,7 @@ ros2 lifecycle set /g1_speech activate
 ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent`、
 `g1_speech_msgs/msg/PlaybackState`，并在启用 TTS 时订阅
 `g1_speech_msgs/msg/TtsTextChunk`，完整保留 DDS 事件契约。安装与生命周期说明见
-[ROS 2 文档](ros2/README.md)。
+[ROS 2 文档](integrations/ros2/README.md)。
 
 ## 工作方式
 
@@ -368,11 +386,11 @@ g1-speech config init --output config.json
 复现性能测试：
 
 ```bash
-.venv/bin/python acceptance/benchmark_engine.py \
+.venv/bin/python tests/acceptance/benchmark_engine.py \
   --config config.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
 
-.venv-gpu/bin/python acceptance/benchmark_engine.py \
+.venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.gpu.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
 ```

@@ -9,8 +9,8 @@ def test_shared_deployment_assets_are_vendor_and_host_neutral():
         "README.md",
         "README_ZH.md",
         "deploy.env.example",
-        "config.example.json",
-        "config.qwen3-asr.example.json",
+        "configs/examples/config.example.json",
+        "configs/examples/config.qwen3-asr.example.json",
     )
     forbidden = (
         "unitree_sdk",
@@ -35,9 +35,9 @@ def test_host_local_and_benchmark_artifacts_are_ignored():
 
     assert "deploy.env" in ignore
     assert "config.*.local.json" in ignore
-    assert "acceptance/data/" in ignore
-    assert "acceptance/results/" in ignore
-    assert "acceptance/*.local.jsonl" in ignore
+    assert "tests/acceptance/data/" in ignore
+    assert "tests/acceptance/results/" in ignore
+    assert "tests/acceptance/*.local.jsonl" in ignore
     assert "/tests/test_audio_*" in ignore
 
 
@@ -73,11 +73,9 @@ def test_deployment_example_is_model_neutral_and_matches_local_schema_when_prese
         assert _deployment_fields(local) == fields
 
 
-def test_root_qwen_profiles_are_intentionally_minimal():
-    names = {path.name for path in ROOT.glob("config.qwen3*.json")}
+def test_example_profiles_are_grouped_and_root_qwen_profiles_are_local():
+    example = ROOT / "configs/examples/config.qwen3-asr.example.json"
+    root_names = {path.name for path in ROOT.glob("config.qwen3*.json")}
 
-    assert names <= {
-        "config.qwen3-asr.example.json",
-        "config.qwen3-asr.local.json",
-    }
-    assert "config.qwen3-asr.example.json" in names
+    assert example.is_file()
+    assert root_names <= {"config.qwen3-asr.local.json"}

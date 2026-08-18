@@ -31,8 +31,8 @@ link_package() {
 }
 
 mkdir -p "$WORKSPACE/src"
-link_package "$ROOT/ros2/g1_speech_msgs" "$WORKSPACE/src/g1_speech_msgs"
-link_package "$ROOT/ros2/g1_speech_ros2" "$WORKSPACE/src/g1_speech_ros2"
+link_package "$ROOT/integrations/ros2/g1_speech_msgs" "$WORKSPACE/src/g1_speech_msgs"
+link_package "$ROOT/integrations/ros2/g1_speech_ros2" "$WORKSPACE/src/g1_speech_ros2"
 
 [[ -x "$ROOT/.venv/bin/python" ]] || {
     echo "[FAIL] CPU environment is missing. Run the CPU setup first." >&2

@@ -4,7 +4,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SYSTEMD = ROOT / "systemd"
+SYSTEMD = ROOT / "deploy" / "systemd"
 
 
 MODES = {

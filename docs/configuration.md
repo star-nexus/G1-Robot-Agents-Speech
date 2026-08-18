@@ -15,8 +15,8 @@ downstream Agent code.
 
 Community-visible templates:
 
-- `config.example.json`: canonical full schema and defaults; defaults to SenseVoice.
-- `config.qwen3-asr.example.json`: one portable Qwen3-ASR model profile.
+- `configs/examples/config.example.json`: canonical full schema and defaults; defaults to SenseVoice.
+- `configs/examples/config.qwen3-asr.example.json`: one portable Qwen3-ASR model profile.
 - `deploy.env.example`: complete host-deployment schema with neutral values.
 
 Host-local generated files are ignored by Git:
@@ -37,7 +37,9 @@ Service startup resolves configuration in this order:
 2. The JSON profile selects the ASR backend and every model-specific value.
 3. Backend-neutral variables from `deploy.env` override audio, VAD, DDS/ROS 2, and
    playback-gate fields.
-4. The service selector's explicit `dds|ros2` argument chooses the active transport.
+4. The distributed service selector's explicit `dds|ros2` argument chooses its
+   middleware. The `runtime` command uses the in-process path regardless of that
+   deployment selector.
 
 `deploy.env` cannot override these model-profile fields:
 
@@ -133,7 +135,7 @@ card, and processing choice belong in `deploy.env`. See
 ## Creating the one local Qwen profile
 
 ```bash
-cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+cp configs/examples/config.qwen3-asr.example.json config.qwen3-asr.local.json
 ```
 
 Edit `model_dir` and any model-specific options in that JSON. Validate before

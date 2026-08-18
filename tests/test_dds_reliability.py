@@ -91,7 +91,7 @@ def test_duplicate_event_is_accepted_only_once():
 
 
 def test_agent_subscriber_never_forwards_duplicate_to_callback(caplog):
-    caplog.set_level("INFO", logger="g1_speech.dds")
+    caplog.set_level("INFO", logger="star_runtime.transports.dds.voice")
     received = []
     subscriber = DdsSpeechSubscriber(received.append)
     message = event_to_message(make_event())

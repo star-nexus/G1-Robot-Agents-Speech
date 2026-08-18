@@ -62,9 +62,14 @@ class FakeEngine:
         self.source = source
         self.source_started_during_warmup = None
         self.warmup_thread_name = None
+        self.loads = 0
+        self.closes = 0
 
     def load(self):
-        pass
+        self.loads += 1
+
+    def close(self):
+        self.closes += 1
 
     def warmup(self):
         self.warmups += 1
@@ -107,7 +112,7 @@ def wait_for(predicate, timeout=1.0):
 
 
 def test_pipeline_publishes_final_event(caplog):
-    caplog.set_level("INFO", logger="g1_speech.pipeline")
+    caplog.set_level("INFO", logger="star_runtime.speech.pipeline")
     source = FakeSource()
     sink = CollectingSink()
     pipeline = SpeechPipeline(
@@ -248,3 +253,26 @@ def test_close_resets_vad_before_pipeline_reactivation():
     pipeline.close()
 
     assert segmenter.reset_count == 2
+
+
+def test_stop_keeps_model_loaded_but_close_releases_it():
+    engine = FakeEngine()
+    pipeline = SpeechPipeline(
+        source=FakeSource(),
+        segmenter=EveryChunkIsUtterance(),
+        engine=engine,
+        sink=CollectingSink(),
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+    )
+
+    pipeline.prepare()
+    pipeline.prepare()
+    pipeline.start()
+    pipeline.stop()
+    pipeline.start()
+    pipeline.stop()
+
+    assert engine.loads == 1
+    assert engine.closes == 0
+    pipeline.close()
+    assert engine.closes == 1

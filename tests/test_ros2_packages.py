@@ -8,8 +8,12 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_ros2_package_manifests_are_valid_xml_and_declare_runtime_dependencies():
-    messages = ET.parse(ROOT / "ros2/g1_speech_msgs/package.xml").getroot()
-    node = ET.parse(ROOT / "ros2/g1_speech_ros2/package.xml").getroot()
+    messages = ET.parse(
+        ROOT / "integrations/ros2/g1_speech_msgs/package.xml"
+    ).getroot()
+    node = ET.parse(
+        ROOT / "integrations/ros2/g1_speech_ros2/package.xml"
+    ).getroot()
 
     assert messages.findtext("name") == "g1_speech_msgs"
     dependencies = {item.text for item in node.findall("exec_depend")}
@@ -19,7 +23,9 @@ def test_ros2_package_manifests_are_valid_xml_and_declare_runtime_dependencies()
 def test_ros_speech_event_contract_keeps_all_core_fields():
     fields = {
         line.split()[1]
-        for line in (ROOT / "ros2/g1_speech_msgs/msg/SpeechEvent.msg")
+        for line in (
+            ROOT / "integrations/ros2/g1_speech_msgs/msg/SpeechEvent.msg"
+        )
         .read_text(encoding="utf-8")
         .splitlines()
         if line.strip()
@@ -42,7 +48,8 @@ def test_ros_speech_event_contract_keeps_all_core_fields():
 
 def test_lifecycle_launch_autostart_is_transition_driven():
     launch = (
-        ROOT / "ros2/g1_speech_ros2/launch/speech_lifecycle.launch.py"
+        ROOT
+        / "integrations/ros2/g1_speech_ros2/launch/speech_lifecycle.launch.py"
     ).read_text(encoding="utf-8")
 
     assert 'DeclareLaunchArgument(\n                "autostart"' in launch
@@ -55,7 +62,8 @@ def test_lifecycle_launch_autostart_is_transition_driven():
 
 def test_lifecycle_config_path_is_protected_after_configure():
     node = (
-        ROOT / "ros2/g1_speech_ros2/g1_speech_ros2/lifecycle_node.py"
+        ROOT
+        / "integrations/ros2/g1_speech_ros2/g1_speech_ros2/lifecycle_node.py"
     ).read_text(encoding="utf-8")
 
     assert "add_on_set_parameters_callback" in node
@@ -65,7 +73,9 @@ def test_lifecycle_config_path_is_protected_after_configure():
 
 
 def test_real_lifecycle_acceptance_covers_reactivation_and_parameter_policy():
-    acceptance = (ROOT / "acceptance/ros2_lifecycle.py").read_text(encoding="utf-8")
+    acceptance = (ROOT / "tests/acceptance/ros2_lifecycle.py").read_text(
+        encoding="utf-8"
+    )
 
     assert acceptance.count("Transition.TRANSITION_ACTIVATE") == 2
     assert acceptance.count("Transition.TRANSITION_DEACTIVATE") == 2

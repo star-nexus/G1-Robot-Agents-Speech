@@ -1,6 +1,7 @@
 """Lightweight embodied Agent runtime with pluggable role and provider ports."""
 
 from .capabilities import (
+    CapabilityCompatibility,
     CapabilityContext,
     CapabilityPermission,
     CapabilityProvider,
@@ -17,6 +18,7 @@ from .runtime import AgentRuntime
 __all__ = [
     "AgentRuntime",
     "CapabilityContext",
+    "CapabilityCompatibility",
     "CapabilityPermission",
     "CapabilityProvider",
     "CapabilityRegistry",

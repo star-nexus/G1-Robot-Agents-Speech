@@ -1,15 +1,18 @@
-# G1 Speech Service — Offline ASR for Robot Agents
+# STAR Robot Intelligence Runtime — Offline Speech and Agent Core
 
 English | [简体中文](README_ZH.md)
 
-Pluggable offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
-Give robots fast, private speech input for responsive, real-time interaction with people—without relying on the cloud.
+STAR Runtime separates a reusable Agent soul—identity, role, memory, knowledge, and
+capability policy—from speech transports and robot embodiments. This repository also
+contains the production offline ASR/TTS path optimized for NVIDIA Jetson.
 
-The project has no robot-vendor SDK dependency. It integrates through standard audio devices,
-DDS, or ROS 2. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
+The core has no robot-vendor SDK dependency. Same-device modules can use a direct
+in-process path, while DDS or ROS 2 extends it across GPUs, machines, or existing robot
+systems. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
 computers, NVIDIA DGX Spark, and general Linux edge systems are also supported targets.
-`G1` is retained only as the existing project and protocol namespace; it does not bind the
-service to any robot brand with that name.
+`star_runtime` is the canonical implementation namespace. `g1_speech` remains as a
+backward-compatible deployment/import namespace only; roles are not bound to DDS,
+ROS 2, or any robot brand.
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
@@ -17,8 +20,14 @@ service to any robot brand with that name.
 - **Streaming robot voice client**: measured Qwen3-TTS/vLLM-Omni 0.26 baseline uses adaptive multilingual text chunking and a continuous low-latency ALSA PCM timeline
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
+- **Low-overhead integrated Runtime**: ASR → Agent → TTS passes in-memory objects without intermediate services or serialization
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
+- **Versioned Soul/Role Packages**: portable identity, prompt, lore, memory, voice, and capability requirements
+- **Lazy embodiment adapters**: capability compatibility is checked before a Galbot, Unitree, or other vendor SDK is loaded
 - **Measured performance**: backend-specific latency and RTF benchmarks on Jetson Orin NX
+
+See [Runtime architecture](docs/runtime_architecture.md) for module boundaries and the
+resource-conscious robot-adapter lifecycle.
 
 ## Verified Platforms
 
@@ -163,14 +172,25 @@ active while the robot talks and abort synthesis/playback when the user starts
 speaking. See the [full-duplex audio guide](docs/full_duplex_audio.md) and the
 [isolated JetPack 6 vLLM-Omni note](docs/qwen3_tts_vllm_omni_jp6.md).
 
-DDS is the default transport. Recognition results are published to
-`rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
-no Agent-side changes are required.
+For one Orin NX, prefer the integrated entrypoint. It does not start DDS/ROS 2 or
+expose intermediate reasoning as a service:
+
+```bash
+# Start the current llama.cpp and vLLM-Omni providers first; TTS must be enabled.
+.venv/bin/g1-speech runtime \
+  --config config.tts-demo.local.json \
+  --role-package roles/tifa-lockhart
+```
+
+DDS remains the default for the existing distributed systemd deployment. Recognition
+results are published to `rt/g1/hri/speech/final`. Run separate `serve` and `agent`
+processes only for another GPU/machine or independent debugging. Both CPU and GPU
+backends use the same messages, so no Agent-side changes are required.
 
 ### Subscribe from an Agent
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
+from star_runtime.transports.dds.voice import DdsSpeechSubscriber, initialize_dds
 
 # Initialize Cyclone DDS once per Agent process.
 initialize_dds(domain_id=0)
@@ -215,7 +235,7 @@ validate the CUDA load, and select it for the existing GPU service:
 
 ```bash
 bash scripts/setup-qwen3-asr.sh
-cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+cp configs/examples/config.qwen3-asr.example.json config.qwen3-asr.local.json
 # Edit model_dir first.
 .venv-gpu/bin/g1-speech doctor \
   --config config.qwen3-asr.local.json --load-model --skip-audio
@@ -241,8 +261,8 @@ FlashAttention 2 remains available for controlled experiments, but it is not a
 deployment profile: it was 20.9% slower than SDPA on the measured Orin batch-1
 workload. Experimental variants and their exact settings belong with benchmark
 artifacts rather than as additional root-level `config.qwen3-*` files.
-Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
-for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
+Recognition logs include audio duration and RTF. Use `tests/acceptance/benchmark_engine.py`
+for fixed-WAV latency benchmarks and `tests/acceptance/compare_asr.py` for labeled-corpus CER.
 
 ### ROS 2
 
@@ -279,7 +299,7 @@ ros2 lifecycle set /g1_speech activate
 ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent`, subscribes to
 `g1_speech_msgs/msg/PlaybackState`, and—when TTS is enabled—subscribes to
 `g1_speech_msgs/msg/TtsTextChunk`, preserving the complete DDS event contract.
-See [ROS 2 setup and lifecycle details](ros2/README.md).
+See [ROS 2 setup and lifecycle details](integrations/ros2/README.md).
 
 ## How It Works
 
@@ -421,11 +441,11 @@ Transcribe a WAV file:
 Reproduce the performance benchmark:
 
 ```bash
-.venv/bin/python acceptance/benchmark_engine.py \
+.venv/bin/python tests/acceptance/benchmark_engine.py \
   --config config.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
 
-.venv-gpu/bin/python acceptance/benchmark_engine.py \
+.venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.gpu.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
 ```

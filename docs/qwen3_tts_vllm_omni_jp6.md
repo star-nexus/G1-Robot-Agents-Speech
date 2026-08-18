@@ -117,7 +117,7 @@ The v0.26.0 tag already uses the correct call and does not read
 
 ## Orin launch profile
 
-`profiles/qwen3-tts-orin-nx.yaml` preserves upstream async PCM chunking and Code2Wav
+`deploy/profiles/qwen3-tts-orin-nx.yaml` preserves upstream async PCM chunking and Code2Wav
 correctness limits, reduces `max_num_seqs` to 1, and uses conservative stage
 reservations of 0.23 and 0.18 for 16 GB. The talker limit is 1024 semantic tokens,
 about 80 seconds at 12.5 Hz and far above a normal robot response. Stage 0 uses

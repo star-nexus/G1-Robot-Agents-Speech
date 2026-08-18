@@ -15,7 +15,7 @@ fail() { echo "[FAIL] $*" >&2; exit 1; }
 # requiring an editable install in the Jetson runtime environment.
 export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
 
-exec "$PYTHON" -m g1_speech.cli agent \
+exec "$PYTHON" -m star_runtime.cli.main agent \
     --config "$CONFIG" \
     --url "$URL" \
     "$@"

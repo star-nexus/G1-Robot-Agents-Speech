@@ -28,7 +28,7 @@ multiple WebSocket PCM chunks, and completed below RTF 1. Cold compilation is
 reported separately and is not hidden in the steady-state figures.
 
 The production profile is
-[`profiles/qwen3-tts-orin-nx.yaml`](../profiles/qwen3-tts-orin-nx.yaml). The exact
+[`deploy/profiles/qwen3-tts-orin-nx.yaml`](../deploy/profiles/qwen3-tts-orin-nx.yaml). The exact
 pre-change rollback profile is preserved at
 [`benchmarks/orin_nx_2026-08-17_tts_memory/profiles/baseline_1024_65536.yaml`](../benchmarks/orin_nx_2026-08-17_tts_memory/profiles/baseline_1024_65536.yaml).
 

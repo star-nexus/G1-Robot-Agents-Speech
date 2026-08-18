@@ -17,7 +17,7 @@ from g1_speech.config import (
 
 
 def test_config_example_matches_canonical_defaults():
-    example = Path(__file__).parents[1] / "config.example.json"
+    example = Path(__file__).parents[1] / "configs/examples/config.example.json"
 
     assert json.loads(example.read_text(encoding="utf-8")) == default_config_dict()
 

@@ -1,16 +1,25 @@
 # Local offline voice Agent
 
-The local robot voice loop keeps each runtime independently replaceable:
+The local robot voice loop has two compositions. On one Orin NX, the preferred
+composition keeps ASR, Agent orchestration, and TTS scheduling in one Runtime:
 
 ```text
-microphone -> VAD -> ASR -> DDS SpeechEvent
+microphone -> VAD -> ASR -> in-process Agent -> in-process TTS -> speaker
+```
+
+The current llama.cpp and vLLM-Omni inference providers remain separate local
+processes. For multiple GPUs or machines, the same components remain independently
+replaceable through middleware:
+
+```text
+microphone -> VAD -> ASR -> DDS or ROS 2 SpeechEvent
                              |
                              v
                     Qwen3-4B llama.cpp
                              |
                      streaming text deltas
                              v
-                    DDS TtsTextChunk -> Qwen3-TTS -> ALSA PCM
+                DDS or ROS 2 TtsTextChunk -> Qwen3-TTS -> ALSA PCM
 ```
 
 All endpoints bind to the robot itself. No cloud service or Internet connection
@@ -18,8 +27,20 @@ is involved.
 
 ## Start order
 
+For the integrated Runtime, start the two current inference providers, then run:
+
+```bash
+.venv/bin/g1-speech runtime \
+  --config config.tts-demo.local.json \
+  --role-package roles/tifa-lockhart
+```
+
+The following split-process order is retained for distributed deployment and
+transport debugging:
+
 1. Start the Qwen3-TTS vLLM-Omni service on port 8091.
-2. Start the speech service with DDS and `TTS_ENABLED=1`.
+2. Start the speech service with the configured DDS or ROS 2 transport and
+   `TTS_ENABLED=1`.
 3. Start the llama.cpp Qwen3-4B server:
 
    ```bash
@@ -82,7 +103,7 @@ flowchart LR
         GATE --> VAD
     end
     subgraph AGENT["local voice Agent process"]
-        VOICE["VoiceBridgeAdapter<br/>DDS queue + streaming TTS"]
+        VOICE["VoiceBridgeAdapter<br/>generic input/output ports"]
         RUNTIME["AgentRuntime<br/>identity + provider ports"]
         LOOP["ConversationalLoop<br/>one LLM call per turn"]
         MEMORY["MemoryProvider<br/>WindowMemory"]
@@ -97,16 +118,17 @@ flowchart LR
         LLM["llama.cpp<br/>Qwen3-4B GGUF"]
         TTS["vLLM-Omni<br/>Qwen3-TTS 0.6B"]
     end
-    ASR -->|"DDS SpeechEvent<br/>rt/g1/hri/speech/final"| VOICE
-    ASR -.->|"optional ROS 2 output"| ROS2["Other robot nodes"]
+    ASR -->|"selected voice transport<br/>DDS or ROS 2 SpeechEvent"| VOICE
     LOOP -->|"OpenAI-compatible HTTP"| LLM
     LLM -->|"content / reasoning_content"| LOOP
-    VOICE -->|"DDS incremental TTS request<br/>rt/g1/hri/tts/request"| TTSCLIENT
+    VOICE -->|"selected voice transport<br/>incremental TTS request"| TTSCLIENT
     TTSCLIENT <-->|"WebSocket PCM stream"| TTS
 ```
 
-`VoiceBridgeAdapter` is the transport boundary between the robot's ears and
-mouth. `AgentRuntime` owns identity and replaceable loop/provider ports;
+`VoiceBridgeAdapter` is the transport-independent boundary between the robot's
+ears and mouth. `IntegratedRuntime` binds it to `InProcessTransport`; the distributed
+application composition selects DDS or ROS 2 ports from `transport.backend`.
+`AgentRuntime` owns identity and replaceable loop/provider ports;
 `ConversationalLoop` deliberately remains a single model call. `WindowMemory`
 stores only a bounded number of completed turns in host RAM. Capability access
 is deny-by-default and dormant until a provider is explicitly registered and

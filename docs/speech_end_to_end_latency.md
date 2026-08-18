@@ -48,7 +48,7 @@ PYTHONPATH=src .venv/bin/python examples/agent_subscriber.py wlP1p1s0 --domain 0
 For a controlled WAV run through the selected backend and real VAD:
 
 ```bash
-PYTHONPATH=src .venv-gpu/bin/python acceptance/e2e_latency.py \
+PYTHONPATH=src .venv-gpu/bin/python tests/acceptance/e2e_latency.py \
   --config config.local.json --wav tests/test_audio_6s.m4a --json \
   --target-ms 2000
 ```

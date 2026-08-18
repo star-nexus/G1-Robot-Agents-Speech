@@ -89,9 +89,10 @@ def test_agent_cli_applies_package_defaults_and_explicit_overrides(monkeypatch):
 
     monkeypatch.setattr(cli, "load_config", lambda *_args, **_kwargs: ServiceConfig())
 
-    def run(_config, settings, *, role_package=None):
+    def run(_config, settings, *, role_package=None, robot_adapter_id=None):
         captured["settings"] = settings
         captured["role"] = role_package
+        captured["robot_adapter_id"] = robot_adapter_id
         return 0
 
     monkeypatch.setattr(cli, "run_local_voice_agent", run)
@@ -117,3 +118,39 @@ def test_agent_cli_applies_package_defaults_and_explicit_overrides(monkeypatch):
     assert settings.max_tokens == 64
     assert settings.enable_thinking is False
     assert settings.history_turns == 2
+    assert captured["robot_adapter_id"] is None
+
+
+def test_runtime_cli_uses_integrated_composition(monkeypatch):
+    captured = {}
+    runtime = object()
+
+    monkeypatch.setattr(cli, "load_config", lambda *_args, **_kwargs: ServiceConfig())
+
+    def build(config, settings, **kwargs):
+        captured["config"] = config
+        captured["settings"] = settings
+        captured.update(kwargs)
+        return runtime
+
+    monkeypatch.setattr(cli, "build_integrated_runtime", build)
+    monkeypatch.setattr(
+        cli,
+        "run_integrated_runtime",
+        lambda selected: 0 if selected is runtime else 1,
+    )
+
+    result = cli.main(
+        [
+            "runtime",
+            "--config",
+            "unused.json",
+            "--role-package",
+            str(PROJECT_ROOT / "roles" / "olaf"),
+        ]
+    )
+
+    assert result == 0
+    assert captured["role_package"].role_id == "frozen.olaf"
+    assert captured["settings"].system_prompt == captured["role_package"].prompt
+    assert captured["robot_adapter_id"] is None

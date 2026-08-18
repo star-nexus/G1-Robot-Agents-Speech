@@ -25,7 +25,7 @@ case "$BACKEND" in
         ;;
     gpu)
         if [[ -n "${SPEECH_PYTHON_GPU:-}" ]]; then
-            COMMAND=("$SPEECH_PYTHON_GPU" -m g1_speech.cli)
+            COMMAND=("$SPEECH_PYTHON_GPU" -m star_runtime.cli.main)
             export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
             if [[ -n "${CUDA_HOME:-}" ]]; then
                 CUDA_INCLUDE="$CUDA_HOME/include:$CUDA_HOME/targets/aarch64-linux/include"

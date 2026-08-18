@@ -51,7 +51,8 @@ system message; manifest metadata does not consume model context tokens.
   },
   "capabilities": {
     "allow": [],
-    "deny": []
+    "deny": [],
+    "required": []
   }
 }
 ```
@@ -90,6 +91,12 @@ tools. A name in `deny` always wins, including when `allow` contains `"*"`.
 Permission alone does not activate a tool: the process must separately register
 a matching `CapabilityProvider`. This separates character authorization from
 robot-specific implementation.
+
+`required` declares the semantic capabilities without selecting a robot brand or
+joint layout. Every required name must also be allowed. At deployment time STAR
+Runtime compares these names with a lightweight `RobotAdapterSpec` before importing
+or initializing the vendor SDK. An incompatible body is rejected before it consumes
+the Orin NX memory budget.
 
 CLI flags override package defaults for one deployment. For example:
 
