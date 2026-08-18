@@ -25,6 +25,10 @@ microphone -> VAD -> ASR -> DDS or ROS 2 SpeechEvent
 All endpoints bind to the robot itself. No cloud service or Internet connection
 is involved.
 
+Camera observation is optional and provider-neutral. See
+[Vision perception](vision_perception.md) for the bounded MJPEG path and Qwen3-VL
+startup commands.
+
 ## Start order
 
 For the integrated Runtime, start the two current inference providers, then run:

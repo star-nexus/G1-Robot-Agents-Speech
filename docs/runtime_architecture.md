@@ -30,6 +30,8 @@ microphone/camera -> perception -> Agent Runtime -> action/audio commands
 
 - `star_runtime.agent`: role loading, model loop, memory, knowledge, identity, and
   the transport-independent voice bridge.
+- `star_runtime.perception`: camera/sensor contracts, bounded latest-frame capture,
+  and visual-turn routing. It does not own an Agent or a transport.
 - `star_runtime.capabilities`: semantic capability schemas, deny-by-default policy,
   registration, invocation, and compatibility reports.
 - `star_runtime.robots`: lightweight adapter manifests and lazy activation. A
@@ -77,6 +79,12 @@ src/
 │   ├── robots/
 │   │   ├── contracts.py      vendor-neutral adapter/factory contracts
 │   │   └── catalog.py        lazy adapter discovery and activation
+│   ├── perception/
+│   │   ├── contracts.py      image-source and optional visual-turn ports
+│   │   └── vision/
+│   │       ├── camera.py     latest-frame V4L2 MJPEG capture
+│   │       ├── routing.py    rule/semantic visual-turn selection
+│   │       └── llama_cpp.py constrained llama.cpp route classifier
 │   ├── speech/
 │   │   ├── audio/            capture, playback, and processing
 │   │   ├── asr/              ASR contracts/factories/backends
@@ -134,6 +142,13 @@ The integrated path passes the same immutable `SpeechEvent` object to the Agent 
 only allocates a `TtsTextChunk` at the Agent/TTS semantic boundary. It starts the Agent
 consumer before microphone capture and stops capture before closing reasoning, which
 prevents startup loss and shutdown races.
+
+Visual input follows the same composition rule. The camera source retains one encoded
+JPEG, and base64 conversion occurs only for a turn routed to vision. Completed
+conversation memory stores the user's text rather than image data, so visual tokens and
+base64 payloads do not accumulate across turns. The OpenAI-compatible model URL may be
+loopback or a remote server; no Agent-core change is needed when the larger VLM runs on
+a second Orin NX or server.
 
 Benchmark code and raw evidence remain separate from runtime imports. Large future
 artifacts should be published outside Git or under the ignored `artifacts/` tree.

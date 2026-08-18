@@ -22,6 +22,8 @@ from star_runtime.agent import (
     RolePackage,
     WindowMemory,
 )
+from star_runtime.agent.contracts import ChatMessage
+from star_runtime.perception import VisionInput
 from star_runtime.robots import ActiveRobot, RobotAdapterCatalog
 from star_runtime.agent.llama import DEFAULT_REASONING_BUDGET_MESSAGE
 from star_runtime.agent.voice_bridge import VoiceBridgeAdapter, VoiceBridgeSettings
@@ -78,6 +80,7 @@ def build_agent_runtime(
     memory: MemoryProvider | None = None,
     capabilities: CapabilityRegistry | None = None,
     knowledge: KnowledgeProvider | None = None,
+    vision: VisionInput | None = None,
 ) -> AgentRuntime:
     """Construct the light runtime once; nothing here runs per generated token."""
 
@@ -105,6 +108,7 @@ def build_agent_runtime(
         model=client or LlamaChatClient(settings),
         memory=selected_memory,
         knowledge=selected_knowledge,
+        vision=vision,
     )
     return AgentRuntime(
         agent_id=f"robot:{role_id}",
@@ -131,6 +135,7 @@ class LocalVoiceAgent(VoiceBridgeAdapter):
         subscriber: SpeechInputPort | None = None,
         role_package: RolePackage | None = None,
         capabilities: CapabilityRegistry | None = None,
+        vision: VisionInput | None = None,
     ) -> None:
         self._agent_settings = settings
         runtime = build_agent_runtime(
@@ -138,6 +143,7 @@ class LocalVoiceAgent(VoiceBridgeAdapter):
             client=client,
             role_package=role_package,
             capabilities=capabilities,
+            vision=vision,
         )
         if (publisher is None) != (subscriber is None):
             raise ValueError("publisher and subscriber must be provided together")
@@ -156,7 +162,7 @@ class LocalVoiceAgent(VoiceBridgeAdapter):
         )
 
     @property
-    def _turns(self) -> list[dict[str, str]]:
+    def _turns(self) -> list[ChatMessage]:
         """Legacy test/diagnostic view; memory ownership lives in the runtime."""
 
         return list(self.runtime.context_messages())
@@ -189,6 +195,7 @@ def run_local_voice_agent(
     role_package: RolePackage | None = None,
     robot_adapter_id: str | None = None,
     robot_catalog: RobotAdapterCatalog | None = None,
+    vision: VisionInput | None = None,
 ) -> int:
     capabilities = CapabilityRegistry(
         role_package.capabilities if role_package is not None else None
@@ -208,6 +215,7 @@ def run_local_voice_agent(
             settings,
             role_package=role_package,
             capabilities=capabilities,
+            vision=vision,
         )
     except Exception:
         if active_robot is not None:

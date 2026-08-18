@@ -24,6 +24,7 @@ ROS 2, or any robot brand.
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
 - **Versioned Soul/Role Packages**: portable identity, prompt, lore, memory, voice, and capability requirements
 - **Lazy embodiment adapters**: capability compatibility is checked before a Galbot, Unitree, or other vendor SDK is loaded
+- **Optional visual perception**: one-frame MJPEG buffering and per-turn routing avoid retaining images in Agent memory
 - **Measured performance**: backend-specific latency and RTF benchmarks on Jetson Orin NX
 
 See [Runtime architecture](docs/runtime_architecture.md) for module boundaries and the

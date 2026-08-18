@@ -33,6 +33,14 @@ from star_runtime.speech.asr.factory import asr_diagnostic_checks, create_asr_en
 from star_runtime.speech.audio.input import resolve_alsa_input_device
 from star_runtime.speech.config import AudioConfig, load_config, write_config
 from star_runtime.speech.contracts import Utterance
+from star_runtime.perception.vision import (
+    LatestFrameCamera,
+    LlamaVisionClassifier,
+    LlamaVisionClassifierSettings,
+    RoutedVisionInput,
+    VisionRouteRecorder,
+    VisionRouter,
+)
 from star_runtime.apps.speech_runtime import build_speech_runtime
 from star_runtime.transports.dds.voice import (
     DdsSpeechSubscriber,
@@ -174,6 +182,22 @@ def _add_agent_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Optional TTS delivery/style instructions",
     )
+    agent.add_argument(
+        "--vision",
+        choices=("off", "auto", "always"),
+        default="off",
+        help="Attach camera frames never, only when routed, or on every turn",
+    )
+    agent.add_argument("--camera-device", default="/dev/video0")
+    agent.add_argument("--camera-width", type=int, default=640)
+    agent.add_argument("--camera-height", type=int, default=480)
+    agent.add_argument("--camera-fps", type=int, default=5)
+    agent.add_argument("--camera-start-timeout", type=float, default=5.0)
+    agent.add_argument("--camera-frame-max-age", type=float, default=2.0)
+    agent.add_argument(
+        "--vision-route-log",
+        help="Optional private JSONL path for visual routing diagnostics",
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -210,20 +234,36 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command in {"agent", "runtime"}:
         config, role_package, settings = _load_agent_configuration(args)
+        vision, camera = _build_vision_input(args)
         if args.command == "runtime":
             runtime = build_integrated_runtime(
                 config,
                 settings,
                 role_package=role_package,
                 robot_adapter_id=args.robot_adapter,
+                vision=vision,
             )
-            return run_integrated_runtime(runtime)
-        return run_local_voice_agent(
-            config,
-            settings,
-            role_package=role_package,
-            robot_adapter_id=args.robot_adapter,
-        )
+            if camera is None:
+                return run_integrated_runtime(runtime)
+            try:
+                camera.start(args.camera_start_timeout)
+                return run_integrated_runtime(runtime)
+            finally:
+                runtime.close()
+                camera.close()
+        try:
+            if camera is not None:
+                camera.start(args.camera_start_timeout)
+            return run_local_voice_agent(
+                config,
+                settings,
+                role_package=role_package,
+                robot_adapter_id=args.robot_adapter,
+                vision=vision,
+            )
+        finally:
+            if camera is not None:
+                camera.close()
     parser.error("unknown command")
     return 2
 
@@ -302,6 +342,43 @@ def _load_agent_configuration(args):
         ),
     )
     return config, role_package, settings
+
+
+def _build_vision_input(args):
+    """Create visual ports only when selected so text deployments stay lightweight."""
+
+    if args.vision == "off":
+        return None, None
+    camera = LatestFrameCamera(
+        device=args.camera_device,
+        width=args.camera_width,
+        height=args.camera_height,
+        fps=args.camera_fps,
+    )
+    classifier = None
+    if args.vision == "auto":
+        classifier = LlamaVisionClassifier(
+            LlamaVisionClassifierSettings(
+                url=args.url,
+                model=args.model,
+                timeout_seconds=args.request_timeout,
+            )
+        )
+    router = VisionRouter(mode=args.vision, classifier=classifier)
+    recorder = (
+        VisionRouteRecorder(args.vision_route_log)
+        if args.vision_route_log
+        else None
+    )
+    return (
+        RoutedVisionInput(
+            router,
+            camera,
+            max_frame_age_seconds=args.camera_frame_max_age,
+            recorder=recorder,
+        ),
+        camera,
+    )
 
 
 def _config_init(

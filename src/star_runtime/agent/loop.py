@@ -7,6 +7,7 @@ from collections.abc import Iterator, Sequence
 from .contracts import ChatMessage, ChatModelProvider
 from .knowledge import KnowledgeProvider, NullKnowledge
 from .memory import MemoryProvider
+from ..perception import VisionInput
 
 
 class ConversationalLoop:
@@ -21,6 +22,7 @@ class ConversationalLoop:
         model: ChatModelProvider,
         memory: MemoryProvider,
         knowledge: KnowledgeProvider | None = None,
+        vision: VisionInput | None = None,
     ) -> None:
         self._knowledge = knowledge or NullKnowledge()
         core = self._knowledge.core_context().strip()
@@ -31,6 +33,7 @@ class ConversationalLoop:
         )
         self._model = model
         self._memory = memory
+        self._vision = vision
 
     def stream_response(self, user_text: str) -> Iterator[str]:
         return self._model.stream(self._messages_for(user_text))
@@ -58,5 +61,23 @@ class ConversationalLoop:
                     ),
                 }
             )
-        messages.append({"role": "user", "content": user_text})
+        image = (
+            self._vision.image_for(user_text, self._memory.context_messages())
+            if self._vision is not None
+            else None
+        )
+        if image is None:
+            content = user_text
+        else:
+            content = [
+                {"type": "image_url", "image_url": {"url": image.data_url()}},
+                {
+                    "type": "text",
+                    "text": (
+                        "以上是机器人摄像头刚刚捕获的当前画面。"
+                        f"请结合画面回答用户的语音：{user_text}"
+                    ),
+                },
+            ]
+        messages.append({"role": "user", "content": content})
         return messages

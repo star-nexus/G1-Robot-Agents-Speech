@@ -89,10 +89,18 @@ def test_agent_cli_applies_package_defaults_and_explicit_overrides(monkeypatch):
 
     monkeypatch.setattr(cli, "load_config", lambda *_args, **_kwargs: ServiceConfig())
 
-    def run(_config, settings, *, role_package=None, robot_adapter_id=None):
+    def run(
+        _config,
+        settings,
+        *,
+        role_package=None,
+        robot_adapter_id=None,
+        vision=None,
+    ):
         captured["settings"] = settings
         captured["role"] = role_package
         captured["robot_adapter_id"] = robot_adapter_id
+        captured["vision"] = vision
         return 0
 
     monkeypatch.setattr(cli, "run_local_voice_agent", run)
@@ -119,6 +127,7 @@ def test_agent_cli_applies_package_defaults_and_explicit_overrides(monkeypatch):
     assert settings.enable_thinking is False
     assert settings.history_turns == 2
     assert captured["robot_adapter_id"] is None
+    assert captured["vision"] is None
 
 
 def test_runtime_cli_uses_integrated_composition(monkeypatch):
