@@ -17,6 +17,8 @@ fi
 : "${UPGRADE_PIP:=1}"
 : "${INSTALL_SYSTEMD:=1}"
 : "${SYSTEMD_USER:=$(id -un)}"
+: "${AUDIO_PROCESSING_MODE:=off}"
+: "${TTS_ENABLED:=0}"
 
 log() { echo; echo "[GPU SETUP] $*"; }
 fail() { echo "[FAIL] $*" >&2; exit 1; }
@@ -31,7 +33,13 @@ PIP="$ROOT/.venv-gpu/bin/pip"
 if [[ "$UPGRADE_PIP" == "1" ]]; then
     "$PY" -m pip install --upgrade pip setuptools wheel
 fi
-"$PIP" install -e "$ROOT" sounddevice
+"$PY" -m pip install -e "$ROOT" sounddevice
+if [[ "$TTS_ENABLED" == "1" ]]; then
+    "$PY" -m pip install websocket-client
+fi
+if [[ "$AUDIO_PROCESSING_MODE" == "webrtc" ]]; then
+    bash "$ROOT/scripts/setup-webrtc-apm.sh" "$PY"
+fi
 
 if ! "$PY" -c 'import cyclonedds' 2>/dev/null; then
     CYCLONEDDS_SOURCE_DIR="$CYCLONEDDS_SOURCE_DIR" \

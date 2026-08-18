@@ -25,7 +25,7 @@ case "$BACKEND" in
         ;;
     gpu)
         if [[ -n "${SPEECH_PYTHON_GPU:-}" ]]; then
-            COMMAND=("$SPEECH_PYTHON_GPU" -m g1_speech.cli)
+            COMMAND=("$SPEECH_PYTHON_GPU" -m star_runtime.cli.main)
             export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
             if [[ -n "${CUDA_HOME:-}" ]]; then
                 CUDA_INCLUDE="$CUDA_HOME/include:$CUDA_HOME/targets/aarch64-linux/include"
@@ -43,7 +43,11 @@ case "$BACKEND" in
         ;;
 esac
 
-if [[ -n "${QWEN3_CUDSS_DIR:-}" ]]; then
+if [[ -n "${SPEECH_GPU_LIBRARY_PATH:-}" ]]; then
+    export LD_LIBRARY_PATH="$SPEECH_GPU_LIBRARY_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+elif [[ -n "${QWEN3_CUDSS_DIR:-}" ]]; then
+    # Backward compatibility for deploy.env files created before the generic
+    # runtime-library setting was introduced.
     export LD_LIBRARY_PATH="$QWEN3_CUDSS_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi
 if [[ -n "${CYCLONEDDS_HOME:-}" ]]; then

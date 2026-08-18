@@ -1,0 +1,96 @@
+{
+  "date": "2026-08-13",
+  "status": "functional_baseline_not_performance_baseline",
+  "platform": {
+    "device": "NVIDIA Jetson Orin NX 16GB",
+    "jetpack": "6.2",
+    "ubuntu": "22.04",
+    "cuda": "12.6",
+    "compute_capability": "8.7"
+  },
+  "runtime": {
+    "python": "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+    "pytorch": "2.11.0",
+    "pytorch_cuda": "12.6",
+    "triton": "3.5.1",
+    "torchaudio": "2.11.0",
+    "vllm_omni_version": "0.26.0",
+    "vllm_omni_tag_commit": "a4ea67a21b20054dacc6e83952f9bd407e8ee4e7",
+    "vllm_version": "0.26.1.dev0+g568afb3a1.d20260812",
+    "vllm_commit": "568afb3a1",
+    "native_sm87": true,
+    "attention_backend": "FLASH_ATTN_2",
+    "enforce_eager": true
+  },
+  "model": {
+    "path": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "task_type": "CustomVoice",
+    "voice": "Ryan",
+    "sample_rate": 24000,
+    "stage_0_max_model_len": 1024,
+    "stage_0_gpu_memory_utilization": 0.23,
+    "stage_1_gpu_memory_utilization": 0.18
+  },
+  "service": {
+    "startup_succeeded": true,
+    "startup_seconds": 57.88,
+    "stages_ready": 2,
+    "websocket_endpoint": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+    "websocket_endpoint_ready": true,
+    "project_client_protocol_verified": true,
+    "binary_pcm_stream_verified": true,
+    "persistent_connection_verified": true
+  },
+  "runs": [
+    {
+      "name": "cold_first_request",
+      "text": "Hello, I am STAR, your robot guide.",
+      "first_pcm_ms": 103094.5,
+      "total_ms": 108195.3,
+      "chunks": 4,
+      "pcm_bytes": 207360,
+      "audio_seconds": 4.32,
+      "cold_jit_included": true
+    },
+    {
+      "name": "steady_same_text",
+      "text": "Hello, I am STAR, your robot guide.",
+      "first_pcm_ms": 560.0,
+      "total_ms": 8717.1,
+      "chunks": 4,
+      "pcm_bytes": 211200,
+      "audio_seconds": 4.4,
+      "cold_jit_included": false,
+      "audio_rtf": 1.9812
+    },
+    {
+      "name": "persistent_connection_utterance_1",
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 568.8,
+      "total_ms": 3375.6,
+      "chunks": 2,
+      "pcm_bytes": 72960,
+      "audio_seconds": 1.52,
+      "audio_rtf": 2.2208
+    },
+    {
+      "name": "persistent_connection_utterance_2",
+      "text": "How may I help you?",
+      "first_pcm_ms": 511.7,
+      "total_ms": 4736.6,
+      "chunks": 3,
+      "pcm_bytes": 111360,
+      "audio_seconds": 2.32,
+      "audio_rtf": 2.0416
+    }
+  ],
+  "cuda_graph_experiment": {
+    "attempted": true,
+    "result": "stalled",
+    "location": "full decode CUDA Graph capture using native SM87 FlashAttention 2",
+    "observed_seconds_without_progress": 201,
+    "fallback": "enforce_eager=true",
+    "claim": "No CUDA Graph performance result is claimed."
+  },
+  "conclusion": "The official vLLM-Omni v0.26.0 release is API-compatible with the native vLLM 0.26 runtime and provides working streamed PCM on JetPack 6.2. The eager Orin profile is a functional baseline with approximately 0.5-0.6 s steady-state first PCM, but total synthesis remains slower than real time."
+}

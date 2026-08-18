@@ -1,0 +1,76 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [
+    {
+      "text": "你好。",
+      "first_pcm_ms": 3697.253975999047,
+      "total_ms": 4034.1808869998204,
+      "pcm_bytes": 69120,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.44,
+      "audio_rtf": 2.8015145048609864
+    }
+  ],
+  "runs": [
+    {
+      "text": "你好。",
+      "first_pcm_ms": 244.77407499944093,
+      "total_ms": 1032.124945999385,
+      "pcm_bytes": 65280,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.36,
+      "audio_rtf": 0.758915401470136
+    },
+    {
+      "text": "欢迎来到未来世界。",
+      "first_pcm_ms": 241.50254699998186,
+      "total_ms": 1852.8952249998838,
+      "pcm_bytes": 122880,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 2.56,
+      "audio_rtf": 0.7237871972655796
+    },
+    {
+      "text": "我是STAR机器人，很高兴见到你。",
+      "first_pcm_ms": 284.3127779997303,
+      "total_ms": 2393.6986869994143,
+      "pcm_bytes": 168960,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 3.52,
+      "audio_rtf": 0.6800280360793791
+    },
+    {
+      "text": "前方正在举行花车巡游，请跟我从右侧通道慢慢前进。",
+      "first_pcm_ms": 195.81248499889625,
+      "total_ms": 4857.1625699987635,
+      "pcm_bytes": 334080,
+      "chunks": 5,
+      "sample_rate": 24000,
+      "audio_seconds": 6.96,
+      "audio_rtf": 0.6978681853446499
+    },
+    {
+      "text": "欢迎来到迪士尼公园，我是雪宝机器人，今天陪你探索冰雪世界和奇妙冒险。",
+      "first_pcm_ms": 191.7238690002705,
+      "total_ms": 4747.157317999154,
+      "pcm_bytes": 326400,
+      "chunks": 5,
+      "sample_rate": 24000,
+      "audio_seconds": 6.8,
+      "audio_rtf": 0.6981113702939932
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 231.62515079966397,
+    "first_pcm_median_ms": 241.50254699998186,
+    "first_pcm_p95_ms": 276.40503739967244,
+    "total_mean_ms": 2976.60774919932,
+    "audio_rtf_mean": 0.7117420380907475,
+    "audio_rtf_median": 0.6981113702939932
+  }
+}

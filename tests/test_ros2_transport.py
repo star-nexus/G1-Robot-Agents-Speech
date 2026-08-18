@@ -7,6 +7,7 @@ from g1_speech.config import Ros2Config
 from g1_speech.contracts import SpeechEvent
 from g1_speech.gate import PlaybackGate
 from g1_speech.ros2 import Ros2EventSink, Ros2Transport, event_to_ros_message
+from star_runtime.transports.ros2.voice import Ros2VoicePort, message_to_speech_event
 
 
 class Message:
@@ -67,6 +68,7 @@ def install_fake_ros_modules(monkeypatch):
     messages = types.ModuleType("g1_speech_msgs.msg")
     messages.SpeechEvent = Message
     messages.PlaybackState = Message
+    messages.TtsTextChunk = Message
     package = types.ModuleType("g1_speech_msgs")
     package.msg = messages
     monkeypatch.setitem(sys.modules, "rclpy", rclpy)
@@ -113,7 +115,7 @@ def test_ros2_transport_publishes_and_applies_playback_gate(monkeypatch):
             playback_topic="/playback",
             qos_depth=7,
         ),
-        gate,
+        gate.set_active,
         node=node,
     )
     transport.start()
@@ -134,3 +136,67 @@ def test_ros2_transport_publishes_and_applies_playback_gate(monkeypatch):
     transport.close()
     assert "subscription" in node.destroyed
     assert node.publisher in node.destroyed
+
+
+class VoiceNode:
+    def __init__(self):
+        self.publisher = Publisher()
+        self.subscription_callback = None
+        self.destroyed = []
+
+    def create_publisher(self, message_type, topic, qos_depth):
+        assert message_type is Message
+        assert topic == "/tts"
+        assert qos_depth == 5
+        return self.publisher
+
+    def create_subscription(self, message_type, topic, callback, qos_depth):
+        assert message_type is Message
+        assert topic == "/speech"
+        assert qos_depth == 5
+        self.subscription_callback = callback
+        return "voice-subscription"
+
+    def destroy_subscription(self, subscription):
+        self.destroyed.append(subscription)
+
+    def destroy_publisher(self, publisher):
+        self.destroyed.append(publisher)
+
+
+def test_ros2_voice_port_implements_generic_agent_ears_and_mouth(monkeypatch):
+    install_fake_ros_modules(monkeypatch)
+    node = VoiceNode()
+    port = Ros2VoicePort(
+        Ros2Config(speech_topic="/speech", tts_topic="/tts", qos_depth=5),
+        node=node,
+    )
+    received = []
+    port.set_handler(received.append)
+
+    incoming = Message()
+    for name, value in vars(event()).items():
+        setattr(incoming, name, value)
+    node.subscription_callback(incoming)
+    assert received == [message_to_speech_event(incoming)]
+
+    assert port.publish(
+        request_id="tts-1",
+        sequence=2,
+        text="你好",
+        is_final=True,
+        language="zh",
+        voice="Tifa",
+    )
+    outgoing = node.publisher.messages[0]
+    assert outgoing.request_id == "tts-1"
+    assert outgoing.sequence == 2
+    assert outgoing.text == "你好"
+    assert outgoing.is_final is True
+    assert outgoing.language == "zh"
+    assert outgoing.voice == "Tifa"
+
+    port.close()
+    assert "voice-subscription" in node.destroyed
+    assert node.publisher in node.destroyed
+    assert not port.publish(request_id="closed", sequence=0, text="ignored")

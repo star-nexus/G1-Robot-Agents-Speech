@@ -81,7 +81,7 @@ class Torch:
         return nullcontext()
 
 def test_qwen3_engine_uses_in_memory_audio_and_preserves_selected_language(tmp_path, caplog):
-    caplog.set_level("INFO", logger="g1_speech.qwen3_asr")
+    caplog.set_level("INFO", logger="star_runtime.speech.asr.qwen3")
     processor = Processor()
     model = Model()
     model_options = {}
@@ -203,7 +203,7 @@ def test_profiled_transcription_keeps_result_api_and_reports_all_stages(tmp_path
 
 
 def test_live_profile_logging_is_opt_in(tmp_path, caplog):
-    caplog.set_level("INFO", logger="g1_speech.qwen3_asr")
+    caplog.set_level("INFO", logger="star_runtime.speech.asr.qwen3")
     processor = Processor()
     model = Model()
     transformers = SimpleNamespace(

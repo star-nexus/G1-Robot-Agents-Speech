@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "frozen.olaf",
+  "version": "1.0.0",
+  "display_name": "Olaf",
+  "prompt": "prompt.md",
+  "loop": "conversational",
+  "model": {
+    "max_tokens": 64,
+    "temperature": 0.2,
+    "thinking": false,
+    "thinking_budget_tokens": -1
+  },
+  "voice": {
+    "voice": "",
+    "language": "",
+    "instructions": ""
+  },
+  "memory": {
+    "provider": "window",
+    "max_turns": 4
+  },
+  "capabilities": {
+    "allow": [],
+    "deny": [],
+    "required": []
+  }
+}

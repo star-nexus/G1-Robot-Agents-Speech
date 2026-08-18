@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "final-fantasy-vii.tifa-lockhart",
+  "version": "1.0.1",
+  "display_name": "Tifa Lockhart",
+  "prompt": "prompt.md",
+  "loop": "conversational",
+  "model": {
+    "max_tokens": 64,
+    "temperature": 0.2,
+    "thinking": false,
+    "thinking_budget_tokens": -1
+  },
+  "voice": {
+    "voice": "Ono_Anna",
+    "language": "Japanese",
+    "instructions": ""
+  },
+  "memory": {
+    "provider": "window",
+    "max_turns": 3
+  },
+  "knowledge": {
+    "provider": "keyword",
+    "core": "lore/core.md",
+    "cards": "lore/cards.jsonl",
+    "max_cards": 2
+  },
+  "capabilities": {
+    "allow": [],
+    "deny": [],
+    "required": []
+  }
+}

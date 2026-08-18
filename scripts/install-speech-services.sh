@@ -12,10 +12,10 @@ fi
 
 SYSTEMD_USER="${SYSTEMD_USER:-$(stat -c '%U' "$ROOT")}"
 SYSTEMD_AUDIO_DROPIN="${SYSTEMD_AUDIO_DROPIN:-}"
-CPU_TEMPLATE="$ROOT/systemd/g1-speech.service"
-GPU_TEMPLATE="$ROOT/systemd/g1-speech-gpu.service"
-CPU_ROS2_TEMPLATE="$ROOT/systemd/g1-speech-ros2.service"
-GPU_ROS2_TEMPLATE="$ROOT/systemd/g1-speech-gpu-ros2.service"
+CPU_TEMPLATE="$ROOT/deploy/systemd/g1-speech.service"
+GPU_TEMPLATE="$ROOT/deploy/systemd/g1-speech-gpu.service"
+CPU_ROS2_TEMPLATE="$ROOT/deploy/systemd/g1-speech-ros2.service"
+GPU_ROS2_TEMPLATE="$ROOT/deploy/systemd/g1-speech-gpu-ros2.service"
 ROS2_OVERLAY="${ROS2_WORKSPACE_SETUP:-$ROOT/ros2_ws/install/setup.bash}"
 INSTALLED_UNITS=()
 

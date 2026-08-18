@@ -1,0 +1,66 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 18538.732836022973,
+      "total_ms": 20033.72330602724,
+      "pcm_bytes": 80640,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.68,
+      "audio_rtf": 11.924835301206691
+    }
+  ],
+  "runs": [
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 390.7865739893168,
+      "total_ms": 2415.5502400244586,
+      "pcm_bytes": 76800,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.6,
+      "audio_rtf": 1.5097189000152866
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 373.4849469619803,
+      "total_ms": 3328.8879019673914,
+      "pcm_bytes": 107520,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 2.24,
+      "audio_rtf": 1.4861106705211566
+    },
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 391.84824796393514,
+      "total_ms": 2958.350392000284,
+      "pcm_bytes": 96000,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 2.0,
+      "audio_rtf": 1.479175196000142
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 375.1594829955138,
+      "total_ms": 3125.3064909833483,
+      "pcm_bytes": 99840,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 2.08,
+      "audio_rtf": 1.5025511975881483
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 382.8198129776865,
+    "first_pcm_median_ms": 382.9730284924153,
+    "first_pcm_p95_ms": 391.6889968677424,
+    "total_mean_ms": 2957.0237562438706,
+    "audio_rtf_mean": 1.4943889910311834,
+    "audio_rtf_median": 1.4943309340546524
+  }
+}

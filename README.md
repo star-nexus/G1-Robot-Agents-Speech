@@ -1,22 +1,33 @@
-# G1 Speech Service — Offline ASR for Robot Agents
+# STAR Robot Intelligence Runtime — Offline Speech and Agent Core
 
 English | [简体中文](README_ZH.md)
 
-Pluggable offline speech recognition for robot Agents, optimized for NVIDIA Jetson.
-Give robots fast, private speech input for responsive, real-time interaction with people—without relying on the cloud.
+STAR Runtime separates a reusable Agent soul—identity, role, memory, knowledge, and
+capability policy—from speech transports and robot embodiments. This repository also
+contains the production offline ASR/TTS path optimized for NVIDIA Jetson.
 
-The project has no robot-vendor SDK dependency. It integrates through standard audio devices,
-DDS, or ROS 2. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
+The core has no robot-vendor SDK dependency. Same-device modules can use a direct
+in-process path, while DDS or ROS 2 extends it across GPUs, machines, or existing robot
+systems. NVIDIA Jetson Orin NX is the primary benchmark platform; other Jetson robot
 computers, NVIDIA DGX Spark, and general Linux edge systems are also supported targets.
-`G1` is retained only as the existing project and protocol namespace; it does not bind the
-service to any robot brand with that name.
+`star_runtime` is the canonical implementation namespace. `g1_speech` remains as a
+backward-compatible deployment/import namespace only; roles are not bound to DDS,
+ROS 2, or any robot brand.
 
 - **CPU and GPU backends**: CPU INT8 and Jetson CUDA FP32 deployment modes
 - **Pluggable ASR models**: built-in SenseVoice and Qwen3-ASR adapters keep transport consumers unchanged
+- **Production full duplex**: selectable hardware-DSP or native WebRTC APM/AEC3 processing with VAD barge-in
+- **Streaming robot voice client**: measured Qwen3-TTS/vLLM-Omni 0.26 baseline uses adaptive multilingual text chunking and a continuous low-latency ALSA PCM timeline
 - **Fully offline**: Speech recognition runs locally—audio and text never need to leave the device
 - **Resilient audio capture**: Stream heartbeat, automatic microphone reconnection, and bounded queues
+- **Low-overhead integrated Runtime**: ASR → Agent → TTS passes in-memory objects without intermediate services or serialization
 - **DDS and ROS 2 transports**: Native structured topics for lightweight DDS systems and ROS 2 robots
+- **Versioned Soul/Role Packages**: portable identity, prompt, lore, memory, voice, and capability requirements
+- **Lazy embodiment adapters**: capability compatibility is checked before a Galbot, Unitree, or other vendor SDK is loaded
 - **Measured performance**: backend-specific latency and RTF benchmarks on Jetson Orin NX
+
+See [Runtime architecture](docs/runtime_architecture.md) for module boundaries and the
+resource-conscious robot-adapter lifecycle.
 
 ## Verified Platforms
 
@@ -115,34 +126,71 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-Pin the microphone on robots that have more than one audio input. USB cameras
-often expose a microphone, and PulseAudio may automatically switch its default
-input when the camera is connected. Choose a distinctive device-name substring
-from the device list and set it in the host-local `deploy.env`:
+Robot deployments use direct ALSA hardware capture and fail closed if that selected
+microphone is unavailable. Pin the stable ALSA card ID rather than a
+hot-plug-sensitive `hw:1,0` number:
 
 ```bash
-.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+for path in /proc/asound/card*/id; do
+  printf '%s: %s\n' "$path" "$(<"$path")"
+done
 
-# deploy.env — example only; use a name shown on your own machine
-MICROPHONE_DEVICE="USB Microphone"
+# deploy.env — use an ID printed on your host
+AUDIO_INPUT_BACKEND="alsa"
+ALSA_INPUT_CARD="your-card-id"
+AUDIO_INPUT_FALLBACK=""
+AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
 g1-speech-service status
 ```
 
-Prefer a stable name over a numeric index, which may change after reboot or USB
-re-enumeration. `status` and `logs` show the configured microphone; when set to
-`pulse` or the PortAudio default, they also show the current PulseAudio source
-and warn that hot-plugging can change it.
+The service opens the microphone's native format and converts it to ASR's 16 kHz
+mono format outside the real-time callback. It never guesses microphone quality
+from a vendor name: the installer lets the user select a card, while an empty ID
+is accepted only when hardware detection is unambiguous. `logs` reports the backend
+actually opened, resolved device, native format, and PortAudio latency. See the
+[low-latency input guide](docs/audio_input.md), including the exclusive-device
+ownership requirement.
 
-DDS is the default transport. Recognition results are published to
-`rt/g1/hri/speech/final`. Both CPU and GPU backends use the same messages, so
-no Agent-side changes are required.
+For full-duplex interaction, choose one explicit processing contract and pin a
+stable ALSA speaker card as well:
+
+```bash
+# Ordinary USB microphone: software AEC3/NS with actual speaker PCM reference.
+AUDIO_PROCESSING_MODE="webrtc"
+ALSA_OUTPUT_CARD="your-speaker-card-id"
+AUDIO_OUTPUT_BUFFER_SECONDS=8.0
+TTS_ENABLED=1
+
+# Or, for a verified DSP microphone array (never stack both AECs):
+# AUDIO_PROCESSING_MODE="hardware"
+```
+
+`off` retains the safe half-duplex playback gate. `hardware` and `webrtc` keep VAD
+active while the robot talks and abort synthesis/playback when the user starts
+speaking. See the [full-duplex audio guide](docs/full_duplex_audio.md) and the
+[isolated JetPack 6 vLLM-Omni note](docs/qwen3_tts_vllm_omni_jp6.md).
+
+For one Orin NX, prefer the integrated entrypoint. It does not start DDS/ROS 2 or
+expose intermediate reasoning as a service:
+
+```bash
+# Start the current llama.cpp and vLLM-Omni providers first; TTS must be enabled.
+.venv/bin/g1-speech runtime \
+  --config config.tts-demo.local.json \
+  --role-package roles/tifa-lockhart
+```
+
+DDS remains the default for the existing distributed systemd deployment. Recognition
+results are published to `rt/g1/hri/speech/final`. Run separate `serve` and `agent`
+processes only for another GPU/machine or independent debugging. Both CPU and GPU
+backends use the same messages, so no Agent-side changes are required.
 
 ### Subscribe from an Agent
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
+from star_runtime.transports.dds.voice import DdsSpeechSubscriber, initialize_dds
 
 # Initialize Cyclone DDS once per Agent process.
 initialize_dds(domain_id=0)
@@ -159,6 +207,27 @@ You can also inspect recognition results without writing Agent code:
 .venv/bin/g1-speech listen --config config.json --timeout 0
 ```
 
+For a completely local ASR → Qwen3-4B → Qwen3-TTS loop, start the llama.cpp
+server and the DDS bridge in separate terminals:
+
+```bash
+scripts/run-qwen3-agent-llama.sh
+scripts/run-local-voice-agent.sh
+```
+
+The bridge streams Agent text deltas instead of waiting for the whole answer, so
+Agent generation, TTS generation, and continuous PCM playback overlap. See the
+[local offline voice Agent guide](docs/local_offline_voice_agent.md) for startup
+order, prompt overrides, and timing-log definitions.
+
+Versioned character Role Packages live under `roles/`. To run the bundled short-answer
+Olaf persona, replace the generic bridge command with
+`scripts/run-olaf-voice-agent.sh`. The Japanese Tifa profile is available through
+`scripts/run-tifa-voice-agent.sh` and pins the `Ono_Anna` TTS voice per request.
+The runtime/adapter architecture and package schema are documented in the
+[local Agent guide](docs/local_offline_voice_agent.md) and
+[Role Package specification](docs/role_packages.md).
+
 ### Select SenseVoice or Qwen3-ASR
 
 The pipeline depends only on the `AsrEngine` contract. Prepare a host-local Qwen config,
@@ -166,42 +235,34 @@ validate the CUDA load, and select it for the existing GPU service:
 
 ```bash
 bash scripts/setup-qwen3-asr.sh
-cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+cp configs/examples/config.qwen3-asr.example.json config.qwen3-asr.local.json
 # Edit model_dir first.
 .venv-gpu/bin/g1-speech doctor \
   --config config.qwen3-asr.local.json --load-model --skip-audio
 
 # deploy.env
-ASR_BACKEND="qwen3_asr"
 SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
-sudo g1-speech-service gpu dds
+# Restart the selected service, or select GPU + DDS when currently stopped.
+sudo g1-speech-service restart
+# sudo g1-speech-service gpu dds
 ```
+
+`SPEECH_CONFIG_GPU` is the single deployment-time model selector. The JSON
+profile owns `asr.backend`, checkpoint, dtype, attention, and cache settings;
+`deploy.env` does not duplicate them. To return to SenseVoice GPU, select
+`config.gpu.json` and restart. See the [configuration model](docs/configuration.md).
 
 SDPA is the default attention backend. On the Jetson PyTorch 2.5 build, which lacks
 the `enable_gqa` argument, the adapter expands KV heads and then uses PyTorch SDPA.
 The Qwen example selects FP16 because it passed the Orin NX CER gate; BF16 remains
 the conservative fallback for other CUDA platforms until measured there.
 Set `attention_implementation` to `eager` only for fallback or baseline reproduction.
-FlashAttention 2 is an optional CUDA-only backend. Build its Jetson extension once,
-then select it in the same local JSON configuration:
-
-```bash
-bash scripts/setup-flash-attention-2.sh
-.venv-gpu/bin/g1-speech config init \
-  --output config.qwen3-asr-fa2.local.json \
-  --base config.qwen3-asr.local.json \
-  --set qwen3_asr.attention_implementation=flash_attention_2
-```
-
-FA2 requires CUDA and FP16/BF16. Both released Qwen3-ASR models use head-dim 64
-for the audio tower and 128 for the text decoder; the setup script builds an auditable
-Qwen-only wheel with native Orin SM 8.7 inference kernels for just those dimensions
-(no training/backward path). It limits Ninja to one job by
-default to avoid memory pressure; override `MAX_JOBS` only when the device has enough
-free RAM. Use an upstream full wheel if another model needs other dimensions or GPU
-architectures.
-Recognition logs include audio duration and RTF. Use `acceptance/benchmark_engine.py`
-for fixed-WAV latency benchmarks and `acceptance/compare_asr.py` for labeled-corpus CER.
+FlashAttention 2 remains available for controlled experiments, but it is not a
+deployment profile: it was 20.9% slower than SDPA on the measured Orin batch-1
+workload. Experimental variants and their exact settings belong with benchmark
+artifacts rather than as additional root-level `config.qwen3-*` files.
+Recognition logs include audio duration and RTF. Use `tests/acceptance/benchmark_engine.py`
+for fixed-WAV latency benchmarks and `tests/acceptance/compare_asr.py` for labeled-corpus CER.
 
 ### ROS 2
 
@@ -235,9 +296,10 @@ ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```
 
-ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent` and subscribes to
-`g1_speech_msgs/msg/PlaybackState`, preserving the complete DDS event contract.
-See [ROS 2 setup and lifecycle details](ros2/README.md).
+ROS 2 publishes `g1_speech_msgs/msg/SpeechEvent`, subscribes to
+`g1_speech_msgs/msg/PlaybackState`, and—when TTS is enabled—subscribes to
+`g1_speech_msgs/msg/TtsTextChunk`, preserving the complete DDS event contract.
+See [ROS 2 setup and lifecycle details](integrations/ros2/README.md).
 
 ## How It Works
 
@@ -250,16 +312,18 @@ Microphone
   → Robot / Agent / application
 
 TTS or playback
-  → rt/g1/hri/playback/state
-  → temporarily pause recognition
+  → off: rt/g1/hri/playback/state temporarily gates recognition
+  → hardware/webrtc: AEC reference + VAD-triggered interruption
 ```
 
 | Topic | Direction | Purpose |
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | Final speech recognition events |
 | `rt/g1/hri/playback/state` | Agent → Service | Pause recognition during playback so the robot does not hear itself |
+| `rt/g1/hri/tts/request` | Agent → Service | Incremental, idempotent text chunks for streaming TTS |
 | `/hri/speech/final` | Service → ROS 2 Agent | Final structured `SpeechEvent` |
 | `/hri/playback/state` | ROS 2 Agent → Service | Structured playback gate state |
+| `/hri/tts/request` | ROS 2 Agent → Service | Incremental `TtsTextChunk` requests |
 
 Each `SpeechEvent` includes a stable `event_id`, recognized text, language, audio duration, inference latency, source, and timestamp. The publisher retries after transient DDS failures, while subscribers deduplicate events by `event_id`.
 
@@ -304,22 +368,44 @@ The current GPU build targets CUDA 12.6, sherpa-onnx 1.13.4, and ONNX Runtime 1.
 
 ## Configuration
 
-Copy `deploy.env.example` and enter your own device settings. No fixed IP address is required:
+Configuration has two explicit layers:
+
+1. A JSON model profile selects SenseVoice or Qwen3-ASR and owns every
+   model-specific setting.
+2. `deploy.env` describes this host and owns the selected profile path, Python
+   runtime, microphone, common VAD/playback behavior, transport, and installer.
+
+Copy `deploy.env.example`; it has the same fields and ordering as a real
+`deploy.env`, with host-neutral values:
 
 | Setting | Description |
 |---|---|
+| `SPEECH_CONFIG_CPU` / `SPEECH_CONFIG_GPU` | JSON profile selected by each service mode |
+| `SPEECH_PYTHON_GPU` | Optional isolated Python used by the GPU service |
+| `SPEECH_GPU_LIBRARY_PATH` | Optional colon-separated native-library paths for that runtime |
 | `DDS_NETWORK_INTERFACE` | Optional local interface used by DDS; leave empty for automatic selection |
-| `MICROPHONE_DEVICE` | PortAudio input index or device name; leave empty for interactive selection |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | Production default: direct `alsa`, no silent fallback |
+| `ALSA_INPUT_*` | Stable ALSA card ID plus native capture device/rate/channels/dtype |
+| `PULSE_INPUT_DEVICE` | PulseAudio device used when selected or as fallback |
+| `PULSE_SOURCE` | Optional stable PulseAudio source selected by the fallback client |
+| `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | Capture callback size and PortAudio latency request |
+| `AUDIO_PROCESSING_MODE` / `WEBRTC_*` | `off`, hardware DSP, or native WebRTC APM/AEC3 |
+| `ALSA_OUTPUT_*` / `TTS_*` | Physical speaker and local streaming-TTS endpoint |
 | `DDS_DOMAIN_ID` | DDS domain shared with subscribers |
 | `SPEECH_TOPIC` | Topic for final recognition results |
 | `PLAYBACK_TOPIC` | Topic used to gate recognition during TTS or playback |
-| `SENSEVOICE_THREADS` | Number of CPU inference threads |
+| `VAD_*` | Shared utterance segmentation applied to every ASR backend |
+| `PLAYBACK_*` | Shared recognition gate applied to every ASR backend |
 | `SPEECH_TRANSPORT` | `dds` (default) or `ros2` |
 | `ROS2_SETUP` | Optional ROS 2 `setup.bash`; normally discovered automatically |
 | `ROS2_WORKSPACE_SETUP` | Optional custom workspace overlay path |
 | `ROS2_DOMAIN_ID` | Optional ROS graph domain; setup preserves the current shell value |
 
-Runtime settings are stored in `config.json`; GPU deployments use a separate `config.gpu.json`. Relative model paths are resolved from the directory containing the configuration file.
+Do not put `ASR_BACKEND`, `SENSEVOICE_*`, or `QWEN3_ASR_*` in `deploy.env`.
+Those values belong to the selected JSON profile. Backend-neutral environment
+settings are applied both during configuration generation and when the service
+starts, so they consistently affect SenseVoice and Qwen3-ASR. Relative model paths
+are resolved from the directory containing the JSON profile.
 
 Generate a configuration directly from the application's canonical defaults:
 
@@ -327,7 +413,9 @@ Generate a configuration directly from the application's canonical defaults:
 g1-speech config init --output config.json
 ```
 
-The setup scripts use the same command and apply only variables explicitly set in `deploy.env`. This keeps CPU, GPU, example, and programmatic defaults consistent.
+The setup scripts use the same command and apply only backend-neutral variables
+explicitly set in `deploy.env`. Full ownership and precedence are documented in
+[`docs/configuration.md`](docs/configuration.md).
 
 ## Validation and Testing
 
@@ -353,11 +441,11 @@ Transcribe a WAV file:
 Reproduce the performance benchmark:
 
 ```bash
-.venv/bin/python acceptance/benchmark_engine.py \
+.venv/bin/python tests/acceptance/benchmark_engine.py \
   --config config.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
 
-.venv-gpu/bin/python acceptance/benchmark_engine.py \
+.venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.gpu.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
 ```

@@ -1,0 +1,125 @@
+{
+  "date": "2026-08-13",
+  "platform": {
+    "device": "NVIDIA Jetson Orin NX 16 GB",
+    "jetpack": "6.2",
+    "ubuntu": "22.04",
+    "cuda": "12.6",
+    "compute_capability": "8.7"
+  },
+  "runtime": {
+    "python": "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+    "pytorch": "2.11.0",
+    "pytorch_cuda": "12.6",
+    "triton": "3.5.1",
+    "vllm_omni": "0.26.0",
+    "vllm": "0.26.1.dev0+g568afb3a1.d20260812",
+    "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "voice": "Ryan",
+    "sample_rate": 24000
+  },
+  "method": {
+    "transport": "one persistent localhost WebSocket connection",
+    "endpoint": "/v1/audio/speech/stream",
+    "warmup_requests": 1,
+    "texts": [
+      "Welcome to STAR.",
+      "How may I help you?"
+    ],
+    "notes": [
+      "CustomVoice sampling is stochastic, so generated audio duration varies between runs.",
+      "Audio RTF normalizes total generation time by returned PCM duration.",
+      "Cold JIT and graph capture are reported separately and excluded from steady-state summaries."
+    ]
+  },
+  "variants": [
+    {
+      "name": "FA2 eager / Stage-1 eager",
+      "stage_0_graph": "NONE",
+      "stage_1_graph": "NONE",
+      "attention_backend": "FLASH_ATTN_2",
+      "runs": 4,
+      "first_pcm_mean_ms": 509.061,
+      "audio_rtf_mean": 2.112531,
+      "result_file": "eager_ab_results.json"
+    },
+    {
+      "name": "FA2 PIECEWISE / Stage-1 eager",
+      "stage_0_graph": "PIECEWISE",
+      "stage_1_graph": "NONE",
+      "attention_backend": "FLASH_ATTN_2",
+      "runs": 4,
+      "first_pcm_mean_ms": 382.820,
+      "audio_rtf_mean": 1.494389,
+      "result_file": "stage0_piecewise_stage1_eager_results.json"
+    },
+    {
+      "name": "TRITON PIECEWISE / Stage-1 eager",
+      "stage_0_graph": "PIECEWISE",
+      "stage_1_graph": "NONE",
+      "attention_backend": "TRITON_ATTN",
+      "runs": 6,
+      "first_pcm_mean_ms": 420.845,
+      "audio_rtf_mean": 1.636640,
+      "result_file": "stage0_piecewise_triton_stage1_eager_results.json"
+    },
+    {
+      "name": "TRITON FULL+PIECEWISE / Stage-1 eager",
+      "stage_0_graph": "FULL_AND_PIECEWISE",
+      "stage_1_graph": "NONE",
+      "attention_backend": "TRITON_ATTN",
+      "runs": 6,
+      "first_pcm_mean_ms": 244.780,
+      "audio_rtf_mean": 0.715878,
+      "stage_0_compile_seconds": 52.31,
+      "stage_0_graph_capture_seconds": 5,
+      "stage_0_graph_memory_gib": 0.05,
+      "result_file": "stage0_full_triton_stage1_eager_results.json"
+    },
+    {
+      "name": "FA2 eager / Stage-1 inner graph 25,97",
+      "stage_0_graph": "NONE",
+      "stage_1_graph": "INNER_CODE2WAV_ONLY",
+      "attention_backend": "FLASH_ATTN_2",
+      "runs": 4,
+      "first_pcm_mean_ms": 592.684,
+      "audio_rtf_mean": 2.087118,
+      "stage_1_graph_capture_seconds": 5.605,
+      "stage_1_reserved_memory_before_gib": 0.72,
+      "stage_1_reserved_memory_after_gib": 2.18,
+      "stage_1_graph_hits": 12,
+      "stage_1_graph_fallbacks": 0,
+      "result_file": "stage1_graph_25_97_results.json"
+    },
+    {
+      "name": "FA2 PIECEWISE / Stage-1 inner graph 25,97",
+      "stage_0_graph": "PIECEWISE",
+      "stage_1_graph": "INNER_CODE2WAV_ONLY",
+      "attention_backend": "FLASH_ATTN_2",
+      "runs": 6,
+      "first_pcm_mean_ms": 469.165,
+      "audio_rtf_mean": 1.438283,
+      "result_file": "stage0_piecewise_stage1_graph_25_97_results.json"
+    }
+  ],
+  "root_cause_experiment": {
+    "historical_fa2_full_capture": {
+      "result": "stalled",
+      "observed_seconds_without_progress": 201,
+      "location": "Stage-0 single-token FULL decode capture"
+    },
+    "triton_full_capture": {
+      "result": "passed",
+      "full_decode_capture_seconds": 2.08,
+      "all_stage_0_capture_seconds": 5,
+      "streaming_requests_passed": 7
+    },
+    "conclusion": "The failure is specific to the native SM87 FA2 attention path combined with Stage-0 FULL graph capture. vLLM-Omni graph orchestration and the Qwen3-TTS model are not independently sufficient causes."
+  },
+  "selected_baseline": {
+    "attention_backend": "TRITON_ATTN",
+    "stage_0_graph": "FULL_AND_PIECEWISE",
+    "stage_1_graph": "NONE",
+    "reason": "Best measured first-PCM latency and audio RTF; Stage-1 graphs added memory and first-chunk latency for only marginal RTF improvement."
+  }
+}

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from g1_speech import app
 from g1_speech.config import ServiceConfig
 from g1_speech.contracts import PipelineMetricsSnapshot
@@ -37,6 +39,9 @@ class Pipeline:
     def close(self):
         self.calls.append("pipeline.close")
 
+    def stop(self):
+        self.calls.append("pipeline.stop")
+
     def metrics(self):
         return PipelineMetricsSnapshot(*([0] * 13))
 
@@ -54,11 +59,13 @@ def test_service_owns_transport_lifecycle_and_generic_metrics(monkeypatch):
     assert service.metrics()["transport_backend"] == "test"
     service.stop()
     service.close()
+    service.close()
 
     assert service.pipeline.sink is transport.sink
     assert service.pipeline.calls == [
         "pipeline.prepare",
         "pipeline.start",
+        "pipeline.stop",
         "pipeline.close",
     ]
     assert transport.calls == [
@@ -66,6 +73,8 @@ def test_service_owns_transport_lifecycle_and_generic_metrics(monkeypatch):
         "transport.stop",
         "transport.close",
     ]
+    with pytest.raises(RuntimeError, match="closed"):
+        service.start()
 
 
 def test_close_releases_engine_after_prepare_without_start(monkeypatch):

@@ -1,0 +1,45 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [],
+  "runs": [
+    {
+      "text": "从入口直走，过桥后左转即可。",
+      "first_pcm_ms": 235.9677649999412,
+      "total_ms": 3063.2795809999607,
+      "pcm_bytes": 211200,
+      "chunks": 4,
+      "sample_rate": 24000,
+      "audio_seconds": 4.4,
+      "audio_rtf": 0.6961999047727183
+    },
+    {
+      "text": "从入口直走，过桥后左转即可。",
+      "first_pcm_ms": 250.2962280000247,
+      "total_ms": 3085.3241620000063,
+      "pcm_bytes": 207360,
+      "chunks": 4,
+      "sample_rate": 24000,
+      "audio_seconds": 4.32,
+      "audio_rtf": 0.7141954078703717
+    },
+    {
+      "text": "从入口直走，过桥后左转即可。",
+      "first_pcm_ms": 262.78015399998367,
+      "total_ms": 2735.352260999889,
+      "pcm_bytes": 195840,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 4.08,
+      "audio_rtf": 0.6704294757352669
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 249.68138233331652,
+    "first_pcm_median_ms": 250.2962280000247,
+    "first_pcm_p95_ms": 261.5317613999878,
+    "total_mean_ms": 2961.318667999952,
+    "audio_rtf_mean": 0.6936082627927856,
+    "audio_rtf_median": 0.6961999047727183
+  }
+}

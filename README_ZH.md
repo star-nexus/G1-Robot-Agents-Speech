@@ -1,21 +1,31 @@
-# G1 Speech Service — 机器人 Agent 离线语音识别
+# STAR 灵魂下载 Runtime — 离线语音与 Agent 内核
 
 [English](README.md) | 简体中文
 
-面向机器人 Agent 的可插拔离线语音识别服务，针对 NVIDIA Jetson 优化。
-为机器人提供快速、私密的语音输入，支持与人实时互动，无需依赖云端。
+STAR Runtime 将身份、性格、记忆、知识和能力权限组成的可迁移“灵魂”，与语音传输和
+机器人本体解耦。本仓库同时包含针对 NVIDIA Jetson 优化的生产级离线 ASR/TTS 链路。
 
-项目不依赖任何机器人厂商 SDK，通过标准音频设备、DDS 或 ROS 2 接入机器人系统。
+项目核心不依赖任何机器人厂商 SDK；同机模块默认可走进程内通路，也可通过 DDS 或 ROS 2
+扩展到多 GPU、多机器或既有机器人系统。
 当前主要性能验证平台为 NVIDIA Jetson Orin NX，同样适用于其他 Jetson 机器人计算平台、
 NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
-仓库中的 `G1` 仅作为现有项目和协议命名空间，不表示绑定任何同名机器人品牌。
+`star_runtime` 是正式实现命名空间；`g1_speech` 只保留部署和旧代码兼容入口。
+角色不再绑定 DDS、ROS 2 或任何机器人品牌。
 
 - **CPU/GPU 双后端**：支持 CPU INT8 与 Jetson CUDA FP32 两种部署模式
 - **ASR 模型可插拔**：内置 SenseVoice 与 Qwen3-ASR，切换模型不影响 VAD、DDS/ROS 2 或 Agent
+- **生产级全双工**：硬件 DSP / WebRTC APM(AEC3) 可插拔，支持 VAD 打断机器人发声
+- **流式机器人语音客户端**：经 Orin NX 实测，采用多语言自适应文本分块与连续低延迟 ALSA PCM 时间线
 - **完全离线**：语音识别在本地完成，音频和文本无需上传云端
 - **可靠音频采集**：内置流心跳、麦克风自动重连和有界队列
+- **低开销集成 Runtime**：ASR → Agent → TTS 直接传递内存对象，无中间服务和序列化
 - **DDS 与 ROS 2 双传输**：轻量 DDS 系统和 ROS 2 机器人都可直接订阅结构化事件
+- **版本化灵魂包**：统一封装身份、Prompt、知识、记忆、声音与能力要求
+- **本体适配器惰性加载**：先检查能力兼容性，再加载 Galbot、Unitree 等厂商 SDK
 - **高性能**：识别速度 0.01–0.2 秒，准确度高
+
+模块边界和面向 Orin NX 的本体适配器生命周期见
+[Runtime 架构](docs/runtime_architecture.md)。
 
 ## 已验证平台
 
@@ -79,31 +89,65 @@ g1-speech-service status
 g1-speech-service logs
 ```
 
-机器人有多个音频输入时，应当固定语音服务使用的麦克风。USB 摄像头经常也会枚举出
-麦克风，PulseAudio 可能在摄像头接入时自动切换默认输入。先从设备列表中找到具有
-辨识度的名称，再写入本机的 `deploy.env`：
+机器人生产部署使用 ALSA 硬件直连；所选麦克风不可用时直接报错，不静默回退到
+其他桌面麦克风。配置稳定的 ALSA card ID，不要写入 USB 重枚举后会变化的
+`hw:1,0` 数字：
 
 ```bash
-.venv/bin/python -c 'import sounddevice as sd; print(sd.query_devices())'
+for path in /proc/asound/card*/id; do
+  printf '%s: %s\n' "$path" "$(<"$path")"
+done
 
-# deploy.env——仅为示例，请填写自己设备列表中出现的名称
-MICROPHONE_DEVICE="USB Microphone"
+# deploy.env——请使用本机输出的 ID
+AUDIO_INPUT_BACKEND="alsa"
+ALSA_INPUT_CARD="your-card-id"
+AUDIO_INPUT_FALLBACK=""
+AUDIO_INPUT_BLOCK_MS=20
 
 sudo g1-speech-service restart
 g1-speech-service status
 ```
 
-推荐使用稳定的名称，而不是重启或 USB 重新枚举后可能变化的数字序号。`status` 和
-`logs` 都会显示当前配置的麦克风；使用 `pulse` 或 PortAudio 默认输入时，还会显示
-当前 PulseAudio 输入源，并提示热插拔可能改变它。
+服务用麦克风原生格式采集，并在实时 callback 之外转换成 ASR 所需的 16 kHz 单声道。
+项目不根据厂商名猜测麦克风质量：安装时由用户选择 card ID，只有硬件候选唯一时才可留空自动选择。
+`logs` 会报告实际打开的 backend、解析后的设备、原生格式和 PortAudio latency。独占设备要求与完整验证方法见
+[低延迟输入指南](docs/audio_input.md)。
 
-DDS 是默认传输。识别结果发布到 `rt/g1/hri/speech/final`。CPU/GPU 后端使用
-相同的消息，Agent 无需修改。
+全双工交互需要明确选择一种音频处理契约，并固定扬声器的稳定 ALSA card ID：
+
+```bash
+# 普通 USB 麦克风：软件 AEC3/NS，使用实际扬声器 PCM 作为参考。
+AUDIO_PROCESSING_MODE="webrtc"
+ALSA_OUTPUT_CARD="your-speaker-card-id"
+AUDIO_OUTPUT_BUFFER_SECONDS=8.0
+TTS_ENABLED=1
+
+# 已验证带 DSP/AEC 的麦克风阵列（不得重复叠加软件 AEC）：
+# AUDIO_PROCESSING_MODE="hardware"
+```
+
+`off` 保留安全的半双工播放门控；`hardware` 与 `webrtc` 在机器人说话时继续运行 VAD，
+用户开口后会终止合成、清空排队文本并立即 abort ALSA 播放。完整说明见
+[全双工音频指南](docs/full_duplex_audio.md)和
+[JetPack 6 vLLM-Omni 隔离环境记录](docs/qwen3_tts_vllm_omni_jp6.md)。
+
+单机 Orin NX 优先使用完整集成入口；它不启动 DDS/ROS 2，也不把中间推理过程暴露成服务：
+
+```bash
+# 当前 llama.cpp 和 vLLM-Omni 推理提供方仍需先启动；配置中需启用 TTS。
+.venv/bin/g1-speech runtime \
+  --config config.tts-demo.local.json \
+  --role-package roles/tifa-lockhart
+```
+
+DDS 是现有 systemd 分布式部署的默认传输。识别结果发布到
+`rt/g1/hri/speech/final`；需要拆到第二块 GPU、另一台机器或独立调试 Agent 时，再分别运行
+`serve` 与 `agent`。CPU/GPU 后端使用相同的消息，Agent 无需修改。
 
 ### Agent 订阅
 
 ```python
-from g1_speech.dds import DdsSpeechSubscriber, initialize_dds
+from star_runtime.transports.dds.voice import DdsSpeechSubscriber, initialize_dds
 
 # 每个 Agent 进程只初始化一次 Cyclone DDS。
 initialize_dds(domain_id=0)
@@ -128,7 +172,7 @@ Hugging Face 模型目录；以 `.local.json` 结尾的配置和模型文件均�
 
 ```bash
 bash scripts/setup-qwen3-asr.sh
-cp config.qwen3-asr.example.json config.qwen3-asr.local.json
+cp configs/examples/config.qwen3-asr.example.json config.qwen3-asr.local.json
 # 修改 model_dir 后验证 CUDA 模型加载
 .venv-gpu/bin/g1-speech doctor \
   --config config.qwen3-asr.local.json --load-model --skip-audio
@@ -137,10 +181,15 @@ cp config.qwen3-asr.example.json config.qwen3-asr.local.json
 长期运行时在 `deploy.env` 选择配置，然后继续使用同一个 systemd 服务入口：
 
 ```bash
-ASR_BACKEND="qwen3_asr"
 SPEECH_CONFIG_GPU="config.qwen3-asr.local.json"
-sudo g1-speech-service gpu dds
+sudo g1-speech-service restart
+# 服务当前停止时：sudo g1-speech-service gpu dds
 ```
+
+`SPEECH_CONFIG_GPU` 是部署时唯一的模型选择入口。JSON profile 负责
+`asr.backend`、模型目录、dtype、attention 和 cache；`deploy.env` 不再重复这些字段。
+切回 SenseVoice GPU 时只需选择 `config.gpu.json` 并重启。详见
+[配置模型](docs/configuration.md)。
 
 示例配置在 Orin NX 上采用已封存的 `SDPA + FP16` baseline：10 条、50.188 秒带标注
 语料中，FP16 与 BF16 的忽略标点内容 CER 均为 6.22%，10/10 内容转写一致，且每条
@@ -150,31 +199,19 @@ sudo g1-speech-service gpu dds
 NVIDIA PyTorch 2.5 缺少 `enable_gqa` 参数，adapter 会自动展开 KV heads 后进入 SDPA，
 无需修改 Transformers。需要排障或复现旧基线时可显式设为 `eager`。
 
-FlashAttention 2 是可选的 CUDA 后端。先在 Jetson 上编译一次扩展，再生成独立的本机配置：
-
-```bash
-bash scripts/setup-flash-attention-2.sh
-.venv-gpu/bin/g1-speech config init \
-  --output config.qwen3-asr-fa2.local.json \
-  --base config.qwen3-asr.local.json \
-  --set qwen3_asr.attention_implementation=flash_attention_2
-```
-
-FA2 只支持 CUDA FP16/BF16。已发布的两种 Qwen3-ASR 都在音频塔使用 head-dim 64、
-文本解码器使用 128；安装脚本会构建一个可审计的 Qwen 专用 wheel，只保留这两种维度
-的 Orin SM 8.7 推理内核（不包含训练反向路径），并把 Ninja 限制为单任务，避免
-16 GB 设备在编译期间内存不足。其他模型若需
-不同维度或 GPU 架构，应改用上游完整 wheel。
+FlashAttention 2 仍可用于受控实验，但不再作为部署 profile：在已测 Orin batch=1
+场景中，它比 SDPA 慢 20.9%。实验变体及其完整参数应跟随 benchmark artifact 保存，
+而不是继续在根目录增加 `config.qwen3-*` 文件。
 
 每次识别日志都会报告音频时长和 RTF。固定 WAV 的可复现基准命令：
 
 ```bash
-PYTHONPATH=src .venv-gpu/bin/python acceptance/benchmark_engine.py \
+PYTHONPATH=src .venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.qwen3-asr.local.json --wav /path/to/fixed.wav \
   --warmup 3 --runs 10
 ```
 
-公平比较准确率时，使用 `acceptance/compare_asr.py` 对同一份人工标注 JSONL 串行测试
+公平比较准确率时，使用 `tests/acceptance/compare_asr.py` 对同一份人工标注 JSONL 串行测试
 SenseVoice、Qwen3-ASR 0.6B、1.7B 或外部 `g1_speech.asr_backends` 插件。
 
 ### ROS 2
@@ -207,9 +244,10 @@ ros2 lifecycle set /g1_speech configure
 ros2 lifecycle set /g1_speech activate
 ```
 
-ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent` 和
-`g1_speech_msgs/msg/PlaybackState`，完整保留 DDS 事件契约。安装与生命周期说明见
-[ROS 2 文档](ros2/README.md)。
+ROS 2 使用 `g1_speech_msgs/msg/SpeechEvent`、
+`g1_speech_msgs/msg/PlaybackState`，并在启用 TTS 时订阅
+`g1_speech_msgs/msg/TtsTextChunk`，完整保留 DDS 事件契约。安装与生命周期说明见
+[ROS 2 文档](integrations/ros2/README.md)。
 
 ## 工作方式
 
@@ -222,16 +260,18 @@ Microphone
   → Robot / Agent / application
 
 TTS or playback
-  → rt/g1/hri/playback/state
-  → temporarily pause recognition
+  → off：通过 playback state 暂停识别
+  → hardware/webrtc：输入 AEC 参考，并由 VAD 打断播放
 ```
 
 | Topic | 方向 | 用途 |
 |---|---|---|
 | `rt/g1/hri/speech/final` | Service → Agent | 最终语音识别事件 |
 | `rt/g1/hri/playback/state` | Agent → Service | 播放期间暂停识别，避免机器人听到自己 |
+| `rt/g1/hri/tts/request` | Agent → Service | 流式 TTS 的增量、可去重文本块 |
 | `/hri/speech/final` | Service → ROS 2 Agent | 最终结构化 `SpeechEvent` |
 | `/hri/playback/state` | ROS 2 Agent → Service | 结构化播放门控状态 |
+| `/hri/tts/request` | ROS 2 Agent → Service | 增量 `TtsTextChunk` 请求 |
 
 `SpeechEvent` 包含稳定的 `event_id`、文本、语言、音频时长、推理耗时、来源和时间戳。
 发布端会在短暂 DDS 故障时重试，订阅端会按 `event_id` 去重。
@@ -278,23 +318,40 @@ GPU 部署会：
 
 ## 配置
 
-复制 `deploy.env.example` 后只填写自己的设备信息，不需要固定 IP：
+配置明确分成两层：
+
+1. JSON 模型 profile 选择 SenseVoice/Qwen3-ASR，并拥有全部模型专属参数。
+2. `deploy.env` 描述本机部署，拥有 profile 路径、Python runtime、麦克风、通用
+   VAD/播放门控、transport 与安装选项。
+
+`deploy.env.example` 与真实 `deploy.env` 字段和顺序一致，仅使用与主机无关的示例值：
 
 | 配置 | 说明 |
 |---|---|
+| `SPEECH_CONFIG_CPU` / `SPEECH_CONFIG_GPU` | CPU/GPU 服务选择的 JSON profile |
+| `SPEECH_PYTHON_GPU` | GPU 服务可选的隔离 Python runtime |
+| `SPEECH_GPU_LIBRARY_PATH` | 该 runtime 需要的冒号分隔 native library 路径 |
 | `DDS_NETWORK_INTERFACE` | DDS 使用的本机网卡；留空时自动选择 |
-| `MICROPHONE_DEVICE` | PortAudio 输入编号或设备名；留空可交互选择 |
+| `AUDIO_INPUT_BACKEND` / `AUDIO_INPUT_FALLBACK` | 生产默认：`alsa` 直连，不静默回退 |
+| `ALSA_INPUT_*` | 稳定 ALSA card ID 与硬件原生设备/采样率/声道/dtype |
+| `PULSE_INPUT_DEVICE` | 主动选择或回退时使用的 PulseAudio 设备 |
+| `PULSE_SOURCE` | 回退客户端可选的稳定 PulseAudio source |
+| `AUDIO_INPUT_BLOCK_MS` / `AUDIO_INPUT_LATENCY` | callback 大小与 PortAudio latency 请求 |
+| `AUDIO_PROCESSING_MODE` / `WEBRTC_*` | `off`、硬件 DSP 或原生 WebRTC APM/AEC3 |
+| `ALSA_OUTPUT_*` / `TTS_*` | 物理扬声器与本机流式 TTS endpoint |
 | `DDS_DOMAIN_ID` | 与订阅方一致的 DDS Domain |
 | `SPEECH_TOPIC` | 最终识别结果 Topic |
 | `PLAYBACK_TOPIC` | TTS/播放门控 Topic |
-| `SENSEVOICE_THREADS` | CPU 推理线程数 |
+| `VAD_*` | 对全部 ASR backend 生效的通用分句参数 |
+| `PLAYBACK_*` | 对全部 ASR backend 生效的通用识别门控 |
 | `SPEECH_TRANSPORT` | `dds`（默认）或 `ros2` |
 | `ROS2_SETUP` | 可选 ROS 2 `setup.bash`；通常可自动发现 |
 | `ROS2_WORKSPACE_SETUP` | 可选自定义工作空间 overlay 路径 |
 | `ROS2_DOMAIN_ID` | 可选 ROS Domain；安装时默认沿用当前终端的值 |
 
-运行时参数位于 `config.json`；GPU 部署使用独立的 `config.gpu.json`。相对模型路径
-按配置文件所在目录解析。
+不要在 `deploy.env` 中配置 `ASR_BACKEND`、`SENSEVOICE_*` 或 `QWEN3_ASR_*`；它们属于
+被选中的 JSON profile。backend-neutral 环境设置会在生成配置和服务启动时应用，因此
+会一致地作用于 SenseVoice 与 Qwen3-ASR。相对模型路径按 JSON profile 所在目录解析。
 
 也可以直接根据应用的统一默认值生成配置：
 
@@ -302,8 +359,8 @@ GPU 部署会：
 g1-speech config init --output config.json
 ```
 
-安装脚本使用同一个命令，并且只应用 `deploy.env` 中明确设置的覆盖项，因此 CPU、
-GPU、示例配置和代码调用不会再分别维护默认参数。
+安装脚本使用同一个命令，并且只应用 `deploy.env` 中明确设置的 backend-neutral
+覆盖项。完整字段归属与优先级见 [`docs/configuration.md`](docs/configuration.md)。
 
 ## 验证与测试
 
@@ -329,11 +386,11 @@ GPU、示例配置和代码调用不会再分别维护默认参数。
 复现性能测试：
 
 ```bash
-.venv/bin/python acceptance/benchmark_engine.py \
+.venv/bin/python tests/acceptance/benchmark_engine.py \
   --config config.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/test_wavs/zh.wav
 
-.venv-gpu/bin/python acceptance/benchmark_engine.py \
+.venv-gpu/bin/python tests/acceptance/benchmark_engine.py \
   --config config.gpu.json \
   --wav models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav
 ```

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "source": "values transcribed from vLLM-Omni startup logs during this experiment",
+  "profiles": {
+    "baseline_1024_65536": {
+      "stage0_weights_gib": 1.91,
+      "stage0_kv_cache_gib": 1.96,
+      "stage0_kv_cache_tokens": 18352,
+      "stage0_concurrency_at_max_model_len": 17.92,
+      "stage0_graph_memory_gib": 0.05,
+      "stage1_weights_gib": 0.43,
+      "stage1_has_kv_cache": false
+    },
+    "single_user_64m_384_4096": {
+      "stage0_weights_gib": 1.91,
+      "stage0_kv_cache_bytes_configured": 67108864,
+      "stage0_kv_cache_tokens": 576,
+      "stage0_concurrency_at_max_model_len": 1.5,
+      "stage0_graph_memory_gib_range": [0.01, 0.02],
+      "stage1_weights_gib": 0.43,
+      "stage1_has_kv_cache": false
+    }
+  },
+  "notes": [
+    "These values are startup-log observations, not estimates derived from MemTotal.",
+    "The full console log was not redirected to a file; this artifact makes that provenance explicit."
+  ]
+}

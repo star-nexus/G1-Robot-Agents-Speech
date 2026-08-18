@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "label": "host_without_tts_after",
+  "timestamp_unix": 1786908574.2331295,
+  "hostname": "nvidia-desktop",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "python": {
+    "executable": "/usr/bin/python3",
+    "version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]"
+  },
+  "patterns": [
+    "vllm",
+    "qwen3-tts",
+    "g1-speech",
+    "omni"
+  ],
+  "system_memory": {
+    "meminfo": {
+      "MemTotal_kib": 16031236,
+      "MemFree_kib": 6011980,
+      "MemAvailable_kib": 10310420,
+      "Buffers_kib": 96976,
+      "Cached_kib": 4358928,
+      "SwapCached_kib": 1248,
+      "Active_kib": 4058732,
+      "Inactive_kib": 1668924,
+      "Active(anon)_kib": 291404,
+      "Inactive(anon)_kib": 1032596,
+      "Active(file)_kib": 3767328,
+      "Inactive(file)_kib": 636328,
+      "Unevictable_kib": 35412,
+      "Mlocked_kib": 16,
+      "SwapTotal_kib": 8015584,
+      "SwapFree_kib": 7283168,
+      "Dirty_kib": 776,
+      "Writeback_kib": 0,
+      "AnonPages_kib": 1293948,
+      "Mapped_kib": 294264,
+      "Shmem_kib": 16852,
+      "KReclaimable_kib": 169284,
+      "Slab_kib": 307848,
+      "SReclaimable_kib": 169284,
+      "SUnreclaim_kib": 138564,
+      "KernelStack_kib": 13280,
+      "PageTables_kib": 29272,
+      "NFS_Unstable_kib": 0,
+      "Bounce_kib": 0,
+      "WritebackTmp_kib": 0,
+      "CommitLimit_kib": 16031200,
+      "Committed_AS_kib": 8877168,
+      "VmallocTotal_kib": 133143592960,
+      "VmallocUsed_kib": 109668,
+      "VmallocChunk_kib": 0,
+      "Percpu_kib": 7584,
+      "HardwareCorrupted_kib": 0,
+      "AnonHugePages_kib": 765952,
+      "ShmemHugePages_kib": 0,
+      "ShmemPmdMapped_kib": 0,
+      "FileHugePages_kib": 0,
+      "FilePmdMapped_kib": 0,
+      "CmaTotal_kib": 262144,
+      "CmaFree_kib": 133812,
+      "HugePages_Total": 0,
+      "HugePages_Free": 0,
+      "HugePages_Rsvd": 0,
+      "HugePages_Surp": 0,
+      "Hugepagesize_kib": 2048,
+      "Hugetlb_kib": 0
+    },
+    "used_excluding_available_kib": 5720816
+  },
+  "processes": [
+    {
+      "pid": 24686,
+      "ppid": 1,
+      "name": "g1-speech",
+      "cmdline": [
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/g1-speech",
+        "serve",
+        "--config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/config.tts-demo.local.json",
+        "--transport",
+        "dds"
+      ],
+      "rss_kib": 440396,
+      "rss_anon_kib": 337792,
+      "rss_file_kib": 102596,
+      "rss_shmem_kib": 8,
+      "vm_size_kib": 19933276,
+      "swap_kib": 103356,
+      "pss_kib": 425609,
+      "private_clean_kib": 80532,
+      "private_dirty_kib": 338500,
+      "shared_clean_kib": 14968,
+      "shared_dirty_kib": 8044
+    }
+  ],
+  "selected_process_totals": {
+    "rss_kib": 440396,
+    "pss_kib": 425609,
+    "swap_kib": 103356
+  },
+  "timeseries": [
+    {
+      "timestamp_unix": 1786908574.0861452,
+      "used_excluding_available_kib": 5721060,
+      "mem_available_kib": 10310176,
+      "selected_rss_kib": 440396,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103356
+    }
+  ],
+  "timeseries_peaks": {
+    "used_excluding_available_kib": 5721060,
+    "selected_rss_kib": 440396,
+    "selected_pss_kib": 0
+  },
+  "jtop": {
+    "available": false,
+    "skipped": true
+  },
+  "notes": [
+    "PSS is preferred for process-tree attribution because RSS double-counts shared pages.",
+    "Jetson GPU memory uses unified physical RAM and overlaps process/system memory; do not add it to PSS.",
+    "System used_excluding_available is MemTotal minus MemAvailable, not a TTS-only measurement."
+  ]
+}

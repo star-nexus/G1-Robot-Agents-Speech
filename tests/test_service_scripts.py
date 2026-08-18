@@ -4,7 +4,7 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SYSTEMD = ROOT / "systemd"
+SYSTEMD = ROOT / "deploy" / "systemd"
 
 
 MODES = {
@@ -42,7 +42,10 @@ def test_status_and_logs_report_the_effective_microphone():
     selector = (ROOT / "scripts" / "g1-speech-service").read_text()
     assert 'show_microphone "$unit"' in selector
     assert "pactl get-default-source" in selector
-    assert "MICROPHONE_DEVICE in deploy.env" in selector
+    assert "AUDIO_INPUT_BACKEND" in selector
+    assert "ALSA_INPUT_CARD" in selector
+    assert "PULSE_SOURCE" in selector
+    assert "Actual backend/device" in selector
     assert "(pinned)" in selector
 
 
@@ -96,7 +99,8 @@ def test_runner_can_switch_asr_configuration_without_changing_systemd_units():
     assert "SPEECH_PYTHON_GPU" in runner
     assert 'export PYTHONPATH="$ROOT/src' in runner
     assert 'export CPATH="$CUDA_INCLUDE' in runner
-    assert "QWEN3_CUDSS_DIR" in runner
+    assert "SPEECH_GPU_LIBRARY_PATH" in runner
+    assert "QWEN3_CUDSS_DIR" in runner  # compatibility with existing hosts
     assert 'CYCLONEDDS_HOME/lib/libddsc.so' in runner
     assert "scripts/install-cyclonedds.sh" in runner
 
@@ -106,3 +110,11 @@ def test_ros2_systemd_installation_preserves_the_selected_domain():
     runner = (ROOT / "scripts" / "run-speech-service").read_text()
     assert "Environment=ROS_DOMAIN_ID=$domain_id" in installer
     assert 'export ROS_DOMAIN_ID="$ROS2_DOMAIN_ID"' in runner
+
+
+def test_orin_tts_launcher_uses_graph_safe_attention_and_forwards_overrides():
+    launcher = (ROOT / "scripts" / "run-qwen3-tts-vllm-omni.sh").read_text()
+
+    assert 'QWEN3_TTS_ATTENTION_BACKEND:-TRITON_ATTN' in launcher
+    assert '--attention-backend "$ATTENTION_BACKEND"' in launcher
+    assert '"$@"' in launcher

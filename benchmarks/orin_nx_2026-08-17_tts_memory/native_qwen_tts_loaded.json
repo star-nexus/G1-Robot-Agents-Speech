@@ -1,0 +1,413 @@
+{
+  "schema_version": 1,
+  "label": "native_qwen_tts_loaded",
+  "timestamp_unix": 1786908291.2695427,
+  "hostname": "nvidia-desktop",
+  "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+  "python": {
+    "executable": "/usr/bin/python3",
+    "version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]"
+  },
+  "patterns": [
+    "benchmark-qwen3-tts-native.py",
+    "g1-speech"
+  ],
+  "system_memory": {
+    "meminfo": {
+      "MemTotal_kib": 16031236,
+      "MemFree_kib": 4461156,
+      "MemAvailable_kib": 9263300,
+      "Buffers_kib": 98572,
+      "Cached_kib": 4839776,
+      "SwapCached_kib": 1272,
+      "Active_kib": 4271760,
+      "Inactive_kib": 2569816,
+      "Active(anon)_kib": 298704,
+      "Inactive(anon)_kib": 1656684,
+      "Active(file)_kib": 3973056,
+      "Inactive(file)_kib": 913132,
+      "Unevictable_kib": 35412,
+      "Mlocked_kib": 16,
+      "SwapTotal_kib": 8015584,
+      "SwapFree_kib": 7282656,
+      "Dirty_kib": 1068,
+      "Writeback_kib": 0,
+      "AnonPages_kib": 1914668,
+      "Mapped_kib": 504520,
+      "Shmem_kib": 16764,
+      "KReclaimable_kib": 169976,
+      "Slab_kib": 307992,
+      "SReclaimable_kib": 169976,
+      "SUnreclaim_kib": 138016,
+      "KernelStack_kib": 13760,
+      "PageTables_kib": 32400,
+      "NFS_Unstable_kib": 0,
+      "Bounce_kib": 0,
+      "WritebackTmp_kib": 0,
+      "CommitLimit_kib": 16031200,
+      "Committed_AS_kib": 10906044,
+      "VmallocTotal_kib": 133143592960,
+      "VmallocUsed_kib": 114488,
+      "VmallocChunk_kib": 0,
+      "Percpu_kib": 7584,
+      "HardwareCorrupted_kib": 0,
+      "AnonHugePages_kib": 894976,
+      "ShmemHugePages_kib": 0,
+      "ShmemPmdMapped_kib": 0,
+      "FileHugePages_kib": 0,
+      "FilePmdMapped_kib": 0,
+      "CmaTotal_kib": 262144,
+      "CmaFree_kib": 118088,
+      "HugePages_Total": 0,
+      "HugePages_Free": 0,
+      "HugePages_Rsvd": 0,
+      "HugePages_Surp": 0,
+      "Hugepagesize_kib": 2048,
+      "Hugetlb_kib": 0
+    },
+    "used_excluding_available_kib": 6767936
+  },
+  "processes": [
+    {
+      "pid": 24686,
+      "ppid": 1,
+      "name": "g1-speech",
+      "cmdline": [
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/python",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/.venv-gpu/bin/g1-speech",
+        "serve",
+        "--config",
+        "/home/nvidia/Developer/G1-Robot-Agents-Speech/config.tts-demo.local.json",
+        "--transport",
+        "dds"
+      ],
+      "rss_kib": 441576,
+      "rss_anon_kib": 337792,
+      "rss_file_kib": 103776,
+      "rss_shmem_kib": 8,
+      "vm_size_kib": 19933276,
+      "swap_kib": 103356,
+      "pss_kib": 398603,
+      "private_clean_kib": 25872,
+      "private_dirty_kib": 338476,
+      "shared_clean_kib": 70808,
+      "shared_dirty_kib": 8040
+    },
+    {
+      "pid": 36309,
+      "ppid": 4848,
+      "name": "python",
+      "cmdline": [
+        "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+        "scripts/benchmark-qwen3-tts-native.py",
+        "--model",
+        "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+        "--text",
+        "欢迎来到未来世界。",
+        "--speaker",
+        "Vivian",
+        "--language",
+        "Chinese",
+        "--max-new-tokens",
+        "128",
+        "--attention",
+        "sdpa",
+        "--barrier-after-load",
+        "--output",
+        "benchmarks/orin_nx_2026-08-17_tts_memory/native_qwen_tts.json"
+      ],
+      "rss_kib": 906360,
+      "rss_anon_kib": 624720,
+      "rss_file_kib": 281632,
+      "rss_shmem_kib": 8,
+      "vm_size_kib": 22442748,
+      "swap_kib": 0,
+      "pss_kib": 864819,
+      "private_clean_kib": 207188,
+      "private_dirty_kib": 625140,
+      "shared_clean_kib": 68460,
+      "shared_dirty_kib": 5992
+    },
+    {
+      "pid": 36363,
+      "ppid": 4848,
+      "name": "python3",
+      "cmdline": [
+        "/usr/bin/python3",
+        "scripts/measure-jetson-memory.py",
+        "--label",
+        "native_qwen_tts_loaded",
+        "--output",
+        "benchmarks/orin_nx_2026-08-17_tts_memory/native_qwen_tts_loaded.json",
+        "--match",
+        "benchmark-qwen3-tts-native.py",
+        "--match",
+        "g1-speech"
+      ],
+      "rss_kib": 11900,
+      "rss_anon_kib": 6564,
+      "rss_file_kib": 5336,
+      "rss_shmem_kib": 0,
+      "vm_size_kib": 26372,
+      "swap_kib": 0,
+      "pss_kib": 7120,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 6700,
+      "shared_clean_kib": 5336,
+      "shared_dirty_kib": 0
+    }
+  ],
+  "selected_process_totals": {
+    "rss_kib": 1359836,
+    "pss_kib": 1270542,
+    "swap_kib": 103356
+  },
+  "timeseries": [
+    {
+      "timestamp_unix": 1786908291.0741575,
+      "used_excluding_available_kib": 6767720,
+      "mem_available_kib": 9263516,
+      "selected_rss_kib": 1359836,
+      "selected_pss_kib": 0,
+      "selected_swap_kib": 103356
+    }
+  ],
+  "timeseries_peaks": {
+    "used_excluding_available_kib": 6767720,
+    "selected_rss_kib": 1359836,
+    "selected_pss_kib": 0
+  },
+  "jtop": {
+    "available": true,
+    "stats": {
+      "time": "2026-08-17 03:24:51.338242",
+      "uptime": "2:25:00.590000",
+      "CPU1": 13,
+      "CPU2": 3,
+      "CPU3": 4,
+      "CPU4": 15,
+      "CPU5": 8,
+      "CPU6": 14,
+      "CPU7": 5,
+      "CPU8": 7,
+      "RAM": 0.7486659169636078,
+      "SWAP": 0.09169338129324077,
+      "EMC": 0,
+      "GPU": 0.0,
+      "APE": "OFF",
+      "DLA0_CORE": "OFF",
+      "DLA0_FALCON": "OFF",
+      "DLA1_CORE": "OFF",
+      "DLA1_FALCON": "OFF",
+      "NVDEC": "OFF",
+      "NVENC": "OFF",
+      "NVJPG": "OFF",
+      "NVJPG1": "OFF",
+      "OFA": "OFF",
+      "PVA0_CPU_AXI": "OFF",
+      "PVA0_VPS": "OFF",
+      "SE": "OFF",
+      "VIC": "OFF",
+      "Fan pwmfan0": 43.13725490196079,
+      "Temp cpu": 59.062,
+      "Temp cv0": 55.218,
+      "Temp cv1": 54.937,
+      "Temp cv2": 51.812,
+      "Temp gpu": 58.062,
+      "Temp soc0": 56.718,
+      "Temp soc1": 55.5,
+      "Temp soc2": 53.281,
+      "Temp tj": 59.062,
+      "Power VDD_CPU_GPU_CV": 883,
+      "Power VDD_SOC": 2552,
+      "Power TOT": 6680,
+      "jetson_clocks": "OFF",
+      "nvp model": "MAXN_SUPER"
+    },
+    "memory": {
+      "RAM": {
+        "tot": 16031236,
+        "used": 12002040,
+        "free": 502796,
+        "buffers": 51176,
+        "cached": 3621684,
+        "shared": 5305332,
+        "lfb": 0
+      },
+      "SWAP": {
+        "tot": 8015584,
+        "used": 734976,
+        "cached": 1136,
+        "table": {
+          "/dev/zram0": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 91108,
+            "boot": false
+          },
+          "/dev/zram1": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 92000,
+            "boot": false
+          },
+          "/dev/zram2": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 91168,
+            "boot": false
+          },
+          "/dev/zram3": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 92364,
+            "boot": false
+          },
+          "/dev/zram4": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 93852,
+            "boot": false
+          },
+          "/dev/zram5": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 92912,
+            "boot": false
+          },
+          "/dev/zram6": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 90924,
+            "boot": false
+          },
+          "/dev/zram7": {
+            "type": "zram",
+            "prio": 5,
+            "size": 1001948,
+            "used": 90648,
+            "boot": false
+          }
+        }
+      },
+      "EMC": {
+        "cur": 2133000,
+        "max": 3199000,
+        "min": 204000,
+        "override": 0,
+        "val": 0,
+        "online": true
+      }
+    },
+    "processes": [
+      [
+        34717,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        21.883857359435893,
+        415289,
+        1598172,
+        "VLLM::StageEngi"
+      ],
+      [
+        33709,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        47.93201985260958,
+        492316,
+        2333700,
+        "VLLM::StageEngi"
+      ],
+      [
+        33708,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        2.346129262698806,
+        135450,
+        0,
+        "python"
+      ],
+      [
+        33662,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        17.370015499506884,
+        349009,
+        0,
+        "python"
+      ],
+      [
+        24686,
+        "root",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        8.480856107764263,
+        110538,
+        1150276,
+        "g1-speech"
+      ],
+      [
+        3223,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        0.005528310709489575,
+        4314,
+        15360,
+        "xdg-desktop-por"
+      ],
+      [
+        2900,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        1.247384729468471,
+        63412,
+        88632,
+        "gnome-shell"
+      ],
+      [
+        2338,
+        "nvidia",
+        "I",
+        "Graphic",
+        20,
+        "S",
+        0.7825675537223763,
+        15882,
+        119192,
+        "Xorg"
+      ]
+    ]
+  },
+  "notes": [
+    "PSS is preferred for process-tree attribution because RSS double-counts shared pages.",
+    "Jetson GPU memory uses unified physical RAM and overlaps process/system memory; do not add it to PSS.",
+    "System used_excluding_available is MemTotal minus MemAvailable, not a TTS-only measurement."
+  ]
+}

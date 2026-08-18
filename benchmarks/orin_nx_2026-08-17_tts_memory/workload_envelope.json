@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "runtime": "vLLM-Omni 0.26.0, TRITON_ATTN, Stage-0 FULL_AND_PIECEWISE, Stage-1 eager",
+  "request_max_new_tokens": 256,
+  "corpus": [
+    {
+      "text": "你好。",
+      "chinese_characters": 2,
+      "baseline": {"input_tokens": 30, "semantic_tokens": 21, "audio_seconds": 1.60},
+      "optimized": {"input_tokens": 30, "semantic_tokens": 18, "audio_seconds": 1.36}
+    },
+    {
+      "text": "欢迎来到未来世界。",
+      "chinese_characters": 8,
+      "baseline": {"input_tokens": 33, "semantic_tokens": 38, "audio_seconds": 2.96},
+      "optimized": {"input_tokens": 33, "semantic_tokens": 33, "audio_seconds": 2.56}
+    },
+    {
+      "text": "我是STAR机器人，很高兴见到你。",
+      "chinese_characters": 11,
+      "baseline": {"input_tokens": 36, "semantic_tokens": 46, "audio_seconds": 3.60},
+      "optimized": {"input_tokens": 36, "semantic_tokens": 45, "audio_seconds": 3.52}
+    },
+    {
+      "text": "前方正在举行花车巡游，请跟我从右侧通道慢慢前进。",
+      "chinese_characters": 22,
+      "baseline": {"input_tokens": 43, "semantic_tokens": 73, "audio_seconds": 5.76},
+      "optimized": {"input_tokens": 43, "semantic_tokens": 88, "audio_seconds": 6.96}
+    },
+    {
+      "text": "欢迎来到迪士尼公园，我是雪宝机器人，今天陪你探索冰雪世界和奇妙冒险。",
+      "chinese_characters": 31,
+      "baseline": {"input_tokens": 47, "semantic_tokens": 134, "audio_seconds": 10.64},
+      "optimized": {"input_tokens": 47, "semantic_tokens": 86, "audio_seconds": 6.80}
+    }
+  ],
+  "observed_maximum": {
+    "input_tokens": 47,
+    "semantic_tokens": 134,
+    "stage0_total_tokens": 181,
+    "audio_seconds": 10.64,
+    "stage1_flat_codec_tokens_estimate": 2144,
+    "codec_quantizers": 16
+  },
+  "selected_bounds": {
+    "stage0_max_model_len": 384,
+    "stage0_kv_cache_tokens": 576,
+    "stage0_max_new_tokens": 256,
+    "stage1_max_model_len": 4096
+  },
+  "notes": [
+    "Qwen3-TTS sampling is stochastic, so audio/semantic-token counts differ between repetitions.",
+    "The envelope uses the maximum observed value across baseline and optimized runs, not the more favorable repetition.",
+    "Stage-1 flattened codec-token demand is semantic_tokens multiplied by Q=16; 134 * 16 = 2144."
+  ]
+}

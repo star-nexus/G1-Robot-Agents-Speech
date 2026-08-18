@@ -1,0 +1,86 @@
+{
+  "url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+  "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "warmup": [
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 17715.930506004952,
+      "total_ms": 19248.24400898069,
+      "pcm_bytes": 65280,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.36,
+      "audio_rtf": 14.153120594838743
+    }
+  ],
+  "runs": [
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 481.3611740246415,
+      "total_ms": 2568.4529290301725,
+      "pcm_bytes": 84480,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.76,
+      "audio_rtf": 1.45934825513078
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 467.59636199567467,
+      "total_ms": 2434.114363975823,
+      "pcm_bytes": 80640,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.68,
+      "audio_rtf": 1.4488775976046566
+    },
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 454.9300690414384,
+      "total_ms": 4565.913021040615,
+      "pcm_bytes": 153600,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 3.2,
+      "audio_rtf": 1.426847819075192
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 464.13115796167403,
+      "total_ms": 2505.0331029924564,
+      "pcm_bytes": 84480,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.76,
+      "audio_rtf": 1.4233142630638957
+    },
+    {
+      "text": "Welcome to STAR.",
+      "first_pcm_ms": 467.9217310040258,
+      "total_ms": 2685.0319540244527,
+      "pcm_bytes": 92160,
+      "chunks": 2,
+      "sample_rate": 24000,
+      "audio_seconds": 1.92,
+      "audio_rtf": 1.3984541427210693
+    },
+    {
+      "text": "How may I help you?",
+      "first_pcm_ms": 479.0521059767343,
+      "total_ms": 3770.51110600587,
+      "pcm_bytes": 122880,
+      "chunks": 3,
+      "sample_rate": 24000,
+      "audio_seconds": 2.56,
+      "audio_rtf": 1.472855900783543
+    }
+  ],
+  "summary": {
+    "first_pcm_mean_ms": 469.16543333403143,
+    "first_pcm_median_ms": 467.75904649985023,
+    "first_pcm_p95_ms": 480.7839070126647,
+    "total_mean_ms": 3088.1760795115647,
+    "audio_rtf_mean": 1.4382829963965227,
+    "audio_rtf_median": 1.4378627083399245
+  }
+}

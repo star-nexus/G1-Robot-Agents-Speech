@@ -1,0 +1,132 @@
+{
+  "source_name": "g1_speech_mic",
+  "utterance_queue_capacity": 4,
+  "metrics_interval_seconds": 60.0,
+  "audio": {
+    "input_backend": "alsa",
+    "fallback_backend": null,
+    "alsa_card": null,
+    "alsa_device": 0,
+    "alsa_sample_rate": 48000,
+    "alsa_channels": 2,
+    "alsa_dtype": "int16",
+    "pulse_device": "pulse",
+    "sample_rate": 16000,
+    "block_ms": 20,
+    "latency": "low",
+    "queue_seconds": 5.0,
+    "heartbeat_timeout_seconds": 2.0,
+    "reconnect_initial_seconds": 0.5,
+    "reconnect_max_seconds": 10.0
+  },
+  "audio_processing": {
+    "mode": "off",
+    "sample_rate": 16000,
+    "frame_ms": 10,
+    "echo_cancellation": true,
+    "noise_suppression": true,
+    "automatic_gain_control": false,
+    "stream_delay_ms": 80,
+    "noise_suppression_level": 2
+  },
+  "audio_output": {
+    "backend": "alsa",
+    "alsa_card": null,
+    "alsa_device": 0,
+    "sample_rate": 48000,
+    "channels": 2,
+    "dtype": "int16",
+    "block_ms": 10,
+    "latency": "low",
+    "volume": 1.0,
+    "buffer_seconds": 8.0
+  },
+  "vad": {
+    "model": "models/silero_vad.onnx",
+    "threshold": 0.35,
+    "speech_pre_roll_seconds": 0.5,
+    "min_silence_seconds": 0.35,
+    "min_speech_seconds": 0.15,
+    "max_speech_seconds": 10.0,
+    "buffer_seconds": 30.0
+  },
+  "asr": {
+    "backend": "sensevoice"
+  },
+  "sensevoice": {
+    "model_dir": "models",
+    "model_file": null,
+    "device": "cpu",
+    "language": "zh",
+    "use_itn": true,
+    "num_threads": 4
+  },
+  "qwen3_asr": {
+    "model_dir": "models/Qwen3-ASR-0.6B-hf",
+    "device": "auto",
+    "dtype": "auto",
+    "language": "zh",
+    "prompt": null,
+    "max_new_tokens": 256,
+    "attention_implementation": "sdpa",
+    "compile": false,
+    "compile_mode": "reduce-overhead",
+    "compile_dynamic": false,
+    "startup_warmup_seconds": 0.0,
+    "cache_implementation": null,
+    "quantization": null,
+    "log_profile": false
+  },
+  "transport": {
+    "backend": "dds"
+  },
+  "dds": {
+    "domain_id": 0,
+    "network_interface": null,
+    "speech_topic": "rt/g1/hri/speech/final",
+    "playback_topic": "rt/g1/hri/playback/state",
+    "tts_topic": "rt/g1/hri/tts/request",
+    "write_timeout_seconds": 0.5,
+    "retry_interval_seconds": 0.2,
+    "delivery_ttl_seconds": 120.0,
+    "outbox_capacity": 128
+  },
+  "ros2": {
+    "node_name": "g1_speech",
+    "speech_topic": "hri/speech/final",
+    "playback_topic": "hri/playback/state",
+    "tts_topic": "hri/tts/request",
+    "qos_depth": 10
+  },
+  "playback": {
+    "resume_delay_ms": 250,
+    "max_active_seconds": 30.0
+  },
+  "tts": {
+    "enabled": false,
+    "backend": "vllm_omni",
+    "websocket_url": "ws://127.0.0.1:8091/v1/audio/speech/stream",
+    "model": "Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "task_type": "CustomVoice",
+    "voice": "Ryan",
+    "language": "Auto",
+    "instructions": "",
+    "reference_audio": null,
+    "reference_text": null,
+    "max_new_tokens": 256,
+    "initial_codec_chunk_frames": null,
+    "connect_timeout_seconds": 5.0,
+    "receive_timeout_seconds": 0.1,
+    "request_queue_capacity": 16,
+    "min_chunk_speech_units": 8.0,
+    "preferred_chunk_speech_units": 14.0,
+    "max_chunk_speech_units": 24.0,
+    "max_buffer_characters": 240,
+    "style_tokens": {
+      "happy": "Speak in a bright, delighted and energetic tone.",
+      "sad": "Speak in a subdued, sad and gentle tone.",
+      "angry": "Speak firmly with controlled anger.",
+      "calm": "Speak calmly, clearly and reassuringly."
+    }
+  }
+}

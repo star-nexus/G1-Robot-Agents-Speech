@@ -119,7 +119,7 @@ available RAM。没有为了 benchmark 停止桌面或机器人服务。完整�
 4. 只有成功转写后，再对 `enforce_eager=true/false` 做同口径 A/B，确认 CUDA Graph
    实际捕获并比较首次 capture 与稳态 latency。
 
-仓库已加入 [`benchmark_qwen3_vllm.py`](../acceptance/benchmark_qwen3_vllm.py)，可在内存
+仓库已加入 [`benchmark_qwen3_vllm.py`](../tests/acceptance/benchmark_qwen3_vllm.py)，可在内存
 问题解决后直接生成 JSON、逐次 CSV 和 Markdown，避免改变口径。
 
 ## 投入判断

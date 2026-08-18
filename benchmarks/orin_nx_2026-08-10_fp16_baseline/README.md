@@ -66,19 +66,19 @@ language hint if language identification is part of the gate:
 ```bash
 .venv/bin/g1-speech config init \
   --base config.qwen3-asr.local.json \
-  --output config.qwen3-asr-cer-fp16.local.json \
+  --output /tmp/qwen3-asr-cer-fp16.json \
   --set qwen3_asr.dtype=float16 \
   --set qwen3_asr.language=null
 
 .venv/bin/g1-speech config init \
   --base config.qwen3-asr.local.json \
-  --output config.qwen3-asr-cer-bf16.local.json \
+  --output /tmp/qwen3-asr-cer-bf16.json \
   --set qwen3_asr.dtype=bfloat16 \
   --set qwen3_asr.language=null
 
 PYTHONPATH=src .venv-gpu/bin/python acceptance/compare_asr.py \
-  --config bf16=config.qwen3-asr-cer-bf16.local.json \
-  --config fp16=config.qwen3-asr-cer-fp16.local.json \
+  --config bf16=/tmp/qwen3-asr-cer-bf16.json \
+  --config fp16=/tmp/qwen3-asr-cer-fp16.json \
   --manifest acceptance/asr_manifest.local.jsonl \
   --warmup 3 --runs 3
 ```

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "runtime": {
+    "python_executable": "/home/nvidia/Developer/vllm-omni-orin-jp6/.venv/bin/python",
+    "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+    "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+    "torch_version": "2.11.0",
+    "torch_cuda": "12.6",
+    "gpu_capability": [
+      8,
+      7
+    ],
+    "model": "/home/nvidia/Developer/llama/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "dtype": "bfloat16",
+    "attention": "sdpa"
+  },
+  "request": {
+    "text": "欢迎来到未来世界。",
+    "speaker": "Vivian",
+    "language": "Chinese",
+    "instructions": "用温暖、自然、连贯的普通话说话。",
+    "max_new_tokens": 128
+  },
+  "load": {
+    "event": "native_model_loaded",
+    "pid": 36309,
+    "load_ms": 3859.275210001215,
+    "cuda": {
+      "allocated_bytes": 2156802560,
+      "reserved_bytes": 2290089984,
+      "max_allocated_bytes": 2158609408,
+      "max_reserved_bytes": 2290089984,
+      "device_free_bytes": 9368506368,
+      "device_total_bytes": 16415985664
+    }
+  },
+  "generation": {
+    "generation_ms": 13962.727868000002,
+    "sample_rate": 24000,
+    "audio_samples": 57600,
+    "audio_seconds": 2.4,
+    "rtf": 5.817803278333335,
+    "cuda": {
+      "allocated_bytes": 2166371328,
+      "reserved_bytes": 2302672896,
+      "max_allocated_bytes": 2240577024,
+      "max_reserved_bytes": 2302672896,
+      "device_free_bytes": 8534540288,
+      "device_total_bytes": 16415985664
+    },
+    "streaming": false
+  },
+  "notes": [
+    "The official qwen-tts wrapper returns a complete waveform; this is a memory floor, not a streaming production candidate.",
+    "CUDA allocator figures do not include every driver/library allocation; pair with measure-jetson-memory.py."
+  ]
+}

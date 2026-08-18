@@ -46,7 +46,12 @@ class FakeSoundDevice:
 def test_audio_callback_queue_stays_bounded_under_overload():
     sd = FakeSoundDevice()
     source = SoundDeviceSource(
-        settings=AudioConfig(queue_seconds=0.2),
+        settings=AudioConfig(
+            input_backend="pulse",
+            fallback_backend=None,
+            block_ms=100,
+            queue_seconds=0.2,
+        ),
         sounddevice_module=sd,
     )
     source.start()
@@ -63,6 +68,8 @@ def test_inactive_audio_stream_is_reconnected():
     sd = FakeSoundDevice()
     source = SoundDeviceSource(
         settings=AudioConfig(
+            input_backend="pulse",
+            fallback_backend=None,
             heartbeat_timeout_seconds=0.01,
             reconnect_initial_seconds=0.001,
             reconnect_max_seconds=0.01,
@@ -87,6 +94,8 @@ def test_missing_audio_heartbeat_is_reconnected():
     sd = FakeSoundDevice()
     source = SoundDeviceSource(
         settings=AudioConfig(
+            input_backend="pulse",
+            fallback_backend=None,
             heartbeat_timeout_seconds=0.01,
             reconnect_initial_seconds=0.001,
             reconnect_max_seconds=0.01,
@@ -107,6 +116,8 @@ def test_reconnect_failures_back_off_and_eventually_recover():
     sd = FakeSoundDevice()
     source = SoundDeviceSource(
         settings=AudioConfig(
+            input_backend="pulse",
+            fallback_backend=None,
             reconnect_initial_seconds=1.0,
             reconnect_max_seconds=4.0,
         ),

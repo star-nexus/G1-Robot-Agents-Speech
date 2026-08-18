@@ -1,0 +1,194 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Orin NX 上的 ASR + Agent + TTS 同驻容量实验",
+    "description": "SenseVoice ASR、Qwen3-4B Q5 llama.cpp Agent 与 Qwen3-TTS vLLM-Omni 在 16GB Jetson 上的实测。",
+    "generatedAt": "2026-08-17T04:30:00+08:00",
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Orin NX 上的 ASR + Agent + TTS 同驻容量实验"
+      },
+      {
+        "id": "summary",
+        "type": "markdown",
+        "body": "## 技术结论\n\n**可以全部装入并完成真实的顺序对话链路，但当前属于“可运行、余量偏紧”，还不应直接视为包含视觉负载的最终生产配置。** 4096-context Agent 同驻时，60 秒实测最低可用内存约 **2.05 GiB**，zram 使用约 **0.66 GiB**；Agent 完成 52-token prompt + 13-token 回复约 **1.06 秒**。随后 TTS 稳态 First PCM 均值 **249.7 ms**、P95 **261.5 ms**、RTF **0.694**。三套权重能常驻，正常机器人 ASR → Agent → TTS 顺序计算也能稳定完成。"
+      },
+      {
+        "id": "memory-result",
+        "type": "markdown",
+        "body": "## 主要风险不是 OOM，而是换页和缺少视觉余量\n\nAgent 加载后开始把 ASR/TTS 主控进程的冷页换入 zram。4096 配置仍保留约 2.1 GiB 可用内存，但 CMA/LFB 很低；相机、视觉编码器、地图或其他机器人进程尚未计入。这里验证的是文本 GGUF Agent，不是完整 Qwen-VL 视觉模型。"
+      },
+      {
+        "id": "gpu-chart-block",
+        "type": "chart",
+        "chartId": "gpu-components-chart"
+      },
+      {
+        "id": "memory-table-block",
+        "type": "table",
+        "tableId": "memory-table"
+      },
+      {
+        "id": "runtime-result",
+        "type": "markdown",
+        "body": "## 2048 context 是更合适的 Agent 默认值，但只节省约 165 MiB\n\n把 context 从 4096 收缩到 2048、batch 从 256/64 收缩到 128/32 后，llama-server GPU 映射由 3.09 GiB 降至 2.93 GiB，Agent 总延迟由约 1.08 秒降至 1.04 秒。收益真实但有限；继续压到 1024 预计只再节省约 80 MiB，却会明显限制视觉摘要和对话历史，因此停止。"
+      },
+      {
+        "id": "runtime-table-block",
+        "type": "table",
+        "tableId": "runtime-table"
+      },
+      {
+        "id": "tts-result",
+        "type": "markdown",
+        "body": "## TTS 稳态性能保持，但 Agent 冷启动会制造一次 page-in 抖动\n\n4096 配置加载后的第一条 TTS First PCM 为 323 ms；随后三次稳定在 236–263 ms。2048 A/B 是在累计换页约 1.7 GiB 后进行，因此其 P95 313 ms 不能被解释为 context 更小反而更慢，而应视为实验顺序造成的换页污染。两组 TTS RTF 均约 0.70，持续流式仍快于实时。"
+      },
+      {
+        "id": "tts-table-block",
+        "type": "table",
+        "tableId": "tts-table"
+      },
+      {
+        "id": "definitions",
+        "type": "markdown",
+        "body": "## 测量口径\n\n“可用内存”使用 `/proc/meminfo` 的 `MemAvailable`；“系统使用”是 `MemTotal - MemAvailable`；“GPU 映射”来自 jtop 的进程表。Jetson CPU/GPU 共用物理内存，因此 GPU 映射、PSS 和系统内存相互重叠，不能相加。峰值测试覆盖一次 Agent 请求和紧随其后的流式 TTS 请求。机器人实际链路是顺序推理，而不是让 ASR、Agent、TTS 同时争用 GPU。"
+      },
+      {
+        "id": "limits",
+        "type": "markdown",
+        "body": "## 限制与稳健性\n\n2048 测试发生在 4096 测试之后，zram 已从约 0.66 GiB 累积到约 1.70 GiB，因此不能直接比较两轮的 whole-system used。GPU 进程映射和 Agent timing 仍可用于配置 A/B。实验没有加载视觉编码器，也没有覆盖相机、导航和完整交互大脑的峰值；因此结论只支持文本 Agent 同驻。"
+      },
+      {
+        "id": "recommendation",
+        "type": "markdown",
+        "body": "## 推荐下一步\n\n1. 使用 `parallel=1, context=2048, batch=128, ubatch=32, Q8 KV, full GPU offload` 作为文本 Agent 候选。\n2. 启动顺序采用 ASR → TTS 完整 warm-up → Agent → 再各跑一次 ASR/TTS warm-up，消化 page-in。\n3. production gate 要求长期 zram 不持续增长、MemAvailable 保持至少约 1.5–2 GiB，并加入相机/导航实际进程复测。\n4. 若还需完整视觉模型，优先测试更小的 Q4/IQ4 Agent 或继续削减 vLLM-Omni 多进程开销；不要靠把 context 压到 1024 换取不足 0.1 GiB。"
+      },
+      {
+        "id": "questions",
+        "type": "markdown",
+        "body": "## 尚待回答\n\n完整交互大脑是否只把视觉系统生成的短文本摘要交给 Qwen3-4B，还是需要 Agent 自己运行视觉 encoder？前者当前容量基本可行；后者必须把视觉模型和 camera buffer 纳入下一轮全栈压力测试。"
+      }
+    ],
+    "cards": [],
+    "charts": [
+      {
+        "id": "gpu-components-chart",
+        "title": "三模型常驻 GPU 统一内存映射",
+        "subtitle": "4096-context Agent 配置；jtop 进程映射，单位 GiB",
+        "type": "horizontalBar",
+        "intent": "comparison",
+        "question": "ASR、TTS 两个 Stage 和 Agent 分别映射了多少 GPU 统一内存？",
+        "rationale": "四个离散组件使用水平条形图，便于比较带有长标签的绝对内存占用；不把两个 context 配置伪装成时间趋势。",
+        "dataset": "gpu_components",
+        "sourceId": "full-stack-memory",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {"field": "component", "type": "nominal", "label": "组件"},
+          "y": {"field": "gpu_mapping_gib", "type": "quantitative", "label": "GPU 映射 GiB", "format": "number"},
+          "tooltip": [
+            {"field": "runtime", "type": "nominal", "label": "Runtime"}
+          ]
+        },
+        "palette": {"kind": "sequential", "name": "blue"},
+        "labels": {"values": "all"}
+      }
+    ],
+    "tables": [
+      {
+        "id": "memory-table",
+        "title": "整机与 GPU 映射",
+        "subtitle": "16GB Orin NX；2048 行受到前序换页影响",
+        "showDescription": true,
+        "dataset": "memory",
+        "columns": [
+          {"field": "order", "label": "顺序", "format": "number"},
+          {"field": "state", "label": "状态"},
+          {"field": "system_used_gib", "label": "系统使用 GiB", "format": "number"},
+          {"field": "available_gib", "label": "可用 GiB", "format": "number"},
+          {"field": "swap_gib", "label": "zram 使用 GiB", "format": "number"},
+          {"field": "agent_gpu_gib", "label": "Agent GPU 映射 GiB", "format": "number"}
+        ],
+        "defaultSort": {"field": "order", "direction": "asc"},
+        "sourceId": "full-stack-memory"
+      },
+      {
+        "id": "runtime-table",
+        "title": "Agent 同输入 A/B",
+        "subtitle": "52 prompt tokens，13 completion tokens，关闭 thinking",
+        "showDescription": true,
+        "dataset": "agent_runtime",
+        "columns": [
+          {"field": "order", "label": "顺序", "format": "number"},
+          {"field": "profile", "label": "Profile"},
+          {"field": "prompt_ms", "label": "Prompt ms", "format": "number"},
+          {"field": "decode_ms", "label": "Decode ms", "format": "number"},
+          {"field": "decode_tps", "label": "Decode tok/s", "format": "number"},
+          {"field": "request_ms", "label": "请求总时长 ms", "format": "number"}
+        ],
+        "defaultSort": {"field": "order", "direction": "asc"},
+        "sourceId": "agent-responses"
+      },
+      {
+        "id": "tts-table",
+        "title": "Agent 常驻时的流式 TTS",
+        "subtitle": "同一句 14 字中文回复；First PCM 与音频 RTF",
+        "showDescription": true,
+        "dataset": "tts_runtime",
+        "columns": [
+          {"field": "order", "label": "顺序", "format": "number"},
+          {"field": "profile", "label": "状态"},
+          {"field": "runs", "label": "Runs", "format": "number"},
+          {"field": "first_pcm_mean_ms", "label": "First PCM mean ms", "format": "number"},
+          {"field": "first_pcm_p95_ms", "label": "First PCM p95 ms", "format": "number"},
+          {"field": "rtf_mean", "label": "RTF mean", "format": "number"}
+        ],
+        "defaultSort": {"field": "order", "direction": "asc"},
+        "sourceId": "tts-results"
+      }
+    ],
+    "filters": [],
+    "sources": [
+      {"id": "full-stack-memory", "label": "jtop and /proc memory snapshots", "path": "full_stack_idle_4096_q8kv.json", "description": "Saved host-level memory snapshots and the 60-second peak trace.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Reproducible projection of the four contemporaneous jtop GPU mapping rows used by the chart.", "sql": "SELECT 'ASR speech service' AS component, 1.08 AS gpu_mapping_gib, 'SenseVoice GPU speech service' AS runtime UNION ALL SELECT 'TTS Stage 0', 2.21, 'vLLM-Omni talker' UNION ALL SELECT 'TTS Stage 1', 1.31, 'vLLM-Omni Code2Wav' UNION ALL SELECT 'Agent Qwen3-4B Q5', 3.09, 'llama.cpp, 4096 context, Q8 KV'"}},
+      {"id": "agent-responses", "label": "llama.cpp OpenAI-compatible responses", "path": "agent_response_4096_q8kv.json", "description": "Saved JSON responses including llama.cpp timing fields.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Projection of the timing fields saved by the two controlled llama.cpp responses.", "sql": "SELECT '4096 ctx / 256 batch / 64 ubatch' AS profile, 239.8 AS prompt_ms, 819.7 AS decode_ms, 15.86 AS decode_tps, 1083.6 AS request_ms UNION ALL SELECT '2048 ctx / 128 batch / 32 ubatch', 273.0, 748.0, 17.38, 1038.4"}},
+      {"id": "tts-results", "label": "Qwen3-TTS WebSocket benchmark", "path": "tts_steady_with_agent_4096_q8kv.json", "description": "Saved first-PCM, PCM chunk, audio duration, and RTF results.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Projection of the summary fields saved by the controlled WebSocket runs.", "sql": "SELECT '4096 Agent 后首次 page-in' AS profile, 1 AS runs, 323.4 AS first_pcm_mean_ms, 323.4 AS first_pcm_p95_ms, 0.698 AS rtf_mean UNION ALL SELECT '4096 Agent 稳态', 3, 249.7, 261.5, 0.694 UNION ALL SELECT '2048 Agent，累计换页后', 3, 283.6, 312.8, 0.702"}}
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "status": "ready",
+    "generatedAt": "2026-08-17T04:30:00+08:00",
+    "datasets": {
+      "gpu_components": [
+        {"component": "ASR speech service", "gpu_mapping_gib": 1.08, "runtime": "SenseVoice GPU speech service"},
+        {"component": "TTS Stage 0", "gpu_mapping_gib": 2.21, "runtime": "vLLM-Omni talker"},
+        {"component": "TTS Stage 1", "gpu_mapping_gib": 1.31, "runtime": "vLLM-Omni Code2Wav"},
+        {"component": "Agent Qwen3-4B Q5", "gpu_mapping_gib": 3.09, "runtime": "llama.cpp, 4096 context, Q8 KV"}
+      ],
+      "memory": [
+        {"order": 1, "state": "ASR + TTS，Agent 启动前", "system_used_gib": 10.29, "available_gib": 5.00, "swap_gib": 0.00, "agent_gpu_gib": 0.00},
+        {"order": 2, "state": "加 4096-context Agent，idle", "system_used_gib": 13.19, "available_gib": 2.10, "swap_gib": 0.63, "agent_gpu_gib": 3.09},
+        {"order": 3, "state": "4096 顺序请求峰值", "system_used_gib": 13.24, "available_gib": 2.05, "swap_gib": 0.66, "agent_gpu_gib": 3.09},
+        {"order": 4, "state": "2048-context A/B（累计换页）", "system_used_gib": 12.43, "available_gib": 2.86, "swap_gib": 1.70, "agent_gpu_gib": 2.93}
+      ],
+      "agent_runtime": [
+        {"order": 1, "profile": "4096 ctx / 256 batch / 64 ubatch", "prompt_ms": 239.8, "decode_ms": 819.7, "decode_tps": 15.86, "request_ms": 1083.6},
+        {"order": 2, "profile": "2048 ctx / 128 batch / 32 ubatch", "prompt_ms": 273.0, "decode_ms": 748.0, "decode_tps": 17.38, "request_ms": 1038.4}
+      ],
+      "tts_runtime": [
+        {"order": 1, "profile": "4096 Agent 后首次 page-in", "runs": 1, "first_pcm_mean_ms": 323.4, "first_pcm_p95_ms": 323.4, "rtf_mean": 0.698},
+        {"order": 2, "profile": "4096 Agent 稳态", "runs": 3, "first_pcm_mean_ms": 249.7, "first_pcm_p95_ms": 261.5, "rtf_mean": 0.694},
+        {"order": 3, "profile": "2048 Agent，累计换页后", "runs": 3, "first_pcm_mean_ms": 283.6, "first_pcm_p95_ms": 312.8, "rtf_mean": 0.702}
+      ]
+    },
+    "accessIssues": []
+  },
+  "sources": [
+    {"id": "full-stack-memory", "label": "jtop and /proc memory snapshots", "path": "full_stack_idle_4096_q8kv.json", "description": "Saved host-level memory snapshots and the 60-second peak trace.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Reproducible projection of the four contemporaneous jtop GPU mapping rows used by the chart.", "sql": "SELECT 'ASR speech service' AS component, 1.08 AS gpu_mapping_gib, 'SenseVoice GPU speech service' AS runtime UNION ALL SELECT 'TTS Stage 0', 2.21, 'vLLM-Omni talker' UNION ALL SELECT 'TTS Stage 1', 1.31, 'vLLM-Omni Code2Wav' UNION ALL SELECT 'Agent Qwen3-4B Q5', 3.09, 'llama.cpp, 4096 context, Q8 KV'"}},
+    {"id": "agent-responses", "label": "llama.cpp OpenAI-compatible responses", "path": "agent_response_4096_q8kv.json", "description": "Saved JSON responses including llama.cpp timing fields.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Projection of the timing fields saved by the two controlled llama.cpp responses.", "sql": "SELECT '4096 ctx / 256 batch / 64 ubatch' AS profile, 239.8 AS prompt_ms, 819.7 AS decode_ms, 15.86 AS decode_tps, 1083.6 AS request_ms UNION ALL SELECT '2048 ctx / 128 batch / 32 ubatch', 273.0, 748.0, 17.38, 1038.4"}},
+    {"id": "tts-results", "label": "Qwen3-TTS WebSocket benchmark", "path": "tts_steady_with_agent_4096_q8kv.json", "description": "Saved first-PCM, PCM chunk, audio duration, and RTF results.", "query": {"language": "sql", "engine": "DuckDB-compatible literal projection", "description": "Projection of the summary fields saved by the controlled WebSocket runs.", "sql": "SELECT '4096 Agent 后首次 page-in' AS profile, 1 AS runs, 323.4 AS first_pcm_mean_ms, 323.4 AS first_pcm_p95_ms, 0.698 AS rtf_mean UNION ALL SELECT '4096 Agent 稳态', 3, 249.7, 261.5, 0.694 UNION ALL SELECT '2048 Agent，累计换页后', 3, 283.6, 312.8, 0.702"}}
+  ]
+}

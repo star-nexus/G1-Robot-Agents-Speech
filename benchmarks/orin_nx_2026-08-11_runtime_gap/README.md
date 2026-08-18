@@ -36,21 +36,19 @@ from the slope of the controlled token-scaling regression.
 
 ## Main attribution command
 
-The command used the same environment configured by host-local `deploy.env`:
+The original raw JSON retains the historical config filename in `argv`. Root-level
+host configs were later consolidated; the equivalent current command uses the single
+selected Qwen profile and backend-neutral settings from `deploy.env`:
 
 ```bash
-env \
-  PATH=/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-  PYTHONPATH="$PWD/src:$PWD/acceptance" \
-  CUDA_HOME=/usr/local/cuda \
-  TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas \
-  CPATH=/usr/local/cuda/include:/usr/local/cuda/targets/aarch64-linux/include \
-  CPLUS_INCLUDE_PATH=/usr/local/cuda/include:/usr/local/cuda/targets/aarch64-linux/include \
-  TORCHINDUCTOR_CACHE_DIR=/home/nvidia/Developer/vllm-orin-jp6/cache/torch291-static-dynamic \
-  LD_LIBRARY_PATH=/home/nvidia/Developer/vllm-orin-jp6/cudss-0.7.1/rootfs/usr/lib/aarch64-linux-gnu/libcudss/12 \
-  /home/nvidia/Developer/vllm-orin-jp6/.venv-torch291/bin/python \
-  acceptance/benchmark_qwen3_runtime_gap.py \
-  --config config.qwen3-asr-torch291-static-cache.local.json \
+set -a
+source deploy.env
+set +a
+export PYTHONPATH="$PWD/src:$PWD/acceptance"
+export LD_LIBRARY_PATH="$SPEECH_GPU_LIBRARY_PATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+"$SPEECH_PYTHON_GPU" acceptance/benchmark_qwen3_runtime_gap.py \
+  --config "$SPEECH_CONFIG_GPU" \
   --controlled-audio models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav \
   --real-audio tests/test_audio_6s.m4a \
   --scaling-audio tests/test_audio_30s.m4a \
