@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import threading
 import time
+from typing import Callable
+
+from ..core.control import ControlStamp
+from ..core.events import PlaybackState
 
 
 class PlaybackGate:
@@ -14,6 +18,34 @@ class PlaybackGate:
         self._active_since_ns = 0
         self._muted_until_ns = 0
         self._lock = threading.Lock()
+        self._active_stamp: ControlStamp | None = None
+        self._validator: Callable[[ControlStamp], bool] | None = None
+
+    def set_validator(self, validator: Callable[[ControlStamp], bool]) -> None:
+        self._validator = validator
+
+    def handle_state(self, state: PlaybackState | bool) -> None:
+        if isinstance(state, bool):
+            self.set_active(state)
+            return
+        stamp = state.control_stamp
+        now = time.monotonic_ns()
+        if state.active:
+            if self._validator is not None and not self._validator(stamp):
+                return
+            with self._lock:
+                self._active = True
+                self._active_since_ns = now
+                self._muted_until_ns = 0
+                self._active_stamp = stamp
+            return
+        with self._lock:
+            if self._active_stamp is not None and self._active_stamp != stamp:
+                return
+            self._active = False
+            self._active_since_ns = 0
+            self._muted_until_ns = now + self._resume_delay_ns
+            self._active_stamp = None
 
     def set_active(self, active: bool, *, now_ns: int | None = None) -> None:
         now = time.monotonic_ns() if now_ns is None else now_ns
@@ -26,6 +58,7 @@ class PlaybackGate:
                 self._active = False
                 self._active_since_ns = 0
                 self._muted_until_ns = now + self._resume_delay_ns
+                self._active_stamp = None
 
     def is_muted(self, *, now_ns: int | None = None) -> bool:
         now = time.monotonic_ns() if now_ns is None else now_ns

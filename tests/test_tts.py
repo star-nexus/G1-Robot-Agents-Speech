@@ -14,6 +14,8 @@ from g1_speech.tts import (
     TtsTextChunk,
     VllmOmniStreamingTts,
 )
+from star_runtime.core.control import ControlStamp
+from star_runtime.core.timing import RuntimeTimingAudit
 
 
 def test_sentence_assembler_handles_incremental_text_style_and_final_boundary():
@@ -401,3 +403,70 @@ def test_empty_stream_finals_restore_playback_gate_across_two_turns():
         (True, "turn-2"),
         (False, "turn-2"),
     ]
+
+
+def test_tts_audit_records_segment_queue_pcm_enqueue_and_playback_completion():
+    class AuditPlayer:
+        def start(self):
+            pass
+
+        def enqueue(self, pcm, sample_rate, *, cancel=None):
+            assert pcm and sample_rate == 24000 and cancel is not None
+            return True
+
+        def wait_until_idle(self, **_kwargs):
+            return True
+
+        def abort(self):
+            pass
+
+        def close(self):
+            pass
+
+        def metrics(self):
+            return {}
+
+    audit = RuntimeTimingAudit()
+    stamp = ControlStamp("session", "turn-tts", 1)
+    audit.mark(stamp, "agent_complete")
+    completed = threading.Event()
+
+    def playback_state(state):
+        if not state.active:
+            completed.set()
+
+    controller = TtsController(
+        TtsConfig(),
+        engine=RecordingEngine(),
+        player=AuditPlayer(),
+        playback_state=playback_state,
+        timing_audit=audit,
+    )
+    controller.start()
+    controller.accept(
+        TtsTextChunk(
+            "answer-audit",
+            0,
+            "Hello!",
+            is_final=True,
+            session_id=stamp.session_id,
+            turn_id=stamp.turn_id,
+            epoch=stamp.epoch,
+        )
+    )
+    assert completed.wait(1.0)
+    controller.close()
+
+    events = audit.snapshot(stamp)
+    for name in (
+        "tts_segment_ready",
+        "tts_segment_enqueued",
+        "playback_active",
+        "tts_synthesis_start",
+        "tts_first_pcm",
+        "player_enqueue_begin",
+        "player_enqueue_complete",
+        "playback_complete",
+    ):
+        assert name in events
+    assert audit.timelines_emitted == 1

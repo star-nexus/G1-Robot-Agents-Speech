@@ -70,7 +70,17 @@ def test_deployment_example_is_model_neutral_and_matches_local_schema_when_prese
 
     local = ROOT / "deploy.env"
     if local.exists():
-        assert _deployment_fields(local) == fields
+        # Control topics have stable defaults, so older host-local files remain
+        # valid and need not be rewritten merely to adopt Control Plane v1.
+        optional_control = {
+            "CONTROL_TOPIC",
+            "ROS2_CONTROL_TOPIC",
+            # Added after older host-local files were generated; the validated
+            # runtime default selects persistent JP6.2 playback recovery.
+            "AUDIO_OUTPUT_INTERRUPT_STRATEGY",
+        }
+        local_fields = _deployment_fields(local)
+        assert [name for name in fields if name not in optional_control] == local_fields
 
 
 def test_example_profiles_are_grouped_and_root_qwen_profiles_are_local():

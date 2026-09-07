@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from ..agent.role import RolePackage
 from ..capabilities import CapabilityRegistry
+from ..core.timing import RuntimeTimingAudit
 from ..robots import ActiveRobot, RobotAdapterCatalog
 from ..speech.config import ServiceConfig
 from ..speech.playback import PlaybackGate
@@ -111,8 +112,14 @@ def build_integrated_runtime(
             resume_delay_ms=config.playback.resume_delay_ms,
             max_active_seconds=config.playback.max_active_seconds,
         )
-        transport = InProcessTransport(gate.set_active)
-        speech = SpeechService(config, transport=transport, playback_gate=gate)
+        transport = InProcessTransport(gate.handle_state)
+        timing_audit = RuntimeTimingAudit()
+        speech = SpeechService(
+            config,
+            transport=transport,
+            playback_gate=gate,
+            timing_audit=timing_audit,
+        )
         agent = LocalVoiceAgent(
             config,
             settings,
@@ -121,6 +128,7 @@ def build_integrated_runtime(
             subscriber=transport.voice,
             role_package=role_package,
             capabilities=capabilities,
+            timing_audit=timing_audit,
         )
     except Exception:
         if robot is not None:

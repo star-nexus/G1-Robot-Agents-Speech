@@ -39,7 +39,8 @@
     "block_ms": 10,
     "latency": "low",
     "volume": 1.0,
-    "buffer_seconds": 8.0
+    "buffer_seconds": 8.0,
+    "interrupt_strategy": "persistent"
   },
   "vad": {
     "model": "models/silero_vad.onnx",
@@ -86,6 +87,7 @@
     "speech_topic": "rt/g1/hri/speech/final",
     "playback_topic": "rt/g1/hri/playback/state",
     "tts_topic": "rt/g1/hri/tts/request",
+    "control_topic": "rt/g1/hri/control/epoch",
     "write_timeout_seconds": 0.5,
     "retry_interval_seconds": 0.2,
     "delivery_ttl_seconds": 120.0,
@@ -96,6 +98,7 @@
     "speech_topic": "hri/speech/final",
     "playback_topic": "hri/playback/state",
     "tts_topic": "hri/tts/request",
+    "control_topic": "hri/control/epoch",
     "qos_depth": 10
   },
   "playback": {

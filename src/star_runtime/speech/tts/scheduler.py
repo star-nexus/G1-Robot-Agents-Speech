@@ -33,6 +33,9 @@ class SentenceAssembler:
         self._last_sequence = -1
         self._emitted_for_request = False
         self._finalized = False
+        self._session_id = ""
+        self._turn_id = ""
+        self._epoch = 0
 
     def feed(self, chunk: TtsTextChunk) -> list[TtsSynthesisRequest]:
         if chunk.interrupt:
@@ -41,6 +44,9 @@ class SentenceAssembler:
         if self._request_id != chunk.request_id:
             self.reset()
             self._request_id = chunk.request_id
+            self._session_id = chunk.session_id
+            self._turn_id = chunk.turn_id
+            self._epoch = chunk.epoch
         if self._finalized:
             return []
         if chunk.sequence <= self._last_sequence:
@@ -89,6 +95,9 @@ class SentenceAssembler:
         self._last_sequence = -1
         self._emitted_for_request = False
         self._finalized = False
+        self._session_id = ""
+        self._turn_id = ""
+        self._epoch = 0
 
     def _consume_style_tokens(self, text: str) -> str:
         def replace(match: re.Match[str]) -> str:
@@ -207,4 +216,7 @@ class SentenceAssembler:
             instructions=self._instructions,
             final_sentence=final,
             finalize_only=finalize_only,
+            session_id=self._session_id,
+            turn_id=self._turn_id,
+            epoch=self._epoch,
         )

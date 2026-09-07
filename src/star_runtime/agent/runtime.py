@@ -29,6 +29,10 @@ class AgentRuntime:
         # Return the loop iterator directly: no per-token wrapper or allocation.
         return self.loop.stream_response(user_text)
 
+    def cancel_active(self) -> bool:
+        cancel = getattr(self.loop, "cancel_active", None)
+        return bool(cancel()) if cancel is not None else False
+
     def commit_turn(self, user_text: str, assistant_text: str) -> None:
         self.loop.commit_turn(user_text, assistant_text)
 

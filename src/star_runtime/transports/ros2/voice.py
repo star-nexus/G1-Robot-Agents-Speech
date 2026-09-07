@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from ...core.control import EpochInvalidated
 from ...core.events import SpeechEvent
 from ..config import Ros2Config
 from ..contracts import PublishResult, SpeechEventLike
@@ -25,6 +26,8 @@ def message_to_speech_event(message: Any) -> SpeechEvent:
         inference_ms=float(message.inference_ms),
         engine=message.engine,
         is_final=bool(message.is_final),
+        turn_id=getattr(message, "turn_id", ""),
+        epoch=int(getattr(message, "epoch", 0)),
     )
 
 
@@ -58,6 +61,7 @@ class Ros2VoicePort:
         self._executor: Any | None = None
         self._thread: threading.Thread | None = None
         self._closed = False
+        self._control_subscription = None
 
         if node is None:
             if not rclpy.ok():
@@ -87,6 +91,34 @@ class Ros2VoicePort:
             raise RuntimeError("cannot replace ROS 2 speech handler after start")
         self._handler = handler
 
+    def set_control_handler(
+        self, handler: Callable[[EpochInvalidated], None]
+    ) -> None:
+        if self._thread is not None:
+            raise RuntimeError("cannot replace ROS 2 control handler after start")
+        from g1_speech_msgs.msg import EpochInvalidated as RosEpochInvalidated
+
+        def on_control(message: Any) -> None:
+            handler(
+                EpochInvalidated(
+                    event_id=message.event_id,
+                    session_id=message.session_id,
+                    turn_id=message.turn_id,
+                    epoch=int(message.epoch),
+                    next_epoch=int(message.next_epoch),
+                    reason=message.reason,
+                    created_unix_ns=int(message.created_unix_ns),
+                    source=message.source,
+                )
+            )
+
+        self._control_subscription = self._node.create_subscription(
+            RosEpochInvalidated,
+            self._config.control_topic,
+            on_control,
+            self._config.qos_depth,
+        )
+
     def start(self) -> None:
         if not self._owns_node or self._thread is not None:
             return
@@ -112,6 +144,9 @@ class Ros2VoicePort:
         language: str = "",
         voice: str = "",
         instructions: str = "",
+        session_id: str = "",
+        turn_id: str = "",
+        epoch: int = 0,
         timeout: float = 0.25,
     ) -> PublishResult:
         del timeout  # ROS 2 publish is asynchronous.
@@ -128,6 +163,9 @@ class Ros2VoicePort:
         message.instructions = instructions
         message.created_unix_ns = time.time_ns()
         message.source = self._source
+        message.session_id = session_id
+        message.turn_id = turn_id
+        message.epoch = epoch
         self._publisher.publish(message)
         return PublishResult(True, delivered=None, detail="queued by ROS 2 publisher")
 
@@ -141,6 +179,8 @@ class Ros2VoicePort:
         self._executor = None
         self._thread = None
         self._node.destroy_subscription(self._subscription)
+        if self._control_subscription is not None:
+            self._node.destroy_subscription(self._control_subscription)
         self._node.destroy_publisher(self._publisher)
         if self._owns_node:
             self._node.destroy_node()

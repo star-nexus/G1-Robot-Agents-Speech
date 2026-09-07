@@ -46,6 +46,12 @@ stops the previous mode, starts the requested mode, and enables it at boot.
 | `/hri/speech/final` | `g1_speech_msgs/msg/SpeechEvent` | Service to Agent |
 | `/hri/playback/state` | `g1_speech_msgs/msg/PlaybackState` | Agent/TTS to service |
 | `/hri/tts/request` | `g1_speech_msgs/msg/TtsTextChunk` | Agent to streaming TTS |
+| `/hri/control/epoch` | `g1_speech_msgs/msg/EpochInvalidated` | Service to Agent |
+
+Speech, TTS, and playback messages preserve the Runtime Control Plane stamp
+(`session_id`, `turn_id`, `epoch`). The control topic carries epoch invalidation
+immediately on barge-in so a distributed Agent can cancel generation; speech-side
+stamp validation remains the final guard against delayed provider output.
 
 Topic names are relative internally, so ROS namespaces and remapping work
 without changing service configuration. In the root namespace they resolve to

@@ -69,3 +69,32 @@ def test_webrtc_apm_receives_10ms_capture_and_resampled_render_frames():
     assert native.delay == 70
     assert processor.metrics()["webrtc_capture_frames"] == 2
     assert processor.metrics()["webrtc_render_frames"] == 1
+
+
+def test_webrtc_acoustic_trace_records_render_and_vad_edge():
+    class Trace:
+        def __init__(self):
+            self.render = []
+            self.edges = []
+
+        def record_render_reference(self, samples, sample_rate, submitted_ns):
+            self.render.append((samples.copy(), sample_rate, submitted_ns))
+
+        def record_vad_edge(self, at_ns):
+            self.edges.append(at_ns)
+
+    trace = Trace()
+    processor = WebRtcApmProcessor(
+        AudioProcessingConfig(mode="webrtc"),
+        apm=FakeApm(),
+    )
+    processor.set_acoustic_trace_sink(trace)
+
+    processor.push_render(np.ones(160, dtype=np.float32), 16000)
+    processor.note_vad_edge(123456)
+
+    assert len(trace.render) == 1
+    np.testing.assert_array_equal(trace.render[0][0], np.ones(160))
+    assert trace.render[0][1] == 16000
+    assert isinstance(trace.render[0][2], int)
+    assert trace.edges == [123456]

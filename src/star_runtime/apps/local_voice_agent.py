@@ -25,6 +25,7 @@ from star_runtime.agent import (
 from star_runtime.robots import ActiveRobot, RobotAdapterCatalog
 from star_runtime.agent.llama import DEFAULT_REASONING_BUDGET_MESSAGE
 from star_runtime.agent.voice_bridge import VoiceBridgeAdapter, VoiceBridgeSettings
+from star_runtime.core.timing import RuntimeTimingAudit
 from star_runtime.speech.config import ServiceConfig
 from star_runtime.transports.contracts import SpeechInputPort, SpeechOutputPort
 
@@ -131,6 +132,7 @@ class LocalVoiceAgent(VoiceBridgeAdapter):
         subscriber: SpeechInputPort | None = None,
         role_package: RolePackage | None = None,
         capabilities: CapabilityRegistry | None = None,
+        timing_audit: RuntimeTimingAudit | None = None,
     ) -> None:
         self._agent_settings = settings
         runtime = build_agent_runtime(
@@ -153,6 +155,7 @@ class LocalVoiceAgent(VoiceBridgeAdapter):
             ),
             publisher=publisher,
             subscriber=subscriber,
+            timing_audit=timing_audit,
         )
 
     @property
@@ -280,6 +283,7 @@ def _create_voice_ports(
         subscriber = DdsSpeechSubscriber(
             lambda _event: None,
             topic=config.dds.speech_topic,
+            control_topic=config.dds.control_topic,
         )
         return publisher, subscriber
     if backend == "ros2":

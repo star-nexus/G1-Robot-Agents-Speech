@@ -95,6 +95,8 @@ The following `deploy.env` groups are deliberately shared by every ASR backend:
 - `ALSA_INPUT_*`: stable physical card ID and native hardware capture format.
 - `AUDIO_PROCESSING_MODE`, `WEBRTC_*`: half duplex, hardware DSP, or WebRTC APM.
 - `ALSA_OUTPUT_*`, `TTS_*`: physical speaker and local streaming-TTS endpoint.
+- `AUDIO_OUTPUT_INTERRUPT_STRATEGY`: `persistent` for the JP6.2 production path;
+  `hard_abort` is retained for rollback and A/B diagnosis.
 - `PULSE_INPUT_DEVICE`, `PULSE_SOURCE`: PulseAudio fallback device and optional
   pinned source.
 - `VAD_*`: utterance start/end segmentation before ASR inference.

@@ -6,7 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from ..core.events import SpeechEvent
+from ..core.control import EpochInvalidated
+from ..core.events import PlaybackState, SpeechEvent
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,10 @@ class SpeechInputPort(Protocol):
 
     def set_handler(self, handler: Callable[[SpeechEventLike], None]) -> None: ...
 
+    def set_control_handler(
+        self, handler: Callable[[EpochInvalidated], None]
+    ) -> None: ...
+
     def start(self) -> None: ...
 
     def close(self) -> None: ...
@@ -90,6 +95,9 @@ class SpeechOutputPort(Protocol):
         language: str = "",
         voice: str = "",
         instructions: str = "",
+        session_id: str = "",
+        turn_id: str = "",
+        epoch: int = 0,
         timeout: float = 0.25,
     ) -> bool | PublishResult: ...
 

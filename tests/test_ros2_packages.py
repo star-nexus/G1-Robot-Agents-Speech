@@ -43,8 +43,35 @@ def test_ros_speech_event_contract_keeps_all_core_fields():
         "inference_ms",
         "engine",
         "is_final",
+        "turn_id",
+        "epoch",
     }
 
+
+def test_ros_control_plane_metadata_survives_all_transport_boundaries():
+    message_dir = ROOT / "integrations/ros2/g1_speech_msgs/msg"
+
+    def fields(name):
+        return {
+            line.split()[1]
+            for line in (message_dir / name).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        }
+
+    stamp = {"session_id", "turn_id", "epoch"}
+    assert stamp <= fields("SpeechEvent.msg")
+    assert stamp <= fields("TtsTextChunk.msg")
+    assert stamp <= fields("PlaybackState.msg")
+    assert {
+        "event_id",
+        "session_id",
+        "turn_id",
+        "epoch",
+        "next_epoch",
+        "reason",
+        "created_unix_ns",
+        "source",
+    } == fields("EpochInvalidated.msg")
 
 def test_lifecycle_launch_autostart_is_transition_driven():
     launch = (

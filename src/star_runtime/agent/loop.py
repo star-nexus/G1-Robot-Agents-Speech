@@ -38,6 +38,10 @@ class ConversationalLoop:
     def commit_turn(self, user_text: str, assistant_text: str) -> None:
         self._memory.record_turn(user_text, assistant_text)
 
+    def cancel_active(self) -> bool:
+        cancel = getattr(self._model, "cancel", None)
+        return bool(cancel()) if cancel is not None else False
+
     def context_messages(self) -> Sequence[ChatMessage]:
         return self._memory.context_messages()
 

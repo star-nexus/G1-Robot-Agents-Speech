@@ -16,6 +16,8 @@ def event_to_message(event: SpeechEvent) -> SpeechEventMessage:
         inference_ms=event.inference_ms,
         engine=event.engine,
         is_final=event.is_final,
+        turn_id=event.turn_id,
+        epoch=event.epoch,
     )
 
 
@@ -32,5 +34,6 @@ def message_to_event(message: SpeechEventMessage) -> SpeechEvent:
         inference_ms=float(message.inference_ms),
         engine=message.engine,
         is_final=bool(message.is_final),
+        turn_id=getattr(message, "turn_id", ""),
+        epoch=int(getattr(message, "epoch", 0)),
     )
-

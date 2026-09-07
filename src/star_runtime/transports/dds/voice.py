@@ -6,12 +6,13 @@ import logging
 import time
 from typing import Callable
 
+from ...core.control import EpochInvalidated
 from ...core.events import SpeechEvent
 from ..contracts import PublishResult
 from .codec import message_to_event
 from .reliability import EventDeduplicator
 from .runtime import _DdsReader, _DdsWriter, initialize_dds
-from .types import SpeechEventMessage, TtsTextChunkMessage
+from .types import EpochInvalidatedMessage, SpeechEventMessage, TtsTextChunkMessage
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +26,16 @@ class DdsSpeechSubscriber:
         topic: str = "rt/g1/hri/speech/final",
         deduplicator: EventDeduplicator | None = None,
         queue_len: int = 32,
+        control_topic: str = "rt/g1/hri/control/epoch",
     ) -> None:
         self._callback = callback
         self._topic = topic
         self._dedupe = deduplicator or EventDeduplicator()
         self._queue_len = queue_len
         self._subscriber: _DdsReader | None = None
+        self._control_topic = control_topic
+        self._control_subscriber: _DdsReader | None = None
+        self._control_callback: Callable[[EpochInvalidated], None] = lambda _event: None
         self.duplicates = 0
 
     @property
@@ -42,6 +47,13 @@ class DdsSpeechSubscriber:
             raise RuntimeError("cannot replace DDS speech handler after start")
         self._callback = callback
 
+    def set_control_handler(
+        self, callback: Callable[[EpochInvalidated], None]
+    ) -> None:
+        if self._control_subscriber is not None:
+            raise RuntimeError("cannot replace DDS control handler after start")
+        self._control_callback = callback
+
     def start(self) -> None:
         if self._subscriber is not None:
             return
@@ -52,12 +64,22 @@ class DdsSpeechSubscriber:
             self._queue_len,
         )
         self._subscriber.start()
+        self._control_subscriber = _DdsReader(
+            self._control_topic,
+            EpochInvalidatedMessage,
+            self._on_control,
+            8,
+        )
+        self._control_subscriber.start()
         logger.info("DDS SpeechEvent subscriber: %s", self._topic)
 
     def close(self) -> None:
         if self._subscriber is not None:
             self._subscriber.close()
             self._subscriber = None
+        if self._control_subscriber is not None:
+            self._control_subscriber.close()
+            self._control_subscriber = None
 
     def _on_message(self, message: SpeechEventMessage) -> None:
         event = message_to_event(message)
@@ -71,6 +93,20 @@ class DdsSpeechSubscriber:
             max(0, time.time_ns() - event.created_unix_ns) / 1_000_000,
         )
         self._callback(event)
+
+    def _on_control(self, message: EpochInvalidatedMessage) -> None:
+        self._control_callback(
+            EpochInvalidated(
+                event_id=message.event_id,
+                session_id=message.session_id,
+                turn_id=message.turn_id,
+                epoch=int(message.epoch),
+                next_epoch=int(message.next_epoch),
+                reason=message.reason,
+                created_unix_ns=int(message.created_unix_ns),
+                source=message.source,
+            )
+        )
 
 class DdsTtsPublisher:
     """Agent-side incremental text publisher for the robot mouth."""
@@ -98,6 +134,9 @@ class DdsTtsPublisher:
         language: str = "",
         voice: str = "",
         instructions: str = "",
+        session_id: str = "",
+        turn_id: str = "",
+        epoch: int = 0,
         timeout: float = 0.25,
     ) -> PublishResult:
         accepted = self._publisher.write(
@@ -112,6 +151,9 @@ class DdsTtsPublisher:
                 instructions=instructions,
                 created_unix_ns=time.time_ns(),
                 source=self._source,
+                session_id=session_id,
+                turn_id=turn_id,
+                epoch=epoch,
             ),
             timeout,
         )
@@ -129,4 +171,3 @@ class DdsTtsPublisher:
 __all__ = [
     "DdsSpeechSubscriber", "DdsTtsPublisher", "EventDeduplicator", "initialize_dds",
 ]
-

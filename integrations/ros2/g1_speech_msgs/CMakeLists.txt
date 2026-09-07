@@ -8,6 +8,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PlaybackState.msg"
   "msg/SpeechEvent.msg"
   "msg/TtsTextChunk.msg"
+  "msg/EpochInvalidated.msg"
 )
 
 ament_export_dependencies(rosidl_default_runtime)

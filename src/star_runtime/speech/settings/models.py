@@ -54,6 +54,7 @@ class AudioOutputConfig:
     latency: str | float = "low"
     volume: float = 1.0
     buffer_seconds: float = 8.0
+    interrupt_strategy: str = "persistent"
 
 
 @dataclass(frozen=True)
@@ -242,10 +243,23 @@ class ServiceConfig:
             raise ValueError("audio_output.dtype currently supports only int16")
         if self.audio_output.block_ms not in {10, 20}:
             raise ValueError("audio_output.block_ms must be 10 or 20")
+        if (
+            self.audio_processing.mode == "webrtc"
+            and self.audio_output.interrupt_strategy == "persistent"
+            and self.audio_output.block_ms != 10
+        ):
+            raise ValueError(
+                "persistent WebRTC AEC requires audio_output.block_ms=10 "
+                "for one continuous speaker/render clock"
+            )
         if not 0 < self.audio_output.volume <= 1:
             raise ValueError("audio_output.volume must be greater than 0 and at most 1")
         if not 0.1 <= self.audio_output.buffer_seconds <= 60:
             raise ValueError("audio_output.buffer_seconds must be between 0.1 and 60")
+        if self.audio_output.interrupt_strategy not in {"persistent", "hard_abort"}:
+            raise ValueError(
+                "audio_output.interrupt_strategy must be persistent or hard_abort"
+            )
         if self.utterance_queue_capacity < 1:
             raise ValueError("utterance_queue_capacity must be greater than zero")
         if not 0 < self.vad.threshold < 1:
@@ -304,7 +318,14 @@ class ServiceConfig:
             raise ValueError("transport.backend must be inprocess, dds, or ros2")
         if not self.ros2.node_name:
             raise ValueError("ros2.node_name must not be empty")
-        if not self.ros2.speech_topic or not self.ros2.playback_topic or not self.ros2.tts_topic:
+        if not all(
+            (
+                self.ros2.speech_topic,
+                self.ros2.playback_topic,
+                self.ros2.tts_topic,
+                self.ros2.control_topic,
+            )
+        ):
             raise ValueError("ROS 2 topic names must not be empty")
         if self.ros2.qos_depth < 1:
             raise ValueError("ros2.qos_depth must be greater than zero")

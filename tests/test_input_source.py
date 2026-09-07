@@ -113,6 +113,42 @@ def test_source_prefers_alsa_hardware_with_small_low_latency_blocks(tmp_path):
         source.close()
 
 
+def test_source_acoustic_trace_uses_one_capture_timestamp_for_raw_and_post(tmp_path):
+    class Trace:
+        def __init__(self):
+            self.raw = []
+            self.post = []
+
+        def record_raw_capture(self, samples, sample_rate, captured_ns):
+            self.raw.append((samples.copy(), sample_rate, captured_ns))
+
+        def record_post_aec_capture(self, samples, sample_rate, captured_ns):
+            self.post.append((samples.copy(), sample_rate, captured_ns))
+
+    make_card(tmp_path, 7, "Microphone")
+    sd = FakeSoundDevice(devices())
+    trace = Trace()
+    source = SoundDeviceSource(
+        settings=AudioConfig(alsa_card="Microphone"),
+        sounddevice_module=sd,
+        proc_asound_root=tmp_path,
+    )
+    source.set_acoustic_trace_sink(trace)
+    source.start()
+    try:
+        native = np.full((960, 2), 8192, dtype=np.int16)
+        sd.streams[0].kwargs["callback"](native, 960, None, None)
+        chunk = source.read()
+        assert chunk is not None
+    finally:
+        source.close()
+
+    assert len(trace.raw) == len(trace.post) == 1
+    assert trace.raw[0][1:] == trace.post[0][1:]
+    assert trace.raw[0][2] == chunk.captured_monotonic_ns
+    np.testing.assert_array_equal(trace.raw[0][0], trace.post[0][0])
+
+
 def test_source_falls_back_to_pulse_when_hardware_is_busy(tmp_path, caplog):
     make_card(tmp_path, 7, "Microphone")
     sd = FakeSoundDevice(devices(), fail_devices=(1,))

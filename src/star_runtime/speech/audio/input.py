@@ -129,6 +129,7 @@ class SoundDeviceSource:
         self.latency = settings.latency
         self._proc_asound_root = proc_asound_root
         self._processor = processor or PassthroughAudioProcessor("off")
+        self._acoustic_trace_sink: Any | None = None
         self._heartbeat_timeout = settings.heartbeat_timeout_seconds
         self._reconnect_initial = settings.reconnect_initial_seconds
         self._reconnect_max = settings.reconnect_max_seconds
@@ -209,12 +210,45 @@ class SoundDeviceSource:
             self._maintain_stream()
             return None
         converted = self._convert_to_pipeline_format(captured)
+        self._trace_capture(
+            "record_raw_capture",
+            converted,
+            captured.captured_monotonic_ns,
+        )
         processed = self._processor.process_capture(converted, self.sample_rate)
+        self._trace_capture(
+            "record_post_aec_capture",
+            processed,
+            captured.captured_monotonic_ns,
+        )
         return AudioChunk(
             samples=processed,
             sample_rate=self.sample_rate,
             captured_monotonic_ns=captured.captured_monotonic_ns,
         )
+
+    def set_acoustic_trace_sink(self, sink: Any | None) -> None:
+        """Attach an opt-in diagnostic sink; normal capture has no trace work."""
+
+        self._acoustic_trace_sink = sink
+
+    def _trace_capture(
+        self,
+        method_name: str,
+        samples: np.ndarray,
+        captured_monotonic_ns: int,
+    ) -> None:
+        sink = self._acoustic_trace_sink
+        if sink is None:
+            return
+        method = getattr(sink, method_name, None)
+        if method is None:
+            return
+        try:
+            method(samples, self.sample_rate, captured_monotonic_ns)
+        except Exception:  # noqa: BLE001
+            self._acoustic_trace_sink = None
+            logger.exception("Acoustic trace capture failed; disabling trace sink")
 
     def close(self) -> None:
         with self._lock:

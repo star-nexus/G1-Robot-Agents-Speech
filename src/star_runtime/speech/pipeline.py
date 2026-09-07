@@ -10,6 +10,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Callable
 
+from ..core.control import ControlStamp, RuntimeControlPlane
+from ..core.timing import RuntimeTimingAudit
 from .contracts import (
     AsrEngine,
     AudioSource,
@@ -48,7 +50,11 @@ class SpeechPipeline:
         source_name: str = "g1_speech_mic",
         utterance_queue_capacity: int = 4,
         session_id: str | None = None,
-        on_speech_start: Callable[[], None] | None = None,
+        control_plane: RuntimeControlPlane | None = None,
+        timing_audit: RuntimeTimingAudit | None = None,
+        on_speech_start: Callable[[int], None] | None = None,
+        on_turn_superseded: Callable[[ControlStamp, ControlStamp], None]
+        | None = None,
         suppress_during_playback: bool = True,
     ) -> None:
         self._source = source
@@ -60,8 +66,11 @@ class SpeechPipeline:
         self._utterances: queue.Queue[Utterance] = queue.Queue(
             maxsize=utterance_queue_capacity
         )
-        self._session_id = session_id or uuid.uuid4().hex
+        self._control = control_plane or RuntimeControlPlane(session_id)
+        self._timing = timing_audit
+        self._session_id = self._control.session_id
         self._on_speech_start = on_speech_start
+        self._on_turn_superseded = on_turn_superseded
         self._suppress_during_playback = suppress_during_playback
         self._sequence = 0
         self._metrics = _MutableMetrics()
@@ -185,6 +194,7 @@ class SpeechPipeline:
             if current_discontinuities != discontinuity_count:
                 self._segmenter.reset()
                 was_muted = False
+                speech_was_active = False
                 discontinuity_count = current_discontinuities
                 logger.warning("Audio discontinuity detected; VAD state reset")
             if chunk is None:
@@ -209,8 +219,9 @@ class SpeechPipeline:
                 continue
             speech_active = bool(getattr(self._segmenter, "speech_active", False))
             if speech_active and not speech_was_active and self._on_speech_start is not None:
+                detected_ns = time.monotonic_ns()
                 try:
-                    self._on_speech_start()
+                    self._on_speech_start(detected_ns)
                 except Exception:  # noqa: BLE001
                     logger.exception("Speech-start callback failed")
             speech_was_active = speech_active
@@ -261,8 +272,69 @@ class SpeechPipeline:
                 continue
             recognition_finished_ns = time.monotonic_ns()
             self._sequence += 1
+            turn_id = str(uuid.uuid4())
+            previous_stamp = self._control.current
+            stamp = self._control.begin_turn(turn_id)
+            turn_started_ns = time.monotonic_ns()
+            # The new stamp is authoritative before stale-output cleanup.  The
+            # callback is deliberately output-only: it must never invalidate
+            # or advance the newly created turn.
+            if (
+                previous_stamp is not None
+                and previous_stamp != stamp
+                and self._on_turn_superseded is not None
+            ):
+                try:
+                    self._on_turn_superseded(previous_stamp, stamp)
+                except Exception:  # noqa: BLE001
+                    logger.exception(
+                        "Superseded-turn output cleanup failed: previous=%s new=%s",
+                        previous_stamp,
+                        stamp,
+                    )
+            if self._timing is not None:
+                if previous_stamp is not None and previous_stamp != stamp:
+                    self._timing.mark(
+                        previous_stamp,
+                        "superseded",
+                        at_ns=turn_started_ns,
+                        by_turn_id=stamp.turn_id,
+                    )
+                    self._timing.finish(
+                        previous_stamp,
+                        "superseded",
+                        by_turn_id=stamp.turn_id,
+                    )
+                self._timing.mark(
+                    stamp,
+                    "speech_start",
+                    at_ns=utterance.started_monotonic_ns,
+                )
+                self._timing.mark(
+                    stamp,
+                    "speech_end",
+                    at_ns=utterance.ended_monotonic_ns,
+                )
+                self._timing.mark(
+                    stamp,
+                    "vad_ready",
+                    at_ns=utterance.vad_ready_monotonic_ns,
+                )
+                self._timing.mark(
+                    stamp,
+                    "asr_start",
+                    at_ns=recognition_started_ns,
+                )
+                self._timing.mark(
+                    stamp,
+                    "asr_final",
+                    at_ns=recognition_finished_ns,
+                    inference_ms=result.inference_ms,
+                    text_characters=len(result.text),
+                )
+                self._timing.mark(stamp, "turn_started", at_ns=turn_started_ns)
             event = SpeechEvent(
-                event_id=str(uuid.uuid4()),
+                event_id=turn_id,
                 session_id=self._session_id,
                 sequence=self._sequence,
                 created_unix_ns=time.time_ns(),
@@ -273,6 +345,8 @@ class SpeechPipeline:
                 inference_ms=result.inference_ms,
                 engine=result.engine,
                 is_final=True,
+                turn_id=stamp.turn_id,
+                epoch=stamp.epoch,
             )
             vad_ready_ns = utterance.vad_ready_monotonic_ns
             logger.info(
@@ -288,5 +362,23 @@ class SpeechPipeline:
             self._increment("recognitions_succeeded")
             if self._sink.publish(event):
                 self._increment("publish_enqueued")
+                if self._timing is not None:
+                    self._timing.mark(
+                        stamp,
+                        "speech_event_published",
+                        at_ns=time.monotonic_ns(),
+                    )
             else:
                 logger.error("Transport rejected SpeechEvent: event_id=%s", event.event_id)
+                if self._timing is not None:
+                    failed_ns = time.monotonic_ns()
+                    self._timing.mark(
+                        stamp,
+                        "speech_publish_error",
+                        at_ns=failed_ns,
+                    )
+                    self._timing.finish(
+                        stamp,
+                        "speech_publish_error",
+                        at_ns=failed_ns,
+                    )

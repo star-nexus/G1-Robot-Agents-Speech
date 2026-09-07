@@ -9,3 +9,5 @@ uint32 audio_duration_ms
 float32 inference_ms
 string engine
 bool is_final
+string turn_id
+uint64 epoch

@@ -4,6 +4,7 @@ import time
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from g1_speech.config import VadConfig
 from g1_speech.contracts import AudioChunk
@@ -27,6 +28,9 @@ def test_segmenter_uses_vad_config_without_local_defaults(tmp_path):
         class Detector:
             def __init__(self):
                 self.windows = []
+
+            def is_speech_detected(self):
+                return False
 
             def accept_waveform(self, window):
                 self.windows.append(window.copy())
@@ -99,6 +103,9 @@ def test_segmenter_distinguishes_acoustic_end_from_vad_ready_time(tmp_path):
             def __init__(self):
                 self.segments = []
 
+            def is_speech_detected(self):
+                return False
+
             def accept_waveform(self, window):
                 if len(self.segments) == 0:
                     self.segments.append(
@@ -138,3 +145,95 @@ def test_segmenter_distinguishes_acoustic_end_from_vad_ready_time(tmp_path):
     assert utterance.ready_monotonic_ns is not None
     assert utterance.vad_ready_monotonic_ns == utterance.ready_monotonic_ns
     assert utterance.ready_monotonic_ns >= utterance.ended_monotonic_ns
+
+
+def test_segmenter_uses_sherpa_113_speech_detection_api(tmp_path):
+    model = tmp_path / "silero_vad.onnx"
+    model.write_bytes(b"test")
+
+    class FakeSherpa:
+        detector = None
+
+        class VadModelConfig:
+            def __init__(self):
+                self.silero_vad = SimpleNamespace(window_size=512)
+                self.sample_rate = 0
+
+        class Detector:
+            active = False
+
+            def is_speech_detected(self):
+                return self.active
+
+            def accept_waveform(self, _window):
+                pass
+
+            def empty(self):
+                return True
+
+        @classmethod
+        def VoiceActivityDetector(cls, _config, *, buffer_size_in_seconds):
+            del buffer_size_in_seconds
+            cls.detector = cls.Detector()
+            return cls.detector
+
+    segmenter = SileroVadSegmenter(
+        settings=VadConfig(model=str(model)),
+        sherpa_module=FakeSherpa,
+    )
+
+    assert segmenter.speech_active is False
+    FakeSherpa.detector.active = True
+    assert segmenter.speech_active is True
+
+
+def test_segmenter_accepts_legacy_speech_detection_api(tmp_path):
+    model = tmp_path / "silero_vad.onnx"
+    model.write_bytes(b"test")
+
+    class FakeSherpa:
+        class VadModelConfig:
+            def __init__(self):
+                self.silero_vad = SimpleNamespace(window_size=512)
+                self.sample_rate = 0
+
+        class Detector:
+            def is_detected(self):
+                return True
+
+        @classmethod
+        def VoiceActivityDetector(cls, _config, *, buffer_size_in_seconds):
+            del buffer_size_in_seconds
+            return cls.Detector()
+
+    segmenter = SileroVadSegmenter(
+        settings=VadConfig(model=str(model)),
+        sherpa_module=FakeSherpa,
+    )
+
+    assert segmenter.speech_active is True
+
+
+def test_segmenter_fails_fast_without_speech_detection_api(tmp_path):
+    model = tmp_path / "silero_vad.onnx"
+    model.write_bytes(b"test")
+
+    class FakeSherpa:
+        class VadModelConfig:
+            def __init__(self):
+                self.silero_vad = SimpleNamespace(window_size=512)
+                self.sample_rate = 0
+
+        class Detector:
+            pass
+
+        @classmethod
+        def VoiceActivityDetector(cls, _config, *, buffer_size_in_seconds):
+            del buffer_size_in_seconds
+            return cls.Detector()
+
+    with pytest.raises(RuntimeError, match="early barge-in is unavailable"):
+        SileroVadSegmenter(
+            settings=VadConfig(model=str(model)),
+            sherpa_module=FakeSherpa,
+        )

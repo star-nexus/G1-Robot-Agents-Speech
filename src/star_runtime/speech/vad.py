@@ -103,6 +103,18 @@ class SileroVadSegmenter:
         self._vad = sherpa_module.VoiceActivityDetector(
             config, buffer_size_in_seconds=settings.buffer_seconds
         )
+        # sherpa-onnx 1.13.x exposes is_speech_detected().  Resolve the API
+        # once at startup so a version mismatch cannot silently disable the
+        # early VAD edge used for full-duplex barge-in.
+        speech_detector = getattr(self._vad, "is_speech_detected", None)
+        if not callable(speech_detector):
+            speech_detector = getattr(self._vad, "is_detected", None)
+        if not callable(speech_detector):
+            raise RuntimeError(
+                "sherpa-onnx VAD exposes neither is_speech_detected() "
+                "nor compatible is_detected(); early barge-in is unavailable"
+            )
+        self._speech_detector = speech_detector
         self._sample_rate = sample_rate
         self._window_size = config.silero_vad.window_size
         self._pre_roll_samples = round(settings.speech_pre_roll_seconds * sample_rate)
@@ -189,8 +201,7 @@ class SileroVadSegmenter:
     @property
     def speech_active(self) -> bool:
         """Expose the detector's early speech edge for full-duplex barge-in."""
-        detected = getattr(self._vad, "is_detected", False)
-        return bool(detected() if callable(detected) else detected)
+        return bool(self._speech_detector())
 
     def _accept_window(self, window: np.ndarray) -> None:
         self._history.append(window)

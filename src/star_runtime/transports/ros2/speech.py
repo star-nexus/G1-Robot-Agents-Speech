@@ -13,7 +13,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ...core.events import SpeechEvent, TtsTextChunk
+from ...core.control import EpochInvalidated
+from ...core.events import PlaybackState, SpeechEvent, TtsTextChunk
 from ..config import Ros2Config
 from ..contracts import EventSink, PublishResult
 
@@ -33,6 +34,10 @@ def event_to_ros_message(event: SpeechEvent, message_type: type) -> Any:
     message.inference_ms = event.inference_ms
     message.engine = event.engine
     message.is_final = event.is_final
+    if event.turn_id:
+        message.turn_id = event.turn_id
+    if event.epoch:
+        message.epoch = event.epoch
     return message
 
 
@@ -96,6 +101,7 @@ class Ros2Transport:
         self._executor_thread: threading.Thread | None = None
         self._tts_subscription = None
         self._playback_publisher = None
+        self._control_publisher = None
 
         if node is None:
             if not rclpy.ok():
@@ -159,6 +165,9 @@ class Ros2Transport:
         if self._playback_publisher is not None:
             self._node.destroy_publisher(self._playback_publisher)
             self._playback_publisher = None
+        if self._control_publisher is not None:
+            self._node.destroy_publisher(self._control_publisher)
+            self._control_publisher = None
         if self._publisher is not None:
             if self._lifecycle and hasattr(self._node, "destroy_lifecycle_publisher"):
                 self._node.destroy_lifecycle_publisher(self._publisher)
@@ -178,7 +187,19 @@ class Ros2Transport:
         }
 
     def _on_playback(self, message: Any) -> None:
-        self._playback_handler(bool(message.active))
+        state = PlaybackState(
+            request_id=message.request_id,
+            active=bool(message.active),
+            created_unix_ns=int(getattr(message, "created_unix_ns", 0)),
+            source=getattr(message, "source", ""),
+            session_id=getattr(message, "session_id", ""),
+            turn_id=getattr(message, "turn_id", ""),
+            epoch=int(getattr(message, "epoch", 0)),
+        )
+        try:
+            self._playback_handler(state)
+        except TypeError:
+            self._playback_handler(state.active)
         logger.info(
             "ROS 2 playback gate active=%s request_id=%s",
             message.active,
@@ -207,6 +228,9 @@ class Ros2Transport:
                     instructions=message.instructions,
                     created_unix_ns=int(message.created_unix_ns),
                     source=message.source,
+                    session_id=getattr(message, "session_id", ""),
+                    turn_id=getattr(message, "turn_id", ""),
+                    epoch=int(getattr(message, "epoch", 0)),
                 )
             )
 
@@ -223,12 +247,35 @@ class Ros2Transport:
             self._config.qos_depth,
         )
 
-    def publish_playback_state(self, active: bool, request_id: str) -> None:
+    def publish_playback_state(self, state: PlaybackState) -> None:
         if self._playback_publisher is None:
             return
         message = self._playback_message_type()
-        message.request_id = request_id
-        message.active = active
-        message.created_unix_ns = time.time_ns()
-        message.source = "g1_speech_tts"
+        message.request_id = state.request_id
+        message.active = state.active
+        message.created_unix_ns = state.created_unix_ns
+        message.source = state.source
+        message.session_id = state.session_id
+        message.turn_id = state.turn_id
+        message.epoch = state.epoch
         self._playback_publisher.publish(message)
+
+    def publish_control(self, event: EpochInvalidated) -> None:
+        try:
+            from g1_speech_msgs.msg import EpochInvalidated as RosEpochInvalidated
+        except ImportError as exc:
+            raise RuntimeError(
+                "control plane over ROS 2 requires rebuilding g1_speech_msgs"
+            ) from exc
+        publisher = getattr(self, "_control_publisher", None)
+        if publisher is None:
+            publisher = self._node.create_publisher(
+                RosEpochInvalidated,
+                self._config.control_topic,
+                self._config.qos_depth,
+            )
+            self._control_publisher = publisher
+        message = RosEpochInvalidated()
+        for name, value in vars(event).items():
+            setattr(message, name, value)
+        publisher.publish(message)

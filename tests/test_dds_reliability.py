@@ -151,6 +151,9 @@ def test_tts_dds_contract_preserves_incremental_request_fields():
             instructions="Calm",
             created_unix_ns=123,
             source="agent",
+            session_id="session-1",
+            turn_id="turn-1",
+            epoch=3,
         )
     )
 
@@ -160,6 +163,11 @@ def test_tts_dds_contract_preserves_incremental_request_fields():
         "English",
         "Ryan",
         "Calm",
+    )
+    assert (chunk.session_id, chunk.turn_id, chunk.epoch) == (
+        "session-1",
+        "turn-1",
+        3,
     )
 
 
@@ -182,6 +190,9 @@ def test_tts_dds_publisher_sets_idempotency_and_interrupt_fields():
         text="",
         is_final=True,
         interrupt=True,
+        session_id="session-2",
+        turn_id="turn-2",
+        epoch=4,
         timeout=0.1,
     )
     assert writer.message.request_id == "answer-2"
@@ -189,6 +200,11 @@ def test_tts_dds_publisher_sets_idempotency_and_interrupt_fields():
     assert writer.message.is_final is True
     assert writer.message.interrupt is True
     assert writer.message.source == "brain"
+    assert (writer.message.session_id, writer.message.turn_id, writer.message.epoch) == (
+        "session-2",
+        "turn-2",
+        4,
+    )
 
 
 def test_dds_listener_drains_coalesced_streaming_samples_in_one_notification(

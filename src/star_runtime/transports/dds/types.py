@@ -25,6 +25,8 @@ try:
         inference_ms: idl_types.float32
         engine: str
         is_final: bool
+        turn_id: str = ""
+        epoch: idl_types.uint64 = 0
 
     @dataclass
     class PlaybackStateMessage(IdlStruct, typename="g1_hri.msg.PlaybackState"):
@@ -32,6 +34,9 @@ try:
         active: bool
         created_unix_ns: idl_types.uint64
         source: str
+        session_id: str = ""
+        turn_id: str = ""
+        epoch: idl_types.uint64 = 0
 
     @dataclass
     class TtsTextChunkMessage(IdlStruct, typename="g1_hri.msg.TtsTextChunk"):
@@ -43,6 +48,20 @@ try:
         language: str
         voice: str
         instructions: str
+        created_unix_ns: idl_types.uint64
+        source: str
+        session_id: str = ""
+        turn_id: str = ""
+        epoch: idl_types.uint64 = 0
+
+    @dataclass
+    class EpochInvalidatedMessage(IdlStruct, typename="g1_hri.msg.EpochInvalidated"):
+        event_id: str
+        session_id: str
+        turn_id: str
+        epoch: idl_types.uint64
+        next_epoch: idl_types.uint64
+        reason: str
         created_unix_ns: idl_types.uint64
         source: str
 
@@ -62,6 +81,8 @@ except ImportError:
         inference_ms: float
         engine: str
         is_final: bool
+        turn_id: str = ""
+        epoch: int = 0
 
     @dataclass
     class PlaybackStateMessage:
@@ -69,6 +90,9 @@ except ImportError:
         active: bool
         created_unix_ns: int
         source: str
+        session_id: str = ""
+        turn_id: str = ""
+        epoch: int = 0
 
     @dataclass
     class TtsTextChunkMessage:
@@ -80,5 +104,19 @@ except ImportError:
         language: str
         voice: str
         instructions: str
+        created_unix_ns: int
+        source: str
+        session_id: str = ""
+        turn_id: str = ""
+        epoch: int = 0
+
+    @dataclass
+    class EpochInvalidatedMessage:
+        event_id: str
+        session_id: str
+        turn_id: str
+        epoch: int
+        next_epoch: int
+        reason: str
         created_unix_ns: int
         source: str

@@ -9,6 +9,8 @@ import numpy as np
 from g1_speech.contracts import AudioChunk, RecognitionResult, Utterance
 from g1_speech.gate import PlaybackGate
 from g1_speech.pipeline import SpeechPipeline
+from star_runtime.core.control import RuntimeControlPlane
+from star_runtime.core.timing import RuntimeTimingAudit
 
 
 class FakeSource:
@@ -135,6 +137,65 @@ def test_pipeline_publishes_final_event(caplog):
     assert "speech_end_to_final=" in caplog.text
 
 
+def test_pipeline_records_acoustic_vad_and_asr_timestamps_without_estimation():
+    source = FakeSource()
+    sink = CollectingSink()
+    audit = RuntimeTimingAudit()
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=EveryChunkIsUtterance(),
+        engine=FakeEngine(),
+        sink=sink,
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+        timing_audit=audit,
+    )
+    pipeline.start()
+    captured_ns = time.monotonic_ns()
+    source.items.put(chunk(captured_ns))
+    wait_for(lambda: len(sink.events) == 1)
+    pipeline.close()
+
+    events = audit.snapshot(sink.events[0].control_stamp)
+    assert events["speech_start"].monotonic_ns == captured_ns
+    assert events["speech_end"].monotonic_ns == captured_ns
+    assert events["vad_ready"].monotonic_ns == captured_ns
+    assert events["asr_start"].monotonic_ns >= captured_ns
+    assert events["asr_final"].monotonic_ns >= events["asr_start"].monotonic_ns
+    assert events["speech_event_published"].monotonic_ns >= events[
+        "turn_started"
+    ].monotonic_ns
+
+
+def test_asr_final_cleanup_runs_after_new_turn_is_authoritative():
+    source = FakeSource()
+    sink = CollectingSink()
+    control = RuntimeControlPlane("session")
+    previous = control.begin_turn("old-turn")
+    observed = []
+
+    def cleanup(previous_stamp, new_stamp):
+        observed.append((previous_stamp, new_stamp, control.current))
+
+    pipeline = SpeechPipeline(
+        source=source,
+        segmenter=EveryChunkIsUtterance(),
+        engine=FakeEngine(),
+        sink=sink,
+        playback_gate=PlaybackGate(resume_delay_ms=0),
+        control_plane=control,
+        on_turn_superseded=cleanup,
+    )
+    pipeline.start()
+    source.items.put(chunk())
+    wait_for(lambda: len(sink.events) == 1)
+    pipeline.close()
+
+    new_stamp = sink.events[0].control_stamp
+    assert observed == [(previous, new_stamp, new_stamp)]
+    assert control.current == new_stamp
+    assert control.invalidations == 0
+
+
 def test_pipeline_warms_engine_before_starting_audio_capture():
     source = FakeSource()
     engine = FakeEngine(source)
@@ -200,7 +261,7 @@ def test_full_duplex_keeps_capture_open_and_emits_one_barge_in_edge():
         sink=CollectingSink(),
         playback_gate=gate,
         suppress_during_playback=False,
-        on_speech_start=lambda: edges.append("speech"),
+        on_speech_start=lambda detected_ns: edges.append(detected_ns),
     )
     pipeline.start()
     gate.set_active(True)
@@ -216,7 +277,9 @@ def test_full_duplex_keeps_capture_open_and_emits_one_barge_in_edge():
     wait_for(lambda: pipeline.metrics().audio_chunks_received == 4)
     pipeline.close()
 
-    assert edges == ["speech", "speech"]
+    assert len(edges) == 2
+    assert all(isinstance(detected_ns, int) for detected_ns in edges)
+    assert edges[1] >= edges[0]
     assert pipeline.metrics().playback_chunks_suppressed == 0
 
 

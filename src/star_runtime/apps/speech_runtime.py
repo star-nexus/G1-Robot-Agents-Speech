@@ -26,13 +26,13 @@ def create_speech_transport(
             raise ValueError("ROS node options cannot be used with the DDS transport")
         from ..transports.dds.speech import DdsTransport
 
-        return DdsTransport(config.dds, gate.set_active)
+        return DdsTransport(config.dds, gate.handle_state)
     if selected == "ros2":
         from ..transports.ros2.speech import Ros2Transport
 
         return Ros2Transport(
             config.ros2,
-            gate.set_active,
+            gate.handle_state,
             node=ros_node,
             lifecycle=ros_lifecycle,
         )

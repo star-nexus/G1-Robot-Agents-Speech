@@ -35,8 +35,21 @@ The render reference is the exact PCM after software volume, resampling, and cha
 mapping, immediately before it is written to ALSA. PulseAudio monitor audio is not
 used. Both capture and render are fed to APM in strict 10 ms frames; TTS playback uses
 a persistent 10 ms ALSA output stream. When VAD detects near-end speech, the TTS
-controller closes the active stream, aborts ALSA playback, clears queued text, and
-publishes an inactive playback state.
+controller advances the Control Plane epoch, flushes the software PCM timeline,
+cancels and clears TTS work, and publishes an inactive playback state. It does not
+tear down the PortAudio stream during an ordinary interruption.
+
+The persistent stream is a measured JP6.2 liveness requirement. Calling
+`Pa_AbortStream` concurrently with a blocking `Pa_WriteStream` on the current USB
+ALSA endpoint can leave the writer stuck even though abort returns and reports the
+stream inactive. A software timeline generation is therefore checked immediately
+before every hardware submission. PCM already submitted before invalidation is
+bounded residual audio, not stale work newly admitted afterward. Its AEC reference
+was already sent with that same speaker block. The `hard_abort` strategy remains an
+explicit rollback and diagnostic mode.
+
+The final write gate, residual classification, and every exported player metric are
+defined in [`playback_metrics.md`](playback_metrics.md).
 
 In `webrtc` mode, every signal that can reach the robot speaker must pass through
 this player (or another component must feed the same samples into the APM render
@@ -95,6 +108,7 @@ WEBRTC_AGC_ENABLED=0
 
 TTS_ENABLED=1
 TTS_WEBSOCKET_URL="ws://127.0.0.1:8091/v1/audio/speech/stream"
+AUDIO_OUTPUT_INTERRUPT_STRATEGY="persistent"
 ```
 
 Create a host-local model profile from the ASR profile you already use. This keeps

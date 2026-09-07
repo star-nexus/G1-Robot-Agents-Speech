@@ -19,6 +19,8 @@ from star_runtime.capabilities import (
 )
 from star_runtime.robots import RobotAdapterCatalog, RobotAdapterSpec
 from star_runtime.apps.local_voice_agent import _activate_robot
+from star_runtime.core.control import ControlStamp
+from star_runtime.core.timing import RuntimeTimingAudit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -173,6 +175,42 @@ def test_voice_bridge_binds_generic_ports_without_dds_configuration():
 
     assert output_port.calls[-1]["text"] == "你好"
     assert output_port.calls[-1]["is_final"] is True
+
+
+def test_voice_bridge_audits_hidden_first_delta_publish_and_completion():
+    audit = RuntimeTimingAudit()
+    runtime = AgentRuntime(
+        agent_id="robot:test",
+        role_id="role.test",
+        loop=ConversationalLoop(
+            system_prompt="角色",
+            model=_Model(),
+            memory=NullMemory(),
+        ),
+    )
+    input_port = _Input()
+    output_port = _Output()
+    bridge = VoiceBridgeAdapter(
+        runtime,
+        VoiceBridgeSettings(),
+        publisher=output_port,
+        subscriber=input_port,
+        timing_audit=audit,
+    )
+    event = _Event(created_unix_ns=time.time_ns())
+    input_port.handler(event)
+    bridge._answer(bridge._queue.get_nowait())
+
+    events = audit.snapshot(ControlStamp("session-1", "event-1", 1))
+    assert events["agent_start"].monotonic_ns <= events[
+        "agent_first_delta"
+    ].monotonic_ns
+    assert events["agent_first_delta"].monotonic_ns <= events[
+        "agent_first_delta_published"
+    ].monotonic_ns
+    assert events["agent_first_delta_published"].monotonic_ns <= events[
+        "agent_complete"
+    ].monotonic_ns
 
 
 def test_voice_bridge_starts_a_shared_duplex_port_only_once():

@@ -177,9 +177,9 @@ The voice adapter prints the recognized user text and two Agent timings:
 
 ```text
 Agent user: 你在哪啊？
-Agent assistant: 我在您身边。 (first_text=125.7ms total=370.6ms chunks=4)
+Agent response completed: 我在您身边。 (first_delta=125.7ms total=370.6ms chunks=4)
 ```
 
-`first_text` measures ASR-event receipt to the first text fragment from
+`first_delta` measures ASR-event receipt to the first text fragment from
 llama.cpp. `total` ends when the final text marker is delivered to DDS. TTS
 First PCM and playback completion remain in the speech-service logs.

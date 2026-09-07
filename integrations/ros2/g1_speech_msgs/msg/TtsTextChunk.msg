@@ -8,3 +8,6 @@ string voice
 string instructions
 uint64 created_unix_ns
 string source
+string session_id
+string turn_id
+uint64 epoch

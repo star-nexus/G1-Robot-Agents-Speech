@@ -6,6 +6,7 @@ import audioop
 import importlib
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -112,6 +113,7 @@ class WebRtcApmProcessor:
         self._render_input_rate: int | None = None
         self._lock = threading.RLock()
         self._counters = _ProcessingCounters()
+        self._acoustic_trace_sink: Any | None = None
         self._closed = False
         self._apm = apm or self._create_native_apm(settings)
         self._configure_native_apm()
@@ -204,6 +206,17 @@ class WebRtcApmProcessor:
         values = np.asarray(samples, dtype=np.float32).reshape(-1)
         if not values.size:
             return
+        sink = self._acoustic_trace_sink
+        if sink is not None:
+            try:
+                sink.record_render_reference(
+                    values,
+                    sample_rate,
+                    time.monotonic_ns(),
+                )
+            except Exception:  # noqa: BLE001
+                self._acoustic_trace_sink = None
+                logger.exception("Acoustic render trace failed; disabling trace sink")
         pcm = self._float_to_pcm16(values)
         with self._lock:
             self._ensure_open()
@@ -234,6 +247,18 @@ class WebRtcApmProcessor:
             "webrtc_capture_errors": counters.capture_errors,
             "webrtc_render_errors": counters.render_errors,
         }
+
+    def set_acoustic_trace_sink(self, sink: Any | None) -> None:
+        self._acoustic_trace_sink = sink
+
+    def note_vad_edge(self, at_ns: int) -> None:
+        sink = self._acoustic_trace_sink
+        if sink is not None:
+            try:
+                sink.record_vad_edge(at_ns)
+            except Exception:  # noqa: BLE001
+                self._acoustic_trace_sink = None
+                logger.exception("Acoustic VAD trace failed; disabling trace sink")
 
     def close(self) -> None:
         with self._lock:

@@ -51,12 +51,18 @@ def test_inprocess_transport_connects_agent_text_to_tts_and_playback_gate():
         sequence=0,
         text="你好",
         is_final=True,
+        session_id="session-1",
+        turn_id="turn-1",
+        epoch=2,
     )
     transport.publish_playback_state(True, "request-1")
 
     assert result.accepted and result.delivered
     assert chunks[0].text == "你好"
     assert chunks[0].is_final is True
+    assert chunks[0].control_stamp.session_id == "session-1"
+    assert chunks[0].control_stamp.turn_id == "turn-1"
+    assert chunks[0].control_stamp.epoch == 2
     assert playback == [True]
     assert transport.metrics()["inprocess_tts_delivered"] == 1
 

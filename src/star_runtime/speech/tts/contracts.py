@@ -15,6 +15,15 @@ class TtsSynthesisRequest:
     instructions: str
     final_sentence: bool
     finalize_only: bool = False
+    session_id: str = ""
+    turn_id: str = ""
+    epoch: int = 0
+
+    @property
+    def control_stamp(self):
+        from ...core.control import ControlStamp
+
+        return ControlStamp(self.session_id, self.turn_id, self.epoch)
 
 
 @dataclass(frozen=True)
@@ -31,4 +40,3 @@ class StreamingTtsEngine(Protocol):
     ) -> Iterator[TtsAudioChunk]: ...
 
     def close(self) -> None: ...
-

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, request
@@ -50,6 +51,18 @@ class LlamaChatClient:
         settings.validate()
         self._settings = settings
         self._opener = opener
+        self._active_lock = threading.Lock()
+        self._active_response: Any | None = None
+
+    def cancel(self) -> bool:
+        """Close the active HTTP stream when urllib/provider supports it."""
+
+        with self._active_lock:
+            response = self._active_response
+        if response is None:
+            return False
+        response.close()
+        return True
 
     def stream(self, messages: list[ChatMessage]):
         payload = {
@@ -81,6 +94,8 @@ class LlamaChatClient:
                 http_request,
                 timeout=self._settings.request_timeout_seconds,
             )
+            with self._active_lock:
+                self._active_response = response
             buffered_content: list[str] = []
             finish_reason: str | None = None
             with response:
@@ -127,6 +142,9 @@ class LlamaChatClient:
             raise RuntimeError(
                 f"cannot reach llama.cpp at {self._settings.url}: {exc}"
             ) from exc
+        finally:
+            with self._active_lock:
+                self._active_response = None
 
 
 def _strip_reasoning_markup(content: str) -> str:

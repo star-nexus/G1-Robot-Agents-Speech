@@ -7,7 +7,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from ..core.events import SpeechEvent, TtsTextChunk
+from ..core.control import EpochInvalidated
+from ..core.events import PlaybackState, SpeechEvent, TtsTextChunk
 from .contracts import PublishResult, SpeechEventLike
 
 
@@ -40,6 +41,11 @@ class InProcessVoicePort:
     def set_handler(self, handler: Callable[[SpeechEventLike], None]) -> None:
         self._transport._set_speech_handler(handler)
 
+    def set_control_handler(
+        self, handler: Callable[[EpochInvalidated], None]
+    ) -> None:
+        self._transport._set_control_handler(handler)
+
     def start(self) -> None:
         self._started = True
 
@@ -54,6 +60,9 @@ class InProcessVoicePort:
         language: str = "",
         voice: str = "",
         instructions: str = "",
+        session_id: str = "",
+        turn_id: str = "",
+        epoch: int = 0,
         timeout: float = 0.25,
     ) -> PublishResult:
         del timeout
@@ -71,6 +80,9 @@ class InProcessVoicePort:
                 instructions=instructions,
                 created_unix_ns=time.time_ns(),
                 source="star-agent-runtime",
+                session_id=session_id,
+                turn_id=turn_id,
+                epoch=epoch,
             )
         )
 
@@ -89,6 +101,7 @@ class InProcessTransport:
     def __init__(self, playback_handler: Callable[[bool], None]) -> None:
         self._playback_handler = playback_handler
         self._speech_handler: Callable[[SpeechEventLike], None] | None = None
+        self._control_handler: Callable[[EpochInvalidated], None] | None = None
         self._tts_handler: Callable[[TtsTextChunk], None] | None = None
         self._lock = threading.Lock()
         self._started = False
@@ -113,9 +126,22 @@ class InProcessTransport:
                 raise RuntimeError("TTS handler is already registered")
             self._tts_handler = callback
 
-    def publish_playback_state(self, active: bool, request_id: str) -> None:
-        del request_id
-        self._playback_handler(active)
+    def publish_playback_state(
+        self, state: PlaybackState | bool, request_id: str = ""
+    ) -> None:
+        if isinstance(state, bool):
+            self._playback_handler(state)
+            return
+        try:
+            self._playback_handler(state)
+        except TypeError:
+            self._playback_handler(state.active)
+
+    def publish_control(self, event: EpochInvalidated) -> None:
+        with self._lock:
+            handler = self._control_handler
+        if self._started and handler is not None:
+            handler(event)
 
     def metrics(self) -> dict[str, Any]:
         with self._lock:
@@ -131,6 +157,12 @@ class InProcessTransport:
     ) -> None:
         with self._lock:
             self._speech_handler = handler
+
+    def _set_control_handler(
+        self, handler: Callable[[EpochInvalidated], None]
+    ) -> None:
+        with self._lock:
+            self._control_handler = handler
 
     def _deliver_speech(self, event: SpeechEvent) -> PublishResult:
         with self._lock:

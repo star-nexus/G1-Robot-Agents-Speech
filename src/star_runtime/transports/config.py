@@ -12,6 +12,7 @@ class DdsConfig:
     speech_topic: str = "rt/g1/hri/speech/final"
     playback_topic: str = "rt/g1/hri/playback/state"
     tts_topic: str = "rt/g1/hri/tts/request"
+    control_topic: str = "rt/g1/hri/control/epoch"
     write_timeout_seconds: float = 0.5
     retry_interval_seconds: float = 0.2
     delivery_ttl_seconds: float = 120.0
@@ -24,6 +25,7 @@ class Ros2Config:
     speech_topic: str = "hri/speech/final"
     playback_topic: str = "hri/playback/state"
     tts_topic: str = "hri/tts/request"
+    control_topic: str = "hri/control/epoch"
     qos_depth: int = 10
 
 

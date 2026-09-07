@@ -6,11 +6,12 @@ import logging
 import time
 from typing import Any, Callable
 
-from ...core.events import TtsTextChunk
+from ...core.control import EpochInvalidated
+from ...core.events import PlaybackState, TtsTextChunk
 from ..config import DdsConfig
 from .reliability import DdsEventWriter, RetryingEventSink
 from .runtime import _DdsReader, _DdsWriter, initialize_dds
-from .types import PlaybackStateMessage, TtsTextChunkMessage
+from .types import EpochInvalidatedMessage, PlaybackStateMessage, TtsTextChunkMessage
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,19 @@ class DdsPlaybackSubscriber:
             self._subscriber = None
 
     def _on_message(self, message: PlaybackStateMessage) -> None:
-        self._playback_handler(bool(message.active))
+        state = PlaybackState(
+            request_id=message.request_id,
+            active=bool(message.active),
+            created_unix_ns=int(message.created_unix_ns),
+            source=message.source,
+            session_id=getattr(message, "session_id", ""),
+            turn_id=getattr(message, "turn_id", ""),
+            epoch=int(getattr(message, "epoch", 0)),
+        )
+        try:
+            self._playback_handler(state)
+        except TypeError:
+            self._playback_handler(state.active)
         logger.info("Playback gate active=%s request_id=%s", message.active, message.request_id)
 
 
@@ -83,6 +96,9 @@ class DdsTtsSubscriber:
                 instructions=message.instructions,
                 created_unix_ns=int(message.created_unix_ns),
                 source=message.source,
+                session_id=getattr(message, "session_id", ""),
+                turn_id=getattr(message, "turn_id", ""),
+                epoch=int(getattr(message, "epoch", 0)),
             )
         )
 
@@ -97,12 +113,24 @@ class DdsPlaybackPublisher:
     def start(self) -> None:
         self._publisher.start()
 
-    def set_active(self, active: bool, *, request_id: str, timeout: float = 0.5) -> bool:
+    def set_active(
+        self,
+        active: bool,
+        *,
+        request_id: str,
+        timeout: float = 0.5,
+        session_id: str = "",
+        turn_id: str = "",
+        epoch: int = 0,
+    ) -> bool:
         message = PlaybackStateMessage(
             request_id=request_id,
             active=active,
             created_unix_ns=time.time_ns(),
             source=self._source,
+            session_id=session_id,
+            turn_id=turn_id,
+            epoch=epoch,
         )
         return self._publisher.write(message, timeout)
 
@@ -144,6 +172,10 @@ class DdsTransport:
             topic=config.playback_topic,
         )
         self._config = config
+        self._control_writer = _DdsWriter(
+            config.control_topic,
+            EpochInvalidatedMessage,
+        )
         self._tts: DdsTtsSubscriber | None = None
         self._tts_playback: DdsPlaybackPublisher | None = None
         writer = DdsEventWriter(config.speech_topic)
@@ -156,6 +188,7 @@ class DdsTransport:
         )
 
     def start(self) -> None:
+        self._control_writer.start()
         self._playback.start()
         if self._tts is not None:
             self._tts.start()
@@ -163,6 +196,7 @@ class DdsTransport:
             self._tts_playback.start()
 
     def stop(self) -> None:
+        self._control_writer.close()
         if self._tts is not None:
             self._tts.close()
         if self._tts_playback is not None:
@@ -178,18 +212,39 @@ class DdsTransport:
             source="g1_speech_tts",
         )
 
-    def publish_playback_state(self, active: bool, request_id: str) -> None:
+    def publish_playback_state(self, state: PlaybackState) -> None:
         if self._tts_playback is None:
             return
         if not self._tts_playback.set_active(
-            active,
-            request_id=request_id,
+            state.active,
+            request_id=state.request_id,
+            session_id=state.session_id,
+            turn_id=state.turn_id,
+            epoch=state.epoch,
             timeout=0.25,
         ):
             logger.warning(
                 "DDS playback state was not delivered: active=%s request_id=%s",
-                active,
-                request_id,
+                state.active,
+                state.request_id,
+            )
+
+    def publish_control(self, event: EpochInvalidated) -> None:
+        message = EpochInvalidatedMessage(
+            event_id=event.event_id,
+            session_id=event.session_id,
+            turn_id=event.turn_id,
+            epoch=event.epoch,
+            next_epoch=event.next_epoch,
+            reason=event.reason,
+            created_unix_ns=event.created_unix_ns,
+            source=event.source,
+        )
+        if not self._control_writer.write(message, 0.25):
+            logger.warning(
+                "DDS epoch invalidation was not delivered: turn_id=%s epoch=%d",
+                event.turn_id,
+                event.epoch,
             )
 
     def close(self) -> None:
@@ -209,4 +264,3 @@ class DdsTransport:
 __all__ = [
     "DdsEventWriter", "DdsPlaybackPublisher", "DdsTransport", "DdsTtsSubscriber", "RetryingEventSink",
 ]
-

@@ -7,6 +7,7 @@ import pytest
 
 from g1_speech.config import (
     AudioConfig,
+    AudioOutputConfig,
     AudioProcessingConfig,
     Qwen3AsrConfig,
     ServiceConfig,
@@ -164,6 +165,7 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
             "WEBRTC_NS_LEVEL": "3",
             "WEBRTC_AGC_ENABLED": "0",
             "AUDIO_OUTPUT_BUFFER_SECONDS": "6.5",
+            "AUDIO_OUTPUT_INTERRUPT_STRATEGY": "hard_abort",
             "TTS_ENABLED": "1",
             "TTS_WEBSOCKET_URL": "ws://localhost:9000/v1/audio/speech/stream",
         },
@@ -189,6 +191,7 @@ def test_runtime_environment_only_overrides_backend_neutral_settings(tmp_path):
     assert config.audio_processing.noise_suppression_level == 3
     assert config.audio_processing.automatic_gain_control is False
     assert config.audio_output.buffer_seconds == 6.5
+    assert config.audio_output.interrupt_strategy == "hard_abort"
     assert config.tts.enabled is True
     assert config.tts.websocket_url.startswith("ws://localhost:9000/")
 
@@ -200,6 +203,19 @@ def test_webrtc_mode_requires_complete_ten_ms_capture_frames():
     )
 
     with pytest.raises(ValueError, match="complete WebRTC APM frames"):
+        config.validate()
+
+
+def test_persistent_webrtc_mode_requires_ten_ms_speaker_clock():
+    config = ServiceConfig(
+        audio_processing=AudioProcessingConfig(mode="webrtc"),
+        audio_output=AudioOutputConfig(
+            block_ms=20,
+            interrupt_strategy="persistent",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="continuous speaker/render clock"):
         config.validate()
 
 
