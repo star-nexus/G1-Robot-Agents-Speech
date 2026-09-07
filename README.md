@@ -29,6 +29,10 @@ ROS 2, or any robot brand.
 See [Runtime architecture](docs/runtime_architecture.md) for module boundaries and the
 resource-conscious robot-adapter lifecycle.
 
+For the canonical current milestone, open acceptance gates, and next work item, see
+the [project roadmap](docs/ROADMAP.md). Completed experiments and decisions are kept
+in the append-only [project history](docs/PROJECT_HISTORY.md).
+
 ## Verified Platforms
 
 | Platform | Compute | Available backends | Validation |

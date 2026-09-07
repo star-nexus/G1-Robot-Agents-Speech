@@ -27,6 +27,9 @@ NVIDIA DGX Spark 和通用 Linux 边缘计算设备。
 模块边界和面向 Orin NX 的本体适配器生命周期见
 [Runtime 架构](docs/runtime_architecture.md)。
 
+当前里程碑、未关闭验收和下一项工作以[项目路线图](docs/ROADMAP.md)为准；已经执行的实验、
+结果与决策保存在只追加的[项目历史](docs/PROJECT_HISTORY.md)中。
+
 ## 已验证平台
 
 | 平台 | 计算设备 | 可用后端 | 验证状态 |
@@ -126,8 +129,9 @@ TTS_ENABLED=1
 # AUDIO_PROCESSING_MODE="hardware"
 ```
 
-`off` 保留安全的半双工播放门控；`hardware` 与 `webrtc` 在机器人说话时继续运行 VAD，
-用户开口后会终止合成、清空排队文本并立即 abort ALSA 播放。完整说明见
+`off` 保留安全的半双工播放门控；`hardware` 与 `webrtc` 在机器人说话时继续运行 VAD。
+用户开口后会推进 epoch、终止旧合成、清空排队文本和 PCM ring；生产路径保持 persistent
+ALSA stream，并通过 player generation 阻止旧音频重新提交。完整说明见
 [全双工音频指南](docs/full_duplex_audio.md)和
 [JetPack 6 vLLM-Omni 隔离环境记录](docs/qwen3_tts_vllm_omni_jp6.md)。
 
