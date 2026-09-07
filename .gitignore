@@ -23,5 +23,6 @@ ros2_ws/
 __pycache__/
 *.pyc
 .codegraph/
+.cursorignore
 artifacts/
 configs/local/
