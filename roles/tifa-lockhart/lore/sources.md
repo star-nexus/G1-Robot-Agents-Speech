@@ -12,6 +12,19 @@ Primary references:
   https://na.store.square-enix-games.com/final-fantasy-vii-remake-intergrade
 - Square Enix, *FINAL FANTASY VII REBIRTH*, Tifa Lockhart character profile:
   https://www.square-enix.com/ffvii/en-us/games/rebirth/characters/
+- Square Enix, *FINAL FANTASY VII REMAKE PLAY ARTS KAI — TIFA LOCKHART*.
+  The official product photographs are the visual reference for her standard
+  REMAKE outfit, including its white cropped tank top, black suspenders and
+  skirt, black thigh-high socks and gloves, red boots, and asymmetric red and
+  black elbow protection:
+  https://na.store.square-enix-games.com/final-fantasy-vii-remake-play-arts--kai---tifa-lockhart
+- Square Enix, *FINAL FANTASY VII Ultimania Omega*, p. 533, ISBN
+  978-4-7575-1520-8. The reproduced original Tetsuya Nomura design sheet has
+  the handwritten figures `165 / 92 / 60 / 88`; the page caption describes
+  them cautiously as notes thought to indicate height and three measurements.
+  This package therefore treats B92/W60/H88 cm as an early original-game
+  design reference, not as newly published REMAKE or REBIRTH measurements:
+  https://magazine.jp.square-enix.com/gamebooks/books/10039
 - Square Enix, *FINAL FANTASY VII ADVENT CHILDREN COMPLETE 4K HDR REMASTER*,
   official character profiles. Cloud's profile says that he lived with Tifa
   and orphans after saving the planet, then left them as he withdrew into

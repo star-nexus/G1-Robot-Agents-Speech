@@ -119,3 +119,77 @@ def test_runtime_factory_loads_role_lore_once_and_keeps_one_model_request():
         "クラウドはニブルヘイムで育った幼なじみ" in message["content"]
         for message in model.calls[0]
     )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "你现在穿的什么衣服？",
+        "第七天堂的衣服长什么样子，你描述一下。",
+        "今はどんな服を着ているの？",
+        "What are you wearing?",
+    ],
+)
+def test_bundled_tifa_outfit_lore_matches_common_questions(query):
+    root = Path(__file__).resolve().parents[1]
+    role = load_role_package(root / "roles" / "tifa-lockhart")
+    assert role.knowledge.cards_path is not None
+    provider = KeywordLoreProvider.from_files(
+        core_path=role.knowledge.core_path,
+        cards_path=role.knowledge.cards_path,
+        max_cards=role.knowledge.max_cards,
+    )
+
+    relevant = provider.relevant_context(query)
+
+    assert "白いクロップド丈のタンクトップ" in relevant
+    assert "黒いミニスカート" in relevant
+    assert "赤い編み上げブーツ" in relevant
+    assert "セブンスヘブン専用の作業着ではない" in relevant
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "蒂法的三围是多少？",
+        "スリーサイズを教えて。",
+        "What are your body measurements?",
+    ],
+)
+def test_bundled_tifa_measurements_include_source_period_caveat(query):
+    root = Path(__file__).resolve().parents[1]
+    role = load_role_package(root / "roles" / "tifa-lockhart")
+    assert role.knowledge.cards_path is not None
+    provider = KeywordLoreProvider.from_files(
+        core_path=role.knowledge.core_path,
+        cards_path=role.knowledge.cards_path,
+        max_cards=role.knowledge.max_cards,
+    )
+
+    relevant = provider.relevant_context(query)
+
+    assert "B92・W60・H88 cm" in relevant
+    assert "初期デザイン資料" in relevant
+    assert "現行公式プロフィールとして再公表された数値ではない" in relevant
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        ("你为什么喜欢夏天，不会融化吗？", "随身飘雪"),
+        ("你是谁创造出来的？", "艾莎的冰雪魔法"),
+        ("你觉得真爱是什么？", "把他们的需要放在自己前面"),
+        ("你的胡萝卜鼻子会掉吗？", "三段雪团"),
+    ],
+)
+def test_bundled_olaf_lore_matches_first_film_questions(query, expected):
+    root = Path(__file__).resolve().parents[1]
+    role = load_role_package(root / "roles" / "olaf")
+    assert role.knowledge.cards_path is not None
+    provider = KeywordLoreProvider.from_files(
+        core_path=role.knowledge.core_path,
+        cards_path=role.knowledge.cards_path,
+        max_cards=role.knowledge.max_cards,
+    )
+
+    assert expected in provider.relevant_context(query)

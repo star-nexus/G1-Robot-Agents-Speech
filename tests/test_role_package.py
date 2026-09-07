@@ -21,7 +21,16 @@ def test_bundled_olaf_role_package_loads():
     assert role.memory.provider == "window"
     assert role.memory.max_turns == 4
     assert role.model.thinking is False
+    assert role.model.max_tokens == 48
+    assert role.model.temperature == 0.35
     assert "Olaf" in role.prompt
+    assert "天真不等于愚笨" in role.prompt
+    assert role.voice.voice == "Aiden"
+    assert role.voice.language == "English"
+    assert role.knowledge.provider == "keyword"
+    assert role.knowledge.max_cards == 2
+    assert role.knowledge.core_path.name == "core.md"
+    assert role.knowledge.cards_path.name == "cards.jsonl"
     assert role.capabilities.allow == frozenset()
 
 
